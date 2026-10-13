@@ -1,0 +1,627 @@
+{% extends "admin_portal/base_admin.html" %}
+{% load static %}
+
+{% block title %}Support Center | XAPYX Admin Portal{% endblock %}
+{% block header_title %}Support Center{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* Support Center Layout & Hybrid/Dark Theme Styles */
+  .admsup-stat-card-left {
+    background: var(--admsup-card-bg);
+    border: 1px solid var(--admsup-border);
+    border-left: 4px solid transparent;
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    box-shadow: var(--admsup-shadow);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    height: 100%;
+    cursor: pointer;
+  }
+  .admsup-stat-card-left:hover {
+    transform: translateY(-2px);
+  }
+  .admsup-stat-card-left.open { border-left-color: #f59e0b; }
+  .admsup-stat-card-left.progress { border-left-color: #3b82f6; }
+  .admsup-stat-card-left.pending { border-left-color: #8b5cf6; }
+  .admsup-stat-card-left.resolved { border-left-color: #10b981; }
+
+  .admsup-chat-container {
+    display: grid;
+    grid-template-columns: 370px 1fr;
+    gap: 0;
+    height: calc(100vh - 255px);
+    min-height: 560px;
+    background: var(--admsup-card-bg);
+    border: 1px solid var(--admsup-border);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--admsup-shadow);
+    position: relative;
+  }
+
+  .admsup-sidebar {
+    background: var(--admsup-surface-2);
+    border-right: 1px solid var(--admsup-border);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .admsup-sidebar-header {
+    padding: 1rem;
+    border-bottom: 1px solid var(--admsup-border);
+    background: var(--admsup-card-bg);
+  }
+
+  .admsup-filter-tabs {
+    display: flex;
+    gap: 0.35rem;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+    margin-bottom: 0.65rem;
+    scrollbar-width: none;
+  }
+  .admsup-filter-tabs::-webkit-scrollbar { display: none; }
+
+  .admsup-filter-tab {
+    border: 1px solid var(--admsup-border);
+    background: var(--admsup-surface-2);
+    color: var(--admsup-text-muted);
+    font-size: 0.74rem;
+    font-weight: 600;
+    padding: 0.3rem 0.65rem;
+    border-radius: 20px;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .admsup-filter-tab:hover {
+    color: var(--admsup-text);
+    border-color: #3b82f6;
+  }
+  .admsup-filter-tab.active {
+    background: #3b82f6;
+    color: #ffffff;
+    border-color: #3b82f6;
+  }
+
+  .admsup-tickets-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.75rem;
+  }
+
+  .admsup-ticket-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 0.85rem 0.95rem;
+    margin-bottom: 0.55rem;
+    background: var(--admsup-card-bg);
+    border: 1px solid var(--admsup-border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+  }
+  .admsup-ticket-item:hover {
+    border-color: #3b82f6;
+    transform: translateY(-1px);
+  }
+  .admsup-ticket-item.active {
+    background: rgba(59, 130, 246, 0.08);
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 1px #3b82f6;
+  }
+
+  .admsup-ticket-subject {
+    display: block;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--admsup-text);
+    line-height: 1.3;
+    margin-bottom: 0.2rem;
+  }
+
+  .admsup-unread-badge {
+    background: #ef4444;
+    color: #ffffff;
+    border-radius: 999px;
+    min-width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0 6px;
+    flex-shrink: 0;
+  }
+
+  .admsup-status-badge {
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    display: inline-block;
+  }
+  .admsup-status-open { background: #fef3c7; color: #92400e; }
+  .admsup-status-in_progress { background: #dbeafe; color: #1e40af; }
+  .admsup-status-resolved { background: #d1fae5; color: #065f46; }
+  .admsup-status-closed { background: #e2e8f0; color: #475569; }
+  .admsup-status-pending { background: #f3e8ff; color: #6b21a8; }
+
+  .admsup-urgency-dot {
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 0.12rem 0.45rem;
+    border-radius: 6px;
+  }
+  .urgency-critical { background: #fee2e2; color: #991b1b; }
+  .urgency-high { background: #ffedd5; color: #9a3412; }
+  .urgency-medium { background: var(--admsup-surface-3); color: var(--admsup-text-secondary); }
+  .urgency-low { background: var(--admsup-surface-2); color: var(--admsup-text-muted); }
+
+  /* Right Chat Area */
+  .admsup-chat-area {
+    display: flex;
+    flex-direction: column;
+    background: var(--admsup-card-bg);
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .admsup-welcome-screen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    background: var(--admsup-surface-2);
+    flex: 1;
+    padding: 2rem;
+  }
+
+  .admsup-chat-interface {
+    display: none;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    min-height: 0;
+  }
+
+  .admsup-chat-header {
+    padding: 0.9rem 1.25rem;
+    border-bottom: 1px solid var(--admsup-border);
+    background: var(--admsup-card-bg);
+    flex-shrink: 0;
+  }
+
+  .admsup-messages-container {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 1.25rem;
+    background: var(--admsup-surface-2);
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .admsup-message-wrapper {
+    display: flex;
+    flex-direction: column;
+    max-width: 76%;
+    animation: admsupMsgIn 0.2s ease;
+  }
+  @keyframes admsupMsgIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .admsup-admin-message-wrapper {
+    align-self: flex-end;
+    margin-left: auto;
+  }
+  .admsup-user-message-wrapper {
+    align-self: flex-start;
+  }
+
+  .admsup-message-sender {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--admsup-text-muted);
+    margin-bottom: 0.2rem;
+    padding: 0 0.25rem;
+  }
+  .admsup-admin-message-wrapper .admsup-message-sender {
+    text-align: right;
+  }
+
+  .admsup-message-bubble {
+    border-radius: 16px;
+    padding: 0.7rem 1rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    word-wrap: break-word;
+    border: 1px solid var(--admsup-border);
+  }
+  .admsup-admin-message {
+    background: #3b82f6;
+    border-color: #2563eb;
+    color: #ffffff;
+    border-bottom-right-radius: 4px;
+  }
+  .admsup-user-message {
+    background: var(--admsup-card-bg);
+    color: var(--admsup-text);
+    border-color: var(--admsup-border);
+    border-bottom-left-radius: 4px;
+  }
+
+  .admsup-message-content {
+    font-size: 0.9rem;
+    line-height: 1.45;
+    word-break: break-word;
+  }
+  .admsup-message-time {
+    font-size: 0.68rem;
+    margin-top: 0.3rem;
+    text-align: right;
+    font-weight: 500;
+  }
+  .admsup-admin-message .admsup-message-time {
+    color: rgba(255, 255, 255, 0.85);
+  }
+  .admsup-user-message .admsup-message-time {
+    color: var(--admsup-text-muted);
+  }
+
+  .admsup-message-file {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.08);
+  }
+
+  .admsup-media-preview {
+    background: var(--admsup-card-bg);
+    padding: 0.65rem 1rem;
+    border-top: 1px solid var(--admsup-border);
+    display: none;
+  }
+  .admsup-media-preview.show {
+    display: block;
+  }
+  .admsup-media-grid {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .admsup-media-thumb {
+    position: relative;
+    width: 56px;
+    height: 56px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--admsup-border);
+    background: var(--admsup-surface-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .admsup-media-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .admsup-media-remove {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.9);
+    color: #fff;
+    border: none;
+    font-size: 0.65rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .admsup-message-input-container {
+    padding: 0.85rem 1.1rem;
+    border-top: 1px solid var(--admsup-border);
+    background: var(--admsup-card-bg);
+    flex-shrink: 0;
+  }
+
+  .admsup-form-control {
+    background: var(--admsup-surface-2) !important;
+    border: 1px solid var(--admsup-border) !important;
+    color: var(--admsup-text) !important;
+  }
+  .admsup-form-control::placeholder {
+    color: var(--admsup-text-muted) !important;
+  }
+  .admsup-form-control:focus {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+  }
+
+  .admsup-scroll-bottom {
+    position: absolute;
+    bottom: 88px;
+    right: 24px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #3b82f6;
+    color: #fff;
+    border: none;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
+  .admsup-scroll-bottom.show {
+    display: flex;
+  }
+
+  /* Mobile Responsive View */
+  @media (max-width: 767.98px) {
+    .admsup-chat-container {
+      grid-template-columns: 1fr;
+      height: calc(100vh - 200px);
+    }
+    .admsup-sidebar.mobile-hidden {
+      display: none !important;
+    }
+    .admsup-chat-area.mobile-hidden {
+      display: none !important;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Top 4 Filterable Stat Cards (Matching PHP Support Center) -->
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-3">
+    <div class="admsup-stat-card-left open" data-filter-status="open">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <div class="small fw-semibold text-uppercase" style="color: var(--admsup-text-muted); font-size: 0.72rem;">Open Tickets</div>
+          <h3 class="fw-bold mb-0 mt-1 admsup-heading" id="admsupOpenTickets">{{ metrics.tickets_open|default:0 }}</h3>
+        </div>
+        <i class="bi bi-clock fs-3 text-warning"></i>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="admsup-stat-card-left progress" data-filter-status="in_progress">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <div class="small fw-semibold text-uppercase" style="color: var(--admsup-text-muted); font-size: 0.72rem;">In Progress</div>
+          <h3 class="fw-bold mb-0 mt-1 admsup-heading" id="admsupInProgressTickets">{{ metrics.tickets_in_progress|default:0 }}</h3>
+        </div>
+        <i class="bi bi-arrow-repeat fs-3 text-primary"></i>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="admsup-stat-card-left pending" data-filter-status="pending">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <div class="small fw-semibold text-uppercase" style="color: var(--admsup-text-muted); font-size: 0.72rem;">Pending</div>
+          <h3 class="fw-bold mb-0 mt-1 admsup-heading" id="admsupPendingTickets">{{ metrics.tickets_pending|default:0 }}</h3>
+        </div>
+        <i class="bi bi-hourglass-split fs-3" style="color: #8b5cf6;"></i>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="admsup-stat-card-left resolved" data-filter-status="resolved">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <div class="small fw-semibold text-uppercase" style="color: var(--admsup-text-muted); font-size: 0.72rem;">Resolved</div>
+          <h3 class="fw-bold mb-0 mt-1 admsup-heading" id="admsupResolvedTickets">{{ metrics.tickets_resolved|default:0 }}</h3>
+        </div>
+        <i class="bi bi-check-circle fs-3 text-success"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main Split Support Interface -->
+<div class="admsup-chat-container">
+  <!-- Left Column: Ticket List Sidebar -->
+  <div class="admsup-sidebar" id="admsupSidebar">
+    <div class="admsup-sidebar-header">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 class="mb-0 fw-bold admsup-heading"><i class="bi bi-ticket-detailed me-2 text-primary"></i>Support Tickets</h6>
+        <button class="btn btn-sm admin-topbar-btn" id="admsupRefreshBtn" title="Refresh Tickets">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+      </div>
+
+      <!-- Quick Filter Pills -->
+      <div class="admsup-filter-tabs" id="admsupFilterTabs">
+        <button type="button" class="admsup-filter-tab active" data-status="all">All</button>
+        <button type="button" class="admsup-filter-tab" data-status="open">Open</button>
+        <button type="button" class="admsup-filter-tab" data-status="in_progress">In Progress</button>
+        <button type="button" class="admsup-filter-tab" data-status="pending">Pending</button>
+        <button type="button" class="admsup-filter-tab" data-status="resolved">Resolved</button>
+        <button type="button" class="admsup-filter-tab" data-status="critical">Critical</button>
+      </div>
+
+      <!-- Search + Select Filter -->
+      <div class="d-flex gap-2">
+        <select id="admsupStatusFilter" class="form-select form-select-sm admsup-form-control" style="max-width: 130px;">
+          <option value="all">All Status</option>
+          <option value="open">Open</option>
+          <option value="in_progress">In Progress</option>
+          <option value="pending">Pending</option>
+          <option value="resolved">Resolved</option>
+          <option value="closed">Closed</option>
+          <option value="critical">Critical</option>
+        </select>
+        <div class="input-group input-group-sm">
+          <span class="input-group-text admsup-form-control"><i class="bi bi-search"></i></span>
+          <input type="text" id="admsupTicketSearch" class="form-control admsup-form-control" placeholder="Search user, #id, subject...">
+        </div>
+      </div>
+    </div>
+
+    <!-- Tickets Scroll List -->
+    <div class="admsup-tickets-list" id="admsupTicketsList">
+      {% if not recent_tickets %}
+      <div class="text-center py-5" style="color: var(--admsup-text-muted);">
+        <i class="bi bi-inbox fs-1 d-block mb-2 opacity-50"></i>
+        <p class="mb-0 small">No support tickets found</p>
+      </div>
+      {% else %}
+        {% for ticket in recent_tickets %}
+        <div class="admsup-ticket-item"
+             data-ticket-id="{{ ticket.id }}"
+             data-user-id="{{ ticket.user_id }}"
+             data-firebase-id="{{ ticket.firebase_id }}">
+          <div class="flex-grow-1 pe-2" style="min-width: 0;">
+            <div class="d-flex justify-content-between align-items-start mb-1 gap-2">
+              <strong class="admsup-ticket-subject text-truncate" title="#{{ ticket.id }} {{ ticket.subject }}">
+                <span style="color: var(--admsup-text-muted); font-weight: 700;">#{{ ticket.id }}</span> {{ ticket.subject }}
+              </strong>
+              <small class="flex-shrink-0" style="color: var(--admsup-text-muted); font-size: 0.72rem;">{{ ticket.time_ago }}</small>
+            </div>
+            <div class="small mb-2 text-truncate" style="color: var(--admsup-text-muted);">
+              <i class="bi bi-person-circle me-1"></i>{{ ticket.user_name }}
+              {% if ticket.user_email %}<span class="opacity-75">({{ ticket.user_email }})</span>{% endif %}
+            </div>
+            <div class="d-flex align-items-center flex-wrap gap-2">
+              <span class="admsup-status-badge admsup-status-{{ ticket.status }}">
+                {% if ticket.status == 'in_progress' %}In Progress{% else %}{{ ticket.status|capfirst }}{% endif %}
+              </span>
+              <span class="admsup-urgency-dot urgency-{{ ticket.urgency }}">{{ ticket.urgency|capfirst }}</span>
+              <span class="small" style="color: var(--admsup-text-muted); font-size: 0.72rem;">{{ ticket.type|capfirst }}</span>
+            </div>
+          </div>
+          {% if ticket.unread_count > 0 %}
+          <span class="admsup-unread-badge ms-1">{{ ticket.unread_count }}</span>
+          {% endif %}
+        </div>
+        {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Right Column: Chat Thread Area -->
+  <div class="admsup-chat-area mobile-hidden" id="admsupChatArea">
+    <!-- Empty / Welcome State -->
+    <div class="admsup-welcome-screen" id="admsupWelcomeScreen">
+      <div class="text-center">
+        <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 72px; height: 72px; background: rgba(59, 130, 246, 0.12); color: #3b82f6;">
+          <i class="bi bi-headset fs-1"></i>
+        </div>
+        <h5 class="fw-bold admsup-heading">Welcome to Admin Support Center</h5>
+        <p class="mb-0 small" style="color: var(--admsup-text-muted);">Select a ticket from the left list to view the conversation and reply in real time.</p>
+      </div>
+    </div>
+
+    <!-- Active Ticket Chat Interface -->
+    <div class="admsup-chat-interface" id="admsupChatInterface">
+      <div class="admsup-chat-header">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div class="d-flex align-items-center gap-2" style="min-width: 0;">
+            <button class="btn btn-sm admin-topbar-btn d-md-none" type="button" id="admsupBackToListBtn" title="Back to Tickets">
+              <i class="bi bi-arrow-left"></i>
+            </button>
+            <div style="min-width: 0;">
+              <h6 class="mb-0 fw-bold text-truncate admsup-heading" id="admsupTicketSubject">Loading...</h6>
+              <div class="small mt-1" style="color: var(--admsup-text-muted);" id="admsupTicketMeta"></div>
+            </div>
+          </div>
+          <div class="d-flex gap-2 align-items-center">
+            <label for="admsupTicketStatus" class="small fw-semibold d-none d-sm-inline" style="color: var(--admsup-text-muted);">Status:</label>
+            <select id="admsupTicketStatus" class="form-select form-select-sm admsup-form-control w-auto fw-semibold">
+              <option value="open">Open</option>
+              <option value="in_progress">In Progress</option>
+              <option value="pending">Pending</option>
+              <option value="resolved">Resolved</option>
+              <option value="closed">Closed</option>
+            </select>
+          </div>
+        </div>
+        <div class="mt-2 pt-2 border-top small d-flex flex-wrap gap-3" style="border-color: var(--admsup-border) !important; color: var(--admsup-text-muted);" id="admsupUserInfo"></div>
+      </div>
+
+      <!-- Messages Scroll Container -->
+      <div class="admsup-messages-container" id="admsupMessagesContainer"></div>
+
+      <!-- Media Attachment Preview Bar -->
+      <div class="admsup-media-preview" id="admsupMediaPreview">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <small style="color: var(--admsup-text-muted);">
+            <i class="bi bi-paperclip me-1"></i>
+            <span id="admsupMediaCount">0 files selected</span>
+          </small>
+          <button class="btn btn-sm btn-link text-danger p-0 text-decoration-none" type="button" id="admsupClearMediaBtn">
+            Clear all
+          </button>
+        </div>
+        <div class="admsup-media-grid" id="admsupMediaGrid"></div>
+      </div>
+
+      <button class="admsup-scroll-bottom" id="admsupScrollBottom" type="button" title="Scroll to latest">
+        <i class="bi bi-chevron-down"></i>
+      </button>
+
+      <!-- Reply Input Bar -->
+      <div class="admsup-message-input-container">
+        <div class="d-flex gap-2 align-items-end">
+          <button class="btn admin-topbar-btn d-flex align-items-center justify-content-center" style="height: 44px; width: 44px; flex-shrink: 0;" type="button" id="admsupAttachBtn" title="Attach file or image">
+            <i class="bi bi-paperclip fs-5"></i>
+          </button>
+          <input type="file" id="admsupFileInput" accept="image/*,video/*,.pdf,.doc,.docx,.txt,.zip,.rar,.csv,.xls,.xlsx" multiple style="display: none;">
+
+          <textarea id="admsupMessageInput" class="form-control admsup-form-control"
+                    placeholder="Type your response here... (Enter to send, Shift+Enter for new line)"
+                    maxlength="2000" rows="1" style="min-height: 44px; max-height: 130px; resize: none;" disabled></textarea>
+
+          <button id="admsupSendMessageBtn" class="btn btn-primary d-flex align-items-center justify-content-center px-3" style="height: 44px; border-radius: 10px; flex-shrink: 0;" type="button" disabled>
+            <i class="bi bi-send-fill"></i>
+          </button>
+        </div>
+        <div class="small mt-1 d-flex justify-content-between align-items-center" style="color: var(--admsup-text-muted); font-size: 0.72rem;">
+          <span><i class="bi bi-lightning-charge-fill text-primary me-1"></i>Real-time Firebase & MySQL sync active</span>
+          <span id="admsupSyncIndicator"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Firebase 8 SDK (matches PHP Support Center) -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script>
+  window.ADMSUP_ADMIN_USER = {
+    id: "{{ admin_id|default:1 }}",
+    name: "{{ admin_name|default:'Support Team'|escapejs }}",
+    email: "{{ admin_email|default:'admin@xapyx.com'|escapejs }}",
+    role: "{{ admin_role|default:'admin'|escapejs }}"
+  };
+  window.ADMSUP_CSRF_TOKEN = "{{ csrf_token }}";
+</script>
+<script src="{% static 'js/admin_support.js' %}?v=1"></script>
+{% endblock %}

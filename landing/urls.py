@@ -234,6 +234,8 @@ urlpatterns = [
     path('portal-admin/logout/', admin_views.admin_logout, name='portal_admin_logout'),
     path('portal-admin/dashboard/', admin_views.admin_dashboard, name='portal_admin_dashboard'),
     path('portal-admin/api/metrics/', admin_views.api_admin_metrics, name='portal_admin_api_metrics'),
+    path('portal-admin/support/', admin_views.admin_support_view, name='portal_admin_support'),
+    path('portal-admin/api/support/', admin_views.api_admin_support, name='portal_admin_api_support'),
 
     #sw
     path('sw.js', views.serve_sw, name='serve_sw'),
