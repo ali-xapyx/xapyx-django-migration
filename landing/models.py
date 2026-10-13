@@ -138,3 +138,57 @@ class RouletteReport(models.Model):
     def __str__(self):
         return f"Report #{self.id}: {self.reporter_id} -> {self.reported_id} ({self.reason})"
 
+
+class Game(models.Model):
+    """Maps existing 'games' table 1:1 (Task 22 Phase 1)."""
+    id = models.AutoField(primary_key=True)
+    title = models.CharField(max_length=100)
+    description = models.TextField(blank=True, null=True)
+    game_type = models.CharField(max_length=50)
+    thumbnail = models.CharField(max_length=255, blank=True, null=True)
+    creator = models.ForeignKey(
+        Auth,
+        on_delete=models.CASCADE,
+        db_column='creator_id',
+        related_name='created_games',
+    )
+    plays_count = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = 'games'
+        managed = False
+
+    def __str__(self):
+        return f"{self.title} ({self.game_type})"
+
+
+class GameScore(models.Model):
+    """Maps existing 'game_scores' table 1:1 (Task 22 Phase 1)."""
+    id = models.AutoField(primary_key=True)
+    game = models.ForeignKey(
+        Game,
+        on_delete=models.CASCADE,
+        db_column='game_id',
+        related_name='scores',
+    )
+    user = models.ForeignKey(
+        Auth,
+        on_delete=models.CASCADE,
+        db_column='user_id',
+        related_name='game_scores',
+    )
+    score = models.IntegerField(default=0)
+    winner = models.CharField(max_length=10, blank=True, null=True)
+    moves = models.IntegerField(default=0)
+    duration = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'game_scores'
+        managed = False
+
+    def __str__(self):
+        return f"{self.user.username} - {self.game.title}: {self.score}"

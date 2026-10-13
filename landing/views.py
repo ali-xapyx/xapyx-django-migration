@@ -10429,8 +10429,16 @@ def api_roulette_poll(request):
         })
 
     elif current_status == 'left':
+        session_id = user_state.get('session_id')
+        messages = []
+        if session_id:
+            try:
+                since_id = int(request.GET.get('since_id', 0))
+            except (ValueError, TypeError):
+                since_id = 0
+            messages, _ = roulette_fetch_messages(session_id, since_id)
         leave_session(user_id)
-        return JsonResponse({'status': 'left'})
+        return JsonResponse({'status': 'left', 'messages': messages})
 
     return JsonResponse({'status': 'idle'})
 
@@ -10575,3 +10583,285 @@ def api_roulette_report(request):
 
     return JsonResponse({'success': True, 'report_id': report.id})
 
+
+# ============================================================
+# GAMES HUB & CORE APIS (Task 22 Phase 1)
+# ============================================================
+
+from django.db import models
+from .models import Game, GameScore
+
+
+def _get_game_by_type(game_type):
+    gt = str(game_type or '').strip().lower()
+    if gt in ('spaceshooter', 'space_shooter', 'space'):
+        return Game.objects.filter(title__iexact='Space Shooter').first()
+    elif gt in ('lovemeter', 'love_meter', 'love'):
+        return Game.objects.filter(title__iexact='Love Meter').first()
+    elif gt in ('tictactoe', 'ttt'):
+        return Game.objects.filter(models.Q(game_type='tictactoe') | models.Q(title__iexact='Tictactoe')).first()
+    elif gt in ('checkers', 'checker'):
+        return Game.objects.filter(models.Q(game_type='checkers') | models.Q(title__iexact='Checkers')).first()
+    elif gt in ('catchme', 'catchmeifyoucan', 'catch_me'):
+        return Game.objects.filter(title__icontains='Catch Me').first()
+    return None
+
+
+@login_required
+def games_view(request):
+    """Renders the main Games Hub page."""
+    games_config = [
+        {
+            'id': 'spaceshooter',
+            'title': 'Space Shooter',
+            'badge': 'Arcade',
+            'badge_class': 'arcade',
+            'icon': 'bi-rocket-takeoff-fill',
+            'gradient': 'linear-gradient(135deg, #1e3c72, #2a5298)',
+            'description': 'Shoot down enemy ships, dodge attacks, and survive as long as possible! Addictive arcade action with increasing difficulty.',
+            'url': '/games/spaceshooter/',
+            'plays_count': Game.objects.filter(title__iexact='Space Shooter').aggregate(t=models.Sum('plays_count'))['t'] or 0
+        },
+        {
+            'id': 'lovemeter',
+            'title': 'Love Meter',
+            'badge': 'Social',
+            'badge_class': 'social',
+            'icon': 'bi-heart-fill',
+            'gradient': 'linear-gradient(135deg, #ff416c, #ff4b2b)',
+            'description': 'Calculate your love compatibility! Enter two names and see your love percentage with beautiful animations.',
+            'url': '/games/lovemeter/',
+            'plays_count': Game.objects.filter(title__iexact='Love Meter').aggregate(t=models.Sum('plays_count'))['t'] or 0
+        },
+        {
+            'id': 'tictactoe',
+            'title': 'Online Tic Tac Toe',
+            'badge': 'Live · Multiplayer',
+            'badge_class': 'multiplayer',
+            'icon': 'bi-grid-3x3',
+            'gradient': 'linear-gradient(135deg, #8e2de2, #4a00e0)',
+            'description': 'Play against friends in real-time! Create a game room, share the link or invite friends to challenge anyone instantly.',
+            'url': '/games/tictactoe/',
+            'plays_count': Game.objects.filter(models.Q(game_type='tictactoe') | models.Q(title__iexact='Tictactoe')).aggregate(t=models.Sum('plays_count'))['t'] or 0
+        },
+        {
+            'id': 'catchme',
+            'title': 'Catch Me If You Can',
+            'badge': 'Reflex',
+            'badge_class': 'reflex',
+            'icon': 'bi-stopwatch',
+            'gradient': 'linear-gradient(135deg, #f7971e, #ffd200)',
+            'description': 'Test your reflexes! Stop the timer exactly at the random target time. Perfect your timing!',
+            'url': '/games/catchme/',
+            'plays_count': Game.objects.filter(title__icontains='Catch Me').aggregate(t=models.Sum('plays_count'))['t'] or 0
+        }
+    ]
+
+    total_plays = sum(g['plays_count'] for g in games_config)
+    recent_scores = GameScore.objects.filter(user=request.user).select_related('game').order_by('-created_at')[:5]
+
+    context = {
+        'active_page': 'games',
+        'games': games_config,
+        'total_plays': total_plays,
+        'recent_scores': recent_scores
+    }
+    return render(request, 'dashboard/games.html', context)
+
+
+@login_required
+def api_games_hub(request):
+    """API: Returns game directory, play counts, total platform plays, and recent user scores."""
+    games_config = [
+        {
+            'id': 'spaceshooter',
+            'title': 'Space Shooter',
+            'badge': 'Arcade',
+            'badge_class': 'arcade',
+            'icon': 'bi-rocket-takeoff-fill',
+            'gradient': 'linear-gradient(135deg, #1e3c72, #2a5298)',
+            'description': 'Shoot down enemy ships, dodge attacks, and survive as long as possible! Addictive arcade action with increasing difficulty.',
+            'url': '/games/spaceshooter/',
+            'plays_count': Game.objects.filter(title__iexact='Space Shooter').aggregate(t=models.Sum('plays_count'))['t'] or 0
+        },
+        {
+            'id': 'lovemeter',
+            'title': 'Love Meter',
+            'badge': 'Social',
+            'badge_class': 'social',
+            'icon': 'bi-heart-fill',
+            'gradient': 'linear-gradient(135deg, #ff416c, #ff4b2b)',
+            'description': 'Calculate your love compatibility! Enter two names and see your love percentage with beautiful animations.',
+            'url': '/games/lovemeter/',
+            'plays_count': Game.objects.filter(title__iexact='Love Meter').aggregate(t=models.Sum('plays_count'))['t'] or 0
+        },
+        {
+            'id': 'tictactoe',
+            'title': 'Online Tic Tac Toe',
+            'badge': 'Live · Multiplayer',
+            'badge_class': 'multiplayer',
+            'icon': 'bi-grid-3x3',
+            'gradient': 'linear-gradient(135deg, #8e2de2, #4a00e0)',
+            'description': 'Play against friends in real-time! Create a game room, share the link or invite friends to challenge anyone instantly.',
+            'url': '/games/tictactoe/',
+            'plays_count': Game.objects.filter(models.Q(game_type='tictactoe') | models.Q(title__iexact='Tictactoe')).aggregate(t=models.Sum('plays_count'))['t'] or 0
+        },
+        {
+            'id': 'catchme',
+            'title': 'Catch Me If You Can',
+            'badge': 'Reflex',
+            'badge_class': 'reflex',
+            'icon': 'bi-stopwatch',
+            'gradient': 'linear-gradient(135deg, #f7971e, #ffd200)',
+            'description': 'Test your reflexes! Stop the timer exactly at the random target time. Perfect your timing!',
+            'url': '/games/catchme/',
+            'plays_count': Game.objects.filter(title__icontains='Catch Me').aggregate(t=models.Sum('plays_count'))['t'] or 0
+        }
+    ]
+
+    total_plays = sum(g['plays_count'] for g in games_config)
+    recent_scores_qs = GameScore.objects.filter(user=request.user).select_related('game').order_by('-created_at')[:6]
+    recent_scores = []
+    for s in recent_scores_qs:
+        recent_scores.append({
+            'game_title': s.game.title,
+            'score': s.score,
+            'winner': s.winner or '',
+            'created_at': s.created_at.strftime('%b %d, %H:%M') if s.created_at else ''
+        })
+
+    return JsonResponse({
+        'success': True,
+        'games': games_config,
+        'total_plays': total_plays,
+        'recent_scores': recent_scores
+    })
+
+
+@login_required
+def api_games_leaderboard(request):
+    """API: Returns top 10 scores for a given game_type."""
+    game_type = request.GET.get('game_type', 'spaceshooter').strip().lower()
+    try:
+        limit = min(max(int(request.GET.get('limit', 10)), 1), 50)
+    except (ValueError, TypeError):
+        limit = 10
+
+    if game_type in ('spaceshooter', 'space_shooter', 'space'):
+        q_filter = models.Q(game__title__iexact='Space Shooter') | models.Q(game__game_type='spaceshooter')
+    elif game_type in ('lovemeter', 'love_meter', 'love'):
+        q_filter = models.Q(game__title__iexact='Love Meter') | models.Q(game__game_type='lovemeter')
+    elif game_type in ('tictactoe', 'ttt'):
+        q_filter = models.Q(game__game_type='tictactoe') | models.Q(game__title__iexact='Tictactoe')
+    elif game_type in ('checkers', 'checker'):
+        q_filter = models.Q(game__game_type='checkers') | models.Q(game__title__iexact='Checkers')
+    else:
+        q_filter = models.Q(game__game_type=game_type) | models.Q(game__title__icontains=game_type)
+
+    scores = GameScore.objects.filter(q_filter).select_related('user', 'game').order_by('-score', '-created_at')[:limit]
+
+    leaderboard = []
+    for rank, s in enumerate(scores, 1):
+        u = s.user
+        pic = _media_url(u.picture) if u.picture else '/static/images/avatars/default.png'
+        leaderboard.append({
+            'rank': rank,
+            'name': u.name or u.username,
+            'username': u.username,
+            'picture': pic,
+            'score': s.score,
+            'winner': s.winner or '',
+            'created_at': s.created_at.strftime('%b %d, %Y') if s.created_at else ''
+        })
+
+    return JsonResponse({
+        'success': True,
+        'game_type': game_type,
+        'leaderboard': leaderboard
+    })
+
+
+@login_required
+@require_POST
+def api_games_track_play(request):
+    """API: Increments plays_count for a given game_type."""
+    try:
+        data = json.loads(request.body) if request.body else {}
+    except Exception:
+        data = request.POST.dict()
+
+    game_type = str(data.get('game_type', '')).strip().lower()
+    game = _get_game_by_type(game_type)
+    if not game:
+        return JsonResponse({'success': False, 'error': f'Game type "{game_type}" not found'}, status=404)
+
+    Game.objects.filter(id=game.id).update(plays_count=models.F('plays_count') + 1)
+
+    # Get aggregated total for response
+    if game_type in ('spaceshooter', 'space_shooter', 'space'):
+        tot = Game.objects.filter(title__iexact='Space Shooter').aggregate(t=models.Sum('plays_count'))['t'] or 0
+    elif game_type in ('lovemeter', 'love_meter', 'love'):
+        tot = Game.objects.filter(title__iexact='Love Meter').aggregate(t=models.Sum('plays_count'))['t'] or 0
+    elif game_type in ('tictactoe', 'ttt'):
+        tot = Game.objects.filter(models.Q(game_type='tictactoe') | models.Q(title__iexact='Tictactoe')).aggregate(t=models.Sum('plays_count'))['t'] or 0
+    else:
+        game.refresh_from_db()
+        tot = game.plays_count
+
+    return JsonResponse({'success': True, 'game_type': game_type, 'plays_count': tot})
+
+
+@login_required
+@require_POST
+def api_games_save_score(request):
+    """API: Saves a game score with server-side bounds validation."""
+    try:
+        data = json.loads(request.body) if request.body else {}
+    except Exception:
+        data = request.POST.dict()
+
+    game_type = str(data.get('game_type', '')).strip().lower()
+    game = _get_game_by_type(game_type)
+    if not game:
+        return JsonResponse({'success': False, 'error': f'Game type "{game_type}" not found'}, status=404)
+
+    try:
+        raw_score = int(data.get('score', 0))
+    except (ValueError, TypeError):
+        raw_score = 0
+
+    # Bounds check: score must be between 0 and 10000
+    score = max(0, min(raw_score, 10000))
+
+    try:
+        moves = max(0, int(data.get('moves', 0)))
+    except (ValueError, TypeError):
+        moves = 0
+
+    try:
+        duration = max(0, int(data.get('duration', 0)))
+    except (ValueError, TypeError):
+        duration = 0
+
+    winner = data.get('winner')
+    valid_winners = ['X', 'O', 'red', 'black', 'white', 'draw']
+    if winner not in valid_winners:
+        winner = None
+
+    # Increment play count on target game
+    Game.objects.filter(id=game.id).update(plays_count=models.F('plays_count') + 1)
+
+    score_obj = GameScore.objects.create(
+        game=game,
+        user=request.user,
+        score=score,
+        winner=winner,
+        moves=moves,
+        duration=duration
+    )
+
+    return JsonResponse({
+        'success': True,
+        'score_id': score_obj.id,
+        'message': 'Score saved successfully'
+    })

@@ -1,0 +1,145 @@
+{% extends "dashboard/base_dashboard.html" %}
+{% load static %}
+
+{% block title %}Games | XAPYX{% endblock %}
+
+{% block content %}
+<div id="dashboardContainer" class="no-right-widgets">
+  <div class="dashboard-inner games-hub-inner">
+    <div class="dashboard-flex games-hub-flex">
+      <div class="dashboard-main games-dashboard-main">
+
+        <!-- Hero Section -->
+        <div class="games-hero">
+          <div class="games-hero-content">
+            <div class="games-badge"><i class="fas fa-gamepad"></i> XAPYX ARCADE</div>
+            <h1 class="games-title">Web & Multiplayer Games</h1>
+            <p class="games-subtitle">Play real-time multiplayer board games, test your reflexes, or compete for top scores on the galactic leaderboard.</p>
+            <div class="games-stats-strip">
+              <div class="games-stat-pill">
+                <i class="fas fa-play-circle text-primary"></i>
+                <span>Total Plays: <strong id="totalPlatformPlays">{{ total_plays|default:0 }}</strong></span>
+              </div>
+              <div class="games-stat-pill">
+                <i class="fas fa-trophy text-warning"></i>
+                <span>Weekly High Scores Live</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hero: Recent Scores Widget -->
+          {% if recent_scores %}
+          <div class="games-recent-widget">
+            <div class="recent-widget-header">
+              <i class="fas fa-history text-accent"></i>
+              <span>Your Recent Plays</span>
+            </div>
+            <div class="recent-widget-list" id="recentScoresList">
+              {% for s in recent_scores %}
+              <div class="recent-widget-item">
+                <span class="recent-game-name">{{ s.game.title }}</span>
+                <span class="recent-score-badge">
+                  {% if s.winner %}
+                    {{ s.winner }}
+                  {% else %}
+                    {{ s.score }} pts
+                  {% endif %}
+                </span>
+                <span class="recent-time">{{ s.created_at|date:"M d" }}</span>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Games Grid (4 Games) -->
+        <div class="games-section-title">
+          <h2><i class="fas fa-rocket me-2 text-primary"></i>Featured Games</h2>
+          <span class="text-muted">Instant play in your browser</span>
+        </div>
+
+        <div class="games-grid" id="gamesGrid">
+          {% for game in games %}
+          <div class="game-card" data-game-type="{{ game.id }}" data-game-title="{{ game.title }}">
+            <div class="game-card-banner" style="background: {{ game.gradient }};">
+              <div class="game-card-icon-wrap">
+                <i class="bi {{ game.icon }}"></i>
+              </div>
+              <span class="game-card-badge {{ game.badge_class }}">{{ game.badge }}</span>
+            </div>
+            <div class="game-card-body">
+              <h3 class="game-card-title">{{ game.title }}</h3>
+              <p class="game-card-desc">{{ game.description }}</p>
+              <div class="game-card-meta">
+                <span class="game-card-plays">
+                  <i class="fas fa-play me-1 text-muted"></i>
+                  <span class="plays-count-val" data-game-id="{{ game.id }}">{{ game.plays_count }}</span> plays
+                </span>
+              </div>
+              <button type="button" class="btn btn-primary game-play-btn w-100" data-game-type="{{ game.id }}" data-game-title="{{ game.title }}">
+                <i class="fas fa-play me-2"></i>Play Now
+              </button>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Leaderboard Section -->
+        <div class="games-leaderboard-section mt-5">
+          <div class="leaderboard-header-wrap">
+            <div>
+              <h2 class="leaderboard-title"><i class="fas fa-trophy me-2 text-warning"></i>Galactic Leaderboard</h2>
+              <p class="leaderboard-subtitle text-muted mb-0">Top high scorers across XAPYX players</p>
+            </div>
+            <!-- Leaderboard Tabs -->
+            <div class="games-tabs" id="leaderboardTabs">
+              <button type="button" class="games-tab-btn active" data-game-type="spaceshooter">
+                <i class="bi bi-rocket-takeoff me-1"></i> Space Shooter
+              </button>
+              <button type="button" class="games-tab-btn" data-game-type="lovemeter">
+                <i class="bi bi-heart me-1"></i> Love Meter
+              </button>
+              <button type="button" class="games-tab-btn" data-game-type="tictactoe">
+                <i class="bi bi-grid-3x3 me-1"></i> Tic Tac Toe
+              </button>
+              <button type="button" class="games-tab-btn" data-game-type="checkers">
+                <i class="bi bi-shield me-1"></i> Checkers
+              </button>
+            </div>
+          </div>
+
+          <!-- Leaderboard Table Container -->
+          <div class="games-leaderboard-card">
+            <div class="table-responsive">
+              <table class="table games-table align-middle">
+                <thead>
+                  <tr>
+                    <th style="width: 80px;">Rank</th>
+                    <th>Player</th>
+                    <th style="width: 140px;">Score</th>
+                    <th style="width: 150px;">Date</th>
+                  </tr>
+                </thead>
+                <tbody id="leaderboardTbody">
+                  <tr>
+                    <td colspan="4" class="text-center py-4 text-muted">
+                      <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                      Loading leaderboard...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/games.js' %}?v=1"></script>
+{% endblock %}

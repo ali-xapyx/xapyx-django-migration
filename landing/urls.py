@@ -217,6 +217,13 @@ urlpatterns = [
     path('api/roulette/heartbeat/', views.api_roulette_heartbeat, name='api_roulette_heartbeat'),
     path('api/roulette/report/', views.api_roulette_report, name='api_roulette_report'),
 
+    # Games Hub (Task 22 Phase 1)
+    path('games/', views.games_view, name='games'),
+    path('api/games/hub/', views.api_games_hub, name='api_games_hub'),
+    path('api/games/leaderboard/', views.api_games_leaderboard, name='api_games_leaderboard'),
+    path('api/games/track-play/', views.api_games_track_play, name='api_games_track_play'),
+    path('api/games/save-score/', views.api_games_save_score, name='api_games_save_score'),
+
     #sw
     path('sw.js', views.serve_sw, name='serve_sw'),
 
