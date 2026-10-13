@@ -1,0 +1,299 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>XAPYX | Sign Up</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#ff8c00">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="XAPYX">
+  <link rel="apple-touch-icon" href="/static/images/icons/icon-192x192.png">
+
+  <!-- Fonts & Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="/static/images/icons/xapyx_icon.png">
+
+  <!-- SHARED AUTH STYLES -->
+  <link rel="stylesheet" href="{% static 'css/auth.css' %}?v=1">
+  <!-- SIGNUP-SPECIFIC STYLES -->
+  <link rel="stylesheet" href="{% static 'css/signup.css' %}?v=1">
+</head>
+<body>
+  <!-- Night Stars -->
+  <div class="xpy-stars" id="xpyStars"></div>
+
+  <!-- Day Orbs -->
+  <div class="xpy-day-orbs">
+    <div class="xpy-orb"></div>
+    <div class="xpy-orb"></div>
+    <div class="xpy-orb"></div>
+    <div class="xpy-orb"></div>
+  </div>
+
+  <!-- Alert Container -->
+  <div class="xpy-alert-container" id="xpyAlertContainer"></div>
+
+  <!-- Server errors (hidden; JS reads toasts from it) -->
+  {% if errors %}
+  <div id="xpyServerErrors" style="display:none;">
+    <ul>
+      {% for err in errors %}<li>{{ err }}</li>{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <div class="xpy-page">
+
+    <!-- LEFT PANEL -->
+    <div class="xpy-side">
+      <div class="xpy-panel">
+        <h3>📡 Recent Explorers</h3>
+        {% for u in recent_users %}
+        <div class="xpy-activity-item">
+          <div class="xpy-avatar" style="background:linear-gradient(135deg,#06b6d4,#3b82f6)">
+            {{ u.username|first|upper }}
+          </div>
+          <div>
+            <div class="xpy-activity-text"><strong>@{{ u.username }}</strong> joined</div>
+            <div class="xpy-activity-time">{{ u.created_at|timesince }} ago</div>
+          </div>
+        </div>
+        {% empty %}
+        <div class="xpy-activity-text" style="font-size:0.75rem;">Be the first to join!</div>
+        {% endfor %}
+      </div>
+
+      <div class="xpy-panel">
+        <h3>🌌 Universe Stats</h3>
+        <div class="xpy-stat-row">
+          <span>Explorers</span>
+          <span class="xpy-stat-value">{{ user_count }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER: SIGNUP CARD -->
+    <div class="xpy-signup-card">
+      <!-- Header -->
+      <div class="xpy-card-header">
+        <div class="xpy-logo">XAPYX</div>
+        <div class="xpy-header-actions">
+          <a href="{% url 'login' %}{% if next %}?next={{ next|urlencode }}{% endif %}" class="xpy-signin-btn">
+            <i class="fas fa-sign-in-alt"></i> Sign In
+          </a>
+          <button class="xpy-theme-toggle" id="xpyThemeToggle" type="button">
+            <i class="fas fa-moon"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Title -->
+      <div class="xpy-title-section">
+        <h2 class="xpy-main-title">Create <span>Account</span></h2>
+        <p class="xpy-main-subtitle">
+          Join <strong>{{ user_count }}</strong> explorers already on XAPYX
+        </p>
+      </div>
+
+      <!-- Form -->
+      <form id="xpySignupForm" action="{% url 'signup' %}" method="POST" class="xpy-signup-form" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next }}">
+
+        {% if errors %}
+        <div class="xpy-error-box">
+          <strong><i class="fas fa-exclamation-circle"></i> Please fix the following:</strong>
+          <ul>
+            {% for err in errors %}<li>{{ err }}</li>{% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+
+        <!-- Full Name -->
+        <div class="xpy-form-group">
+          <label for="xpySignupName">Full Name</label>
+          <div class="xpy-input-wrap">
+            <input type="text"
+                   name="name"
+                   id="xpySignupName"
+                   placeholder="Full name"
+                   required
+                   minlength="2"
+                   maxlength="100"
+                   autocomplete="name"
+                   autofocus
+                   value="{{ form_data.name|default:'' }}">
+          </div>
+          <div class="xpy-validation-message" id="xpySignupNameMessage"></div>
+        </div>
+
+        <!-- Username -->
+        <div class="xpy-form-group">
+          <label for="xpySignupUsername">Username</label>
+          <div class="xpy-input-wrap">
+            <input type="text"
+                   name="username"
+                   id="xpySignupUsername"
+                   placeholder="Choose username (4-20 chars)"
+                   required
+                   minlength="4"
+                   maxlength="20"
+                   autocapitalize="none"
+                   autocomplete="off"
+                   value="{{ form_data.username|default:'' }}">
+          </div>
+          <div class="xpy-validation-message" id="xpySignupUsernameMessage"></div>
+          <div class="xpy-suggestions-container" id="xpyUsernameSuggestions"></div>
+        </div>
+
+        <!-- Contact Method -->
+        <div class="xpy-form-group">
+          <label>Contact Method</label>
+          <div class="xpy-contact-toggle">
+            <button type="button" class="xpy-contact-btn active" data-type="email">
+              <i class="fas fa-envelope"></i> Email
+            </button>
+            <button type="button" class="xpy-contact-btn" data-type="phone">
+              <i class="fas fa-phone"></i> Phone
+            </button>
+          </div>
+
+          <div class="xpy-contact-field active" id="xpyEmailField">
+            <div class="xpy-input-wrap">
+              <input type="email"
+                     name="email"
+                     id="xpySignupEmail"
+                     placeholder="you@example.com"
+                     autocapitalize="none"
+                     autocomplete="email"
+                     value="{{ form_data.email|default:'' }}">
+            </div>
+          </div>
+
+          <div class="xpy-contact-field" id="xpyPhoneField">
+            <div class="xpy-input-wrap">
+              <input type="tel"
+                     name="cell"
+                     id="xpySignupPhone"
+                     placeholder="03001234567"
+                     autocomplete="tel"
+                     value="{{ form_data.cell|default:'' }}">
+            </div>
+          </div>
+          <input type="hidden" name="contact_type" id="xpyContactType" value="{{ form_data.contact_type|default:'email' }}">
+          <div class="xpy-validation-message" id="xpySignupContactMessage"></div>
+        </div>
+
+        <!-- Password -->
+        <div class="xpy-form-group">
+          <label for="xpySignupPassword">Password</label>
+          <div class="xpy-input-wrap">
+            <input type="password"
+                   name="password"
+                   id="xpySignupPassword"
+                   placeholder="Create password (8+ chars)"
+                   required
+                   minlength="8"
+                   autocomplete="new-password">
+            <button type="button" class="xpy-password-toggle">
+              <i class="fas fa-eye"></i>
+            </button>
+          </div>
+          <div class="xpy-strength-bar">
+            <div class="xpy-strength-fill" id="xpyStrengthFill"></div>
+          </div>
+          <div class="xpy-password-requirements">
+            <div class="xpy-requirement" id="xpyReqLength"><i class="fas fa-circle"></i> 8+</div>
+            <div class="xpy-requirement" id="xpyReqUppercase"><i class="fas fa-circle"></i> A-Z</div>
+            <div class="xpy-requirement" id="xpyReqLowercase"><i class="fas fa-circle"></i> a-z</div>
+            <div class="xpy-requirement" id="xpyReqNumber"><i class="fas fa-circle"></i> 0-9</div>
+            <div class="xpy-requirement" id="xpyReqSpecial"><i class="fas fa-circle"></i> !@#</div>
+          </div>
+          <div class="xpy-validation-message" id="xpySignupPasswordMessage"></div>
+        </div>
+
+        <!-- Terms -->
+        <div class="xpy-terms-group">
+          <input type="checkbox"
+                 id="xpyTermsCheckbox"
+                 name="terms"
+                 class="xpy-terms-checkbox"
+                 required
+                 {% if form_data.terms %}checked{% endif %}>
+          <label for="xpyTermsCheckbox" class="xpy-terms-label">
+            I accept the <a href="/terms/" target="_blank">Terms</a> &amp; <a href="/privacy/" target="_blank">Privacy Policy</a>
+          </label>
+        </div>
+
+        <!-- Submit -->
+        <button type="submit" class="xpy-btn-primary" id="xpySignupSubmitBtn">
+          <span>Create Account</span>
+          <i class="fas fa-user-plus"></i>
+        </button>
+
+        <!-- Divider -->
+        <div class="xpy-form-divider">or continue with</div>
+
+        <!-- Google -->
+        <button type="button" class="xpy-btn-google" id="xpyGoogleSignUpBtn">
+          <svg class="xpy-google-icon" viewBox="0 0 48 48">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+          </svg>
+          Sign up with Google
+        </button>
+      </form>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="xpy-side">
+      <div class="xpy-panel">
+        <h3>✨ What You Get</h3>
+        <div class="xpy-activity-item">
+          <div style="font-size:16px;">💬</div>
+          <div class="xpy-activity-text">Chat with friends</div>
+        </div>
+        <div class="xpy-activity-item">
+          <div style="font-size:16px;">🎮</div>
+          <div class="xpy-activity-text">Play games together</div>
+        </div>
+        <div class="xpy-activity-item">
+          <div style="font-size:16px;">🌍</div>
+          <div class="xpy-activity-text">Join communities</div>
+        </div>
+        <div class="xpy-activity-item">
+          <div style="font-size:16px;">🚀</div>
+          <div class="xpy-activity-text">Share your universe</div>
+        </div>
+      </div>
+
+      <div class="xpy-panel">
+        <h3>🪐 Ready to Launch</h3>
+        <div class="xpy-orbit-mini">
+          <div class="xpy-planet"></div>
+        </div>
+        <div style="text-align:center;font-size:0.75rem;color:var(--xpy-text-secondary);">
+          Your journey begins the moment you join
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SHARED AUTH JS -->
+  <script src="{% static 'js/auth.js' %}?v=1"></script>
+  <!-- SIGNUP-SPECIFIC JS -->
+  <script src="{% static 'js/signup.js' %}?v=1"></script>
+</body>
+</html>

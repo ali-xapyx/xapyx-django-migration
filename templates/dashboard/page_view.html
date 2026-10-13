@@ -1,0 +1,461 @@
+{% extends "dashboard/base_dashboard.html" %}
+{% load static %}
+
+{% block title %}{{ page.title }} &mdash; XAPYX Page{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/page_view.css' %}?v=1">
+{% endblock %}
+
+{% block content %}
+<!-- COSMIC STARS BACKGROUND -->
+<div class="xpy-stars-bg" id="xpyStarsBg"></div>
+
+{% csrf_token %}
+
+<div id="dashboardContainer">
+  <div class="dashboard-inner">
+    <div class="dashboard-flex">
+
+      <!-- MAIN CONTENT -->
+      <div class="dashboard-main">
+        
+        <!-- DESKTOP PAGE HEADER -->
+        <div class="page-header d-none d-md-block">
+          <div class="page-cover" style="background-image: url('{{ page.cover_image_url }}');">
+            <div class="page-cover-overlay"></div>
+          </div>
+          <div class="page-header-content">
+            <div class="page-profile-image">
+              <img src="{{ page.profile_image_url }}" alt="{{ page.title|escape }}" onclick="openImagePreview('{{ page.profile_image_url }}')">
+            </div>
+            <div class="page-details">
+              <h1 class="page-title">{{ page.title }}</h1>
+              <p class="page-description">{{ page.description|default:"No description" }}</p>
+              
+              <div class="page-stats-bar">
+                <div class="page-stat">
+                  <span class="stat-number" id="desktopPostsCount">{{ posts_count }}</span>
+                  <span class="stat-label">Posts</span>
+                </div>
+                <div class="page-stat clickable" onclick="viewAllFollowers()">
+                  <span class="stat-number" id="followersCount">{{ followers_count }}</span>
+                  <span class="stat-label">Followers</span>
+                </div>
+              </div>
+              
+              <div class="page-actions-bar">
+                {% if not is_admin %}
+                  <button class="btn btn-follow-page {% if is_follower %}following{% endif %}" id="followBtn">
+                    <i class="bi bi-{% if is_follower %}check{% else %}plus{% endif %}"></i>
+                    {% if is_follower %}Following{% else %}Follow Page{% endif %}
+                  </button>
+                  <button class="btn btn-message-page" id="messagePageBtn">
+                    <i class="bi bi-envelope"></i> Message
+                  </button>
+                {% else %}
+                  <button class="btn btn-edit-page" id="editPageBtn">
+                    <i class="bi bi-pencil"></i> Edit Page
+                  </button>
+                  <button class="btn btn-message-page" id="messagePageBtn">
+                    <i class="bi bi-inbox"></i> Inbox
+                  </button>
+                {% endif %}
+                <button class="btn btn-share-page" id="sharePageBtn">
+                  <i class="bi bi-share"></i> Share
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MOBILE PAGE HEADER -->
+        <div class="page-header-mobile d-block d-md-none">
+          <div class="page-cover-mobile" style="background-image: url('{{ page.cover_image_url }}');"></div>
+          <div class="page-info-mobile">
+            <div class="page-mobile-header">
+              <div class="page-mobile-profile">
+                <img src="{{ page.profile_image_url }}" class="page-mobile-avatar" alt="{{ page.title|escape }}" onclick="openImagePreview('{{ page.profile_image_url }}')">
+              </div>
+              <div class="page-mobile-details">
+                <h1 class="page-mobile-title">{{ page.title }}</h1>
+                <p class="page-mobile-description">{{ page.description|default:"No description" }}</p>
+                
+                <div class="page-mobile-stats">
+                  <span class="page-mobile-stat">
+                    <strong id="mobilePostsCount">{{ posts_count }}</strong> Posts
+                  </span>
+                  <span class="page-mobile-stat clickable" onclick="viewAllFollowers()">
+                    <strong id="mobileFollowersCount">{{ followers_count }}</strong> Followers
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="page-mobile-actions">
+              {% if not is_admin %}
+                <button class="btn btn-follow-page {% if is_follower %}following{% endif %}" id="followBtnMobile">
+                  <i class="bi bi-{% if is_follower %}check{% else %}plus{% endif %}"></i>
+                  {% if is_follower %}Following{% else %}Follow{% endif %}
+                </button>
+                <button class="btn btn-message-page" id="messagePageBtnMobile">
+                  <i class="bi bi-envelope"></i>
+                </button>
+              {% else %}
+                <button class="btn btn-edit-page" id="editPageBtnMobile">
+                  <i class="bi bi-pencil"></i> Edit
+                </button>
+                <button class="btn btn-message-page" id="messagePageBtnMobile">
+                  <i class="bi bi-inbox"></i>
+                </button>
+              {% endif %}
+              <button class="btn btn-share-page" id="sharePageBtnMobile">
+                <i class="bi bi-share"></i> Share
+              </button>
+              <button class="btn btn-share-page" id="pageInfoBtnMobile">
+                <i class="bi bi-info-circle"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Create Post -->
+        <div id="createPostContainer">
+          {% if is_admin %}
+          <div class="create-post-card">
+            <div class="d-flex">
+              <img src="{% if user.picture %}https://s3.eu-west-1.amazonaws.com/xapyx.com-media/uploads/{{ user.picture }}{% else %}{% static 'images/avatars/default.png' %}{% endif %}" class="create-post-avatar" width="44" height="44" alt="{{ user.name|escape }}">
+              <div class="flex-grow-1 ms-3 position-relative">
+                <textarea id="postContent" class="create-post-textarea" placeholder="Share something with {{ page.title }}..." maxlength="500" rows="3"></textarea>
+                <div id="mediaPreview" class="media-preview d-none"></div>
+                <div id="mentionSuggestions" class="mention-suggestions"></div>
+                
+                <div class="create-post-options">
+                  <div class="create-post-options-left">
+                    <button type="button" class="create-post-option-btn" title="Add Photo" id="addPhotoBtn">
+                      <i class="bi bi-image"></i>
+                    </button>
+                    <button type="button" class="create-post-option-btn" title="Add Video" id="addVideoBtn">
+                      <i class="bi bi-camera-video"></i>
+                    </button>
+                  </div>
+                  <div class="create-post-options-right">
+                    <span class="char-count" id="charCount">500</span>
+                    <button type="button" id="postSubmit" class="btn-post-submit">Post</button>
+                  </div>
+                </div>
+                
+                <input type="file" id="imageInput" accept="image/*" multiple style="display:none">
+                <input type="file" id="videoInput" accept="video/*" multiple style="display:none">
+              </div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Posts Feed -->
+        <div id="feedContainer" class="feed-container">
+          <div class="loading-spinner">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading posts...</span>
+            </div>
+          </div>
+        </div>
+        
+        <div id="loadMoreContainer" class="text-center mt-4 d-none">
+          <button id="loadMoreBtn" class="btn btn-outline-primary px-4 py-2" style="border-radius:30px;border-color:var(--xpy-border);color:var(--xpy-text);">
+            <i class="bi bi-arrow-clockwise me-2"></i>Load More Posts
+          </button>
+        </div>
+      </div><!-- /.dashboard-main -->
+
+      <!-- RIGHT WIDGETS -->
+      <div class="page-widgets">
+        
+        <!-- Page Info Widget -->
+        <div class="widget-card">
+          <div class="widget-header">
+            <h6><i class="bi bi-info-circle me-2"></i> Page Info</h6>
+            <div class="widget-icon"><i class="bi bi-info"></i></div>
+          </div>
+          <div class="page-info-item">
+            <i class="bi bi-person-badge"></i>
+            <span><strong>Admin:</strong> <a href="/user/{{ creator.username }}/" class="admin-link">{{ creator.name }}</a></span>
+          </div>
+          <div class="page-info-item">
+            <i class="bi bi-calendar"></i>
+            <span><strong>Created:</strong> {{ page.created_at|date:"M d, Y"|default:page.created_date_display }}</span>
+          </div>
+          <div class="page-info-item">
+            <i class="bi bi-people"></i>
+            <span><strong>Followers:</strong> {{ followers_count }}</span>
+          </div>
+          <div class="page-info-item">
+            <i class="bi bi-chat"></i>
+            <span><strong>Posts:</strong> {{ posts_count }}</span>
+          </div>
+        </div>
+
+        <!-- Followers Widget -->
+        <div class="widget-card">
+          <div class="widget-header">
+            <h6><i class="bi bi-people me-2"></i> Recent Followers</h6>
+            <div class="widget-icon"><i class="bi bi-people-fill"></i></div>
+          </div>
+          <div class="followers-list">
+            {% for f in recent_followers %}
+              <a href="/user/{{ f.username }}/" class="follower-item">
+                <img src="{{ f.picture_url|default:f.picture|default:'/static/images/avatars/default.png' }}" class="follower-avatar" width="40" height="40" alt="{{ f.name|escape }}">
+                <div class="follower-info">
+                  <div class="follower-name">
+                    {{ f.name }}
+                    {% if f.is_admin %}
+                      <span class="admin-badge">Admin</span>
+                    {% endif %}
+                  </div>
+                </div>
+              </a>
+            {% endfor %}
+          </div>
+          <button class="quick-action-btn" style="width:100%;margin-top:10px;" onclick="viewAllFollowers()">
+            <i class="bi bi-eye"></i> View All Followers
+          </button>
+        </div>
+
+        <!-- Quick Actions Widget -->
+        <div class="widget-card">
+          <div class="widget-header">
+            <h6><i class="bi bi-lightning me-2"></i> Quick Actions</h6>
+            <div class="widget-icon"><i class="bi bi-plus"></i></div>
+          </div>
+          <div class="quick-actions">
+            <a href="/pages/" class="quick-action-btn">
+              <i class="bi bi-file-earmark-text"></i> All Pages
+            </a>
+            <a href="/friends/" class="quick-action-btn">
+              <i class="bi bi-people"></i> Friends
+            </a>
+            <a href="/chat/" class="quick-action-btn">
+              <i class="bi bi-chat"></i> Messages
+            </a>
+            <a href="/user/{{ user.username }}/" class="quick-action-btn">
+              <i class="bi bi-person"></i> Profile
+            </a>
+          </div>
+        </div>
+
+        <!-- Profile Widget -->
+        <div class="widget-card">
+          <div class="widget-header">
+            <h6><i class="bi bi-user-astronaut me-2"></i> Your Orbit</h6>
+            <div class="widget-icon"><i class="bi bi-id-card"></i></div>
+          </div>
+          <div class="profile-widget">
+            <img src="{% if user.picture %}https://s3.eu-west-1.amazonaws.com/xapyx.com-media/uploads/{{ user.picture }}{% else %}{% static 'images/avatars/default.png' %}{% endif %}" alt="{{ user.name|escape }}">
+            <div>
+              <div class="profile-name">{{ user.name }}</div>
+              <div class="profile-username">@{{ user.username }}</div>
+              <div class="profile-stats">
+                <i class="bi bi-people-fill"></i> {{ followers_count }} followers
+              </div>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; margin-top:8px;">
+            <a href="/user/{{ user.username }}/" class="quick-action-btn" style="flex:1;">
+              <i class="bi bi-eye"></i> View
+            </a>
+            <a href="/settings/" class="quick-action-btn" style="flex:1;">
+              <i class="bi bi-pen"></i> Edit
+            </a>
+          </div>
+        </div>
+
+      </div><!-- /.page-widgets -->
+
+    </div><!-- /.dashboard-flex -->
+  </div><!-- /.dashboard-inner -->
+</div><!-- /#dashboardContainer -->
+
+<!-- Page Info Modal -->
+<div class="modal fade" id="pageInfoModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-info-circle me-2" style="color:var(--xpy-primary);"></i>Page Information</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="text-center mb-4">
+          <img src="{{ page.profile_image_url }}" class="rounded" width="80" height="80" style="object-fit:cover;border:3px solid var(--xpy-primary);border-radius:var(--xpy-radius-sm);" alt="{{ page.title|escape }}">
+          <h5 class="mt-3" style="color:var(--xpy-text);">{{ page.title }}</h5>
+        </div>
+        <p style="color:var(--xpy-text-secondary);"><strong>Admin:</strong> {{ creator.name }}</p>
+        <p style="color:var(--xpy-text-secondary);"><strong>Created:</strong> {{ page.created_at|date:"M d, Y"|default:page.created_date_display }}</p>
+        <p style="color:var(--xpy-text-secondary);"><strong>Description:</strong> {{ page.description|default:"No description" }}</p>
+        <p style="color:var(--xpy-text-secondary);"><strong>Followers:</strong> {{ followers_count }}</p>
+        <p style="color:var(--xpy-text-secondary);"><strong>Posts:</strong> {{ posts_count }}</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal" style="background:linear-gradient(135deg,var(--xpy-primary),var(--xpy-secondary));color:white;border:none;">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Alert Modal -->
+<div class="modal fade" id="alertModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-body text-center p-4">
+        <div id="alertIcon" class="mb-3"><i class="bi bi-info-circle" style="font-size: 3rem;color:var(--xpy-primary);"></i></div>
+        <h5 id="alertTitle" class="mb-3" style="color:var(--xpy-text);"></h5>
+        <p id="alertMessage" class="mb-4" style="color:var(--xpy-text-muted);"></p>
+        <button type="button" class="btn btn-primary px-4" data-bs-dismiss="modal" style="background:linear-gradient(135deg,var(--xpy-primary),var(--xpy-secondary));color:white;border:none;">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Image Viewer Modal -->
+<div class="modal fade image-viewer-modal" id="imageViewerModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content bg-transparent border-0">
+      <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3" data-bs-dismiss="modal"></button>
+      <div class="modal-body p-0">
+        <img id="viewerImage" src="" class="img-fluid" alt="Preview">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- All Followers Modal -->
+<div class="modal fade" id="allFollowersModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-people me-2" style="color:var(--xpy-primary);"></i>All Followers</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0" id="allFollowersList">
+        <div class="text-center py-4"><div class="spinner-border text-primary"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if is_admin %}
+<!-- Edit Page Modal -->
+<div class="modal fade edit-page-modal" id="editPageModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-pencil-square me-2" style="color:var(--xpy-primary);"></i>Edit Page</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="editPageForm" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Cover Image</label>
+            <div class="edit-image-preview mb-2" id="coverPreview" style="position:relative;width:100%;height:200px;border-radius:var(--xpy-radius-sm);overflow:hidden;background:var(--xpy-bg);border:2px solid var(--xpy-border);">
+              <img src="{{ page.cover_image_url }}" alt="Cover" style="width:100%;height:100%;object-fit:cover;">
+              <div class="edit-image-overlay" style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.3s;">
+                <button type="button" class="btn" onclick="document.getElementById('coverInput').click()" style="background:var(--xpy-primary);color:white;border:none;padding:8px 16px;border-radius:var(--xpy-radius-sm);">
+                  <i class="bi bi-camera me-1"></i> Change
+                </button>
+              </div>
+            </div>
+            <input type="file" id="coverInput" name="cover_image" accept="image/*" style="display:none;">
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Profile Image</label>
+            <div class="edit-image-preview mb-2" id="profilePreview" style="position:relative;width:100%;height:200px;border-radius:var(--xpy-radius-sm);overflow:hidden;background:var(--xpy-bg);border:2px solid var(--xpy-border);">
+              <img src="{{ page.profile_image_url }}" alt="Profile" style="width:100%;height:100%;object-fit:cover;">
+              <div class="edit-image-overlay" style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.3s;">
+                <button type="button" class="btn" onclick="document.getElementById('profileInput').click()" style="background:var(--xpy-primary);color:white;border:none;padding:8px 16px;border-radius:var(--xpy-radius-sm);">
+                  <i class="bi bi-camera me-1"></i> Change
+                </button>
+              </div>
+            </div>
+            <input type="file" id="profileInput" name="profile_image" accept="image/*" style="display:none;">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Page Title</label>
+            <input type="text" class="form-control" id="pageTitle" name="title" value="{{ page.title }}" maxlength="100" required style="background:rgba(255,255,255,0.03);border:1px solid var(--xpy-border);border-radius:var(--xpy-radius-sm);color:var(--xpy-text);padding:10px 14px;width:100%;">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Description</label>
+            <textarea class="form-control" id="pageDescription" name="description" rows="3" maxlength="500" style="background:rgba(255,255,255,0.03);border:1px solid var(--xpy-border);border-radius:var(--xpy-radius-sm);color:var(--xpy-text);padding:10px 14px;width:100%;">{{ page.description }}</textarea>
+            <small class="text-muted" style="color:var(--xpy-text-muted);">Max 500 characters</small>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="background:rgba(255,255,255,0.05);color:var(--xpy-text-secondary);border:1px solid var(--xpy-border);">Cancel</button>
+        <button type="button" class="btn btn-primary" id="savePageChangesBtn" style="background:linear-gradient(135deg,var(--xpy-primary),var(--xpy-secondary));color:white;border:none;">
+          <i class="bi bi-check-circle me-1"></i> Save Changes
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle me-2"></i>Confirm Delete</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-0" style="color:var(--xpy-text-secondary);">Are you sure you want to delete this post? This action cannot be undone.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="background:rgba(255,255,255,0.05);color:var(--xpy-text-secondary);border:1px solid var(--xpy-border);">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteBtn" style="background:linear-gradient(135deg,var(--danger-color),#dc2626);color:white;border:none;">
+          <i class="bi bi-trash me-1"></i> Delete Post
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Alert Container -->
+<div id="alertContainer" class="alert-container"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var saveBtn = document.getElementById('savePageChangesBtn');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', function() {
+        if (!this.dataset.origWidth) this.dataset.origWidth = this.offsetWidth + 'px';
+        this.style.minWidth = this.dataset.origWidth;
+      }, true);
+    }
+  });
+</script>
+
+<script>
+  window.XAPYX_PAGE_VIEW = {
+    config: {
+      pageId:     {{ page_id|default:"null" }},
+      userId:     {{ user.id|default:"null" }},
+      isAdmin:    {{ is_admin|yesno:"true,false" }},
+      creatorId:  {{ creator.id|default:"null" }},
+      isFollower: {{ is_follower|yesno:"true,false" }},
+      mentionData: {
+        followers: {{ mention_followers_json|default:"[]"|safe }},
+        friends:   {{ mention_friends_json|default:"[]"|safe }}
+      }
+    }
+  };
+</script>
+<script src="{% static 'js/page_view.js' %}?v=2"></script>
+{% endblock %}

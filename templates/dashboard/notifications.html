@@ -1,0 +1,82 @@
+{% extends "dashboard/base_dashboard.html" %}
+{% load static %}
+
+{% block title %}Notifications | XAPYX{% endblock %}
+
+{% block content %}
+<div id="dashboardContainer" class="no-right-widgets">
+  <div class="dashboard-inner">
+    <div class="dashboard-flex">
+      <div class="dashboard-main notif-dashboard-main">
+
+        <!-- Notification Page Header -->
+        <div class="notif-page-header">
+          <div class="notif-header-title-wrap">
+            <h1 class="notif-page-title">
+              <i class="fas fa-bell me-2"></i>
+              <span>Notifications</span>
+              <span class="badge rounded-pill notif-header-badge" id="notifHeaderBadge" style="{% if unread_count == 0 %}display:none;{% endif %}">
+                {{ unread_count }}
+              </span>
+            </h1>
+            <p class="notif-header-subtitle">Stay up to date with your activity, mentions, and friend requests</p>
+          </div>
+
+          <div class="notif-header-stats">
+            <div class="notif-stat-pill">
+              <span class="stat-num text-warning" id="statNotifUnread">{{ unread_count|default:"0" }}</span>
+              <span class="stat-lbl">Unread</span>
+            </div>
+            <div class="notif-stat-pill">
+              <span class="stat-num" id="statNotifTotal">{{ total_count|default:"0" }}</span>
+              <span class="stat-lbl">Total</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notification Toolbar: Tabs & Actions -->
+        <div class="notif-toolbar">
+          <div class="notif-filter-tabs" role="tablist">
+            <button type="button" class="notif-filter-tab active" data-filter="all">All</button>
+            <button type="button" class="notif-filter-tab" data-filter="unread">Unread</button>
+            <button type="button" class="notif-filter-tab" data-filter="mentions">Mentions</button>
+            <button type="button" class="notif-filter-tab" data-filter="friend_requests">Friend Requests</button>
+            <button type="button" class="notif-filter-tab" data-filter="read">Read</button>
+          </div>
+
+          <div class="notif-toolbar-actions">
+            <button type="button" class="btn-notif-action" id="btnMarkAllRead" title="Mark all as read">
+              <i class="fas fa-check-double me-1"></i>
+              <span class="d-none d-sm-inline">Mark all read</span>
+            </button>
+            <button type="button" class="btn-notif-action danger" id="btnClearAll" title="Clear all notifications">
+              <i class="fas fa-trash-alt me-1"></i>
+              <span class="d-none d-sm-inline">Clear all</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Notification Cards Container -->
+        <div class="notif-page-container" id="notificationsPageList">
+          <div class="notif-page-loading">
+            <i class="fas fa-spinner fa-spin fa-2x"></i>
+            <p class="mt-2 text-muted">Loading notifications...</p>
+          </div>
+        </div>
+
+        <!-- Pagination / Load More -->
+        <div class="notif-load-more-wrap text-center my-4">
+          <button type="button" class="btn-notif-load-more" id="loadMoreNotifsBtn" style="display:none;">
+            <i class="fas fa-angle-double-down me-1"></i> Load more
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/notifications_page.js' %}?v=2"></script>
+{% endblock %}

@@ -1,0 +1,628 @@
+/* ============================================================
+   XAPYX — Shared Auth Styles
+   Used by: login.html, signup.html, (future auth pages)
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   THEME VARIABLES
+   ------------------------------------------------------------ */
+:root {
+  --xpy-bg: #050510;
+  --xpy-bg-card: rgba(12, 12, 35, 0.88);
+  --xpy-text: #e8e8ff;
+  --xpy-text-secondary: #a8b8d8;
+  --xpy-text-muted: #7888a8;
+  --xpy-border: rgba(255, 255, 255, 0.08);
+  --xpy-border-glow: rgba(255, 140, 0, 0.35);
+  --xpy-accent: #ff8c00;
+  --xpy-accent-2: #ff5500;
+  --xpy-accent-3: #8b5cf6;
+  --xpy-accent-glow: rgba(255, 140, 0, 0.35);
+  --xpy-input-bg: rgba(255, 255, 255, 0.05);
+  --xpy-panel-bg: rgba(10, 10, 30, 0.55);
+  --xpy-shadow: 0 25px 60px rgba(255, 140, 0, 0.15);
+  --xpy-radius: 20px;
+  --xpy-radius-sm: 10px;
+  --xpy-transition: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  --xpy-suggestion-bg: rgba(255, 255, 255, 0.05);
+}
+
+body.xpy-light {
+  --xpy-bg: #f4f6fb;
+  --xpy-bg-card: #ffffff;
+  --xpy-text: #1a1a2e;
+  --xpy-text-secondary: #4a5568;
+  --xpy-text-muted: #718096;
+  --xpy-border: #e2e8f0;
+  --xpy-border-glow: #fdba74;
+  --xpy-accent: #ea580c;
+  --xpy-accent-2: #c2410c;
+  --xpy-accent-3: #7c3aed;
+  --xpy-accent-glow: rgba(234, 88, 12, 0.20);
+  --xpy-input-bg: #f8fafc;
+  --xpy-panel-bg: rgba(255, 255, 255, 0.7);
+  --xpy-shadow: 0 25px 50px rgba(234, 88, 12, 0.10);
+  --xpy-suggestion-bg: #f1f5f9;
+}
+
+/* ------------------------------------------------------------
+   BASE RESET
+   ------------------------------------------------------------ */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--xpy-bg);
+  color: var(--xpy-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--xpy-transition), color var(--xpy-transition);
+  position: relative;
+}
+
+/* Night mode backgrounds */
+body:not(.xpy-light) {
+  background-image:
+    radial-gradient(ellipse at 15% 20%, rgba(88, 28, 135, 0.35) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 75%, rgba(30, 58, 138, 0.30) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 50%, rgba(10, 15, 40, 0.95) 0%, transparent 70%);
+}
+
+/* Day mode background */
+body.xpy-light {
+  background: linear-gradient(160deg, #fef3c7 0%, #fde68a 25%, #fef9c3 50%, #e0f2fe 100%);
+}
+
+/* ------------------------------------------------------------
+   STARS (night only)
+   ------------------------------------------------------------ */
+.xpy-stars {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  display: none;
+}
+body:not(.xpy-light) .xpy-stars { display: block; }
+
+.xpy-star {
+  position: absolute;
+  border-radius: 50%;
+  background: white;
+  animation: xpy-twinkle var(--xpy-d, 2.5s) ease-in-out infinite alternate;
+}
+@keyframes xpy-twinkle {
+  0%   { opacity: 0.15; transform: scale(0.7); }
+  100% { opacity: 1;    transform: scale(1.3); }
+}
+
+/* ------------------------------------------------------------
+   DAY ORBS (light only)
+   ------------------------------------------------------------ */
+.xpy-day-orbs {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  display: none;
+}
+body.xpy-light .xpy-day-orbs { display: block; }
+
+.xpy-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40px);
+  opacity: 0.40;
+  animation: xpy-float 14s ease-in-out infinite;
+}
+.xpy-orb:nth-child(1) { width: 280px; height: 280px; background: #fbbf24; top: 10%; left: 5%;   animation-delay: 0s; }
+.xpy-orb:nth-child(2) { width: 220px; height: 220px; background: #fb923c; bottom: 15%; right: 8%; animation-delay: -4s; }
+.xpy-orb:nth-child(3) { width: 180px; height: 180px; background: #a78bfa; top: 40%; right: 20%; animation-delay: -7s; }
+.xpy-orb:nth-child(4) { width: 150px; height: 150px; background: #60a5fa; bottom: 30%; left: 15%; animation-delay: -2s; }
+@keyframes xpy-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(20px, -30px) scale(1.05); }
+  66%      { transform: translate(-15px, 15px) scale(0.95); }
+}
+
+/* ------------------------------------------------------------
+   PAGE GRID LAYOUT
+   ------------------------------------------------------------ */
+.xpy-page {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(340px, 460px) minmax(240px, 1fr);
+  gap: 32px;
+  padding: 24px 40px;
+  align-items: center;
+}
+
+/* ------------------------------------------------------------
+   SIDE PANELS
+   ------------------------------------------------------------ */
+.xpy-side {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.xpy-panel {
+  background: var(--xpy-panel-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--xpy-border);
+  border-radius: 18px;
+  padding: 20px;
+  transition: all var(--xpy-transition);
+}
+.xpy-panel:hover {
+  border-color: var(--xpy-border-glow);
+  transform: translateY(-3px);
+}
+
+.xpy-panel h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--xpy-text);
+}
+
+.xpy-activity-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--xpy-border);
+  font-size: 13px;
+}
+.xpy-activity-item:last-child { border-bottom: none; }
+
+.xpy-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.xpy-activity-text { color: var(--xpy-text-secondary); line-height: 1.4; }
+.xpy-activity-time { font-size: 11px; color: var(--xpy-text-muted); margin-top: 2px; }
+
+.xpy-stat-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--xpy-text-secondary);
+}
+.xpy-stat-row:last-child { margin-bottom: 0; }
+.xpy-stat-value { font-weight: 700; color: var(--xpy-accent); }
+
+.xpy-orbit-mini {
+  width: 90px;
+  height: 90px;
+  margin: 12px auto;
+  border: 2px solid rgba(255, 140, 0, 0.25);
+  border-radius: 50%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+body.xpy-light .xpy-orbit-mini { border-color: #fdba74; }
+.xpy-orbit-mini::before {
+  content: '';
+  position: absolute;
+  width: 58px;
+  height: 58px;
+  border: 1.5px solid rgba(139, 92, 246, 0.30);
+  border-radius: 50%;
+}
+.xpy-planet {
+  width: 22px;
+  height: 22px;
+  background: linear-gradient(135deg, #ff8c00, #ff5500);
+  border-radius: 50%;
+  box-shadow: 0 0 16px rgba(255, 140, 0, 0.6);
+}
+/* ------------------------------------------------------------
+   AUTH CARD (shared container for login/signup)
+   ------------------------------------------------------------ */
+.xpy-auth-card {
+  background: var(--xpy-bg-card);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid var(--xpy-border-glow);
+  border-radius: var(--xpy-radius);
+  padding: 36px 32px;
+  box-shadow: var(--xpy-shadow);
+  position: relative;
+  overflow: hidden;
+}
+.xpy-auth-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--xpy-accent), var(--xpy-accent-3), var(--xpy-accent));
+  background-size: 200% 100%;
+  animation: xpy-shimmer 4s ease-in-out infinite;
+}
+@keyframes xpy-shimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+/* ------------------------------------------------------------
+   THEME TOGGLE
+   ------------------------------------------------------------ */
+.xpy-theme-btn {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--xpy-input-bg);
+  border: 1px solid var(--xpy-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 17px;
+  transition: all 0.25s;
+  color: var(--xpy-text-secondary);
+}
+.xpy-theme-btn:hover {
+  border-color: var(--xpy-accent);
+  color: var(--xpy-accent);
+  transform: scale(1.08);
+}
+
+/* ------------------------------------------------------------
+   LOGO
+   ------------------------------------------------------------ */
+.xpy-logo {
+  text-align: center;
+  margin-bottom: 24px;
+}
+.xpy-logo-icon {
+  width: 58px;
+  height: 58px;
+  background: linear-gradient(135deg, var(--xpy-accent), var(--xpy-accent-2));
+  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 26px;
+  color: white;
+  box-shadow: 0 8px 28px var(--xpy-accent-glow);
+  margin-bottom: 12px;
+  animation: xpy-pulse-glow 3s ease-in-out infinite;
+}
+@keyframes xpy-pulse-glow {
+  0%, 100% { box-shadow: 0 8px 28px var(--xpy-accent-glow); }
+  50%      { box-shadow: 0 8px 40px var(--xpy-accent-glow), 0 0 70px rgba(255,140,0,0.15); }
+}
+.xpy-logo h1 {
+  font-size: 26px;
+  font-weight: 900;
+  background: linear-gradient(90deg, var(--xpy-accent), var(--xpy-accent-2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.xpy-logo p {
+  font-size: 13px;
+  color: var(--xpy-text-muted);
+  margin-top: 4px;
+}
+
+/* ------------------------------------------------------------
+   WELCOME / TITLE BLOCK
+   ------------------------------------------------------------ */
+.xpy-welcome {
+  text-align: center;
+  margin-bottom: 22px;
+}
+.xpy-welcome h2 {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.xpy-welcome p {
+  font-size: 13px;
+  color: var(--xpy-text-secondary);
+}
+
+/* ------------------------------------------------------------
+   FORM ELEMENTS
+   ------------------------------------------------------------ */
+.xpy-form-group { margin-bottom: 16px; }
+
+.xpy-form-group label,
+.xpy-input-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--xpy-text-secondary);
+  margin-bottom: 6px;
+  letter-spacing: 0.3px;
+}
+
+.xpy-input-wrap { position: relative; }
+
+.xpy-input-wrap input,
+.xpy-input-field {
+  width: 100%;
+  padding: 13px 14px;
+  background: var(--xpy-input-bg);
+  border: 1px solid var(--xpy-border);
+  border-radius: 12px;
+  color: var(--xpy-text);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: all 0.25s;
+  height: 44px;
+}
+.xpy-input-wrap input:focus,
+.xpy-input-field:focus {
+  border-color: var(--xpy-accent);
+  box-shadow: 0 0 0 4px var(--xpy-accent-glow);
+}
+.xpy-input-wrap input::placeholder,
+.xpy-input-field::placeholder {
+  color: var(--xpy-text-muted);
+}
+.xpy-input-field.error   { border-color: #ef4444; }
+.xpy-input-field.success { border-color: #10b981; }
+
+/* Password toggle button */
+.xpy-password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--xpy-text-muted);
+  cursor: pointer;
+  font-size: 15px;
+  padding: 4px;
+  transition: color 0.2s;
+}
+.xpy-password-toggle:hover { color: var(--xpy-accent); }
+
+/* Forgot link */
+.xpy-forgot {
+  text-align: right;
+  margin: -6px 0 18px;
+}
+.xpy-forgot a {
+  font-size: 12px;
+  color: var(--xpy-accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+.xpy-forgot a:hover { text-decoration: underline; }
+
+/* ------------------------------------------------------------
+   BUTTONS
+   ------------------------------------------------------------ */
+.xpy-btn-primary,
+.xpy-btn-google {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.25s;
+  font-family: inherit;
+  border: none;
+}
+
+.xpy-btn-primary {
+  background: linear-gradient(135deg, var(--xpy-accent), var(--xpy-accent-2));
+  color: white;
+  box-shadow: 0 8px 24px var(--xpy-accent-glow);
+}
+.xpy-btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px var(--xpy-accent-glow);
+}
+.xpy-btn-primary:active:not(:disabled) { transform: scale(0.98); }
+.xpy-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.xpy-btn-google {
+  background: var(--xpy-input-bg);
+  border: 1px solid var(--xpy-border);
+  color: var(--xpy-text);
+  font-size: 14px;
+  padding: 12px;
+}
+.xpy-btn-google:hover:not(:disabled) {
+  border-color: var(--xpy-accent);
+  transform: translateY(-1px);
+}
+.xpy-btn-google:disabled { opacity: 0.6; cursor: not-allowed; }
+.xpy-google-icon { width: 18px; height: 18px; flex-shrink: 0; }
+
+/* ------------------------------------------------------------
+   DIVIDER
+   ------------------------------------------------------------ */
+.xpy-divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 18px 0;
+  color: var(--xpy-text-muted);
+  font-size: 12px;
+}
+.xpy-divider::before,
+.xpy-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--xpy-border);
+}
+
+/* ------------------------------------------------------------
+   SIGNUP / SIGNIN LINK
+   ------------------------------------------------------------ */
+.xpy-signup,
+.xpy-signin-link {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 13px;
+  color: var(--xpy-text-secondary);
+}
+.xpy-signup a,
+.xpy-signin-link a {
+  color: var(--xpy-accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+.xpy-signup a:hover,
+.xpy-signin-link a:hover { text-decoration: underline; }
+
+/* ------------------------------------------------------------
+   ALERT / TOAST SYSTEM
+   ------------------------------------------------------------ */
+.xpy-alert-container {
+  position: fixed;
+  top: 15px;
+  right: 15px;
+  z-index: 1000;
+  max-width: 320px;
+}
+
+.xpy-alert {
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  border-radius: 12px;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: xpy-slideIn 0.3s ease-out;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-left: 4px solid;
+  box-shadow: var(--xpy-shadow);
+  font-size: 13px;
+  font-weight: 500;
+}
+.xpy-alert-success { background: rgba(16, 185, 129, 0.9); border-left-color: #059669; }
+.xpy-alert-error   { background: rgba(239, 68, 68, 0.9);  border-left-color: #dc2626; }
+.xpy-alert-warning { background: rgba(245, 158, 11, 0.9); border-left-color: #d97706; }
+.xpy-alert-info    { background: rgba(59, 130, 246, 0.9); border-left-color: #2563eb; }
+.xpy-alert-icon    { font-size: 16px; }
+
+@keyframes xpy-slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+/* ------------------------------------------------------------
+   VALIDATION MESSAGES
+   ------------------------------------------------------------ */
+.xpy-validation-message {
+  font-size: 11px;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 18px;
+  transition: all 0.3s ease;
+}
+.xpy-validation-message.error,
+.xpy-validation-message.xpy-error    { color: #ef4444; }
+.xpy-validation-message.success,
+.xpy-validation-message.xpy-success  { color: #10b981; }
+.xpy-validation-message.xpy-warning  { color: #f59e0b; }
+
+/* ------------------------------------------------------------
+   LOADING SPINNER
+   ------------------------------------------------------------ */
+.xpy-loader {
+  display: none;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 30;
+}
+.xpy-loader-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(255, 140, 0, 0.2);
+  border-top: 3px solid var(--xpy-accent);
+  border-radius: 50%;
+  animation: xpy-spin 1s linear infinite;
+}
+@keyframes xpy-spin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ------------------------------------------------------------
+   RESPONSIVE
+   ------------------------------------------------------------ */
+@media (max-width: 1100px) {
+  .xpy-page {
+    grid-template-columns: 1fr minmax(320px, 420px) 1fr;
+    gap: 24px;
+    padding: 20px;
+  }
+}
+
+@media (max-width: 900px) {
+  .xpy-page {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    padding: 16px;
+  }
+  .xpy-side { display: none; }
+  .xpy-auth-card {
+    width: 100%;
+    max-width: 440px;
+    padding: 32px 24px;
+  }
+}
+
+@media (max-width: 400px) {
+  .xpy-auth-card { padding: 28px 20px; }
+  .xpy-logo-icon { width: 52px; height: 52px; font-size: 22px; }
+  .xpy-logo h1   { font-size: 22px; }
+  .xpy-welcome h2 { font-size: 18px; }
+}

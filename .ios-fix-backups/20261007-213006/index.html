@@ -1,0 +1,1653 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>XAPYX | Social Universe</title>
+    
+    <meta name="theme-color" content="{{ primary_color }}">
+    <link rel="icon" type="image/png" href="/static/images/icons/xapyx_icon.png">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+
+    <style>
+        /* ============================================================
+           ROOT VARIABLES
+           ============================================================ */
+        :root {
+            --xpy-primary: #ff8c00;
+            --xpy-primary-rgb: 255, 140, 0;
+            --xpy-secondary: #ff5500;
+            --xpy-accent: #8b5cf6;
+            --xpy-bg: #050510;
+            --xpy-text: #e8e8ff;
+            --xpy-text-secondary: #a8b8d8;
+            --xpy-text-muted: #7888a8;
+            --xpy-border: rgba(255,255,255,0.08);
+            --xpy-border-glow: rgba(255,140,0,0.35);
+            --xpy-card-bg: rgba(12,12,35,0.5);
+            --xpy-shadow: 0 25px 60px rgba(255,140,0,0.15);
+            --xpy-radius: 20px;
+            --xpy-radius-sm: 10px;
+            --xpy-transition: 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            --xpy-glow: 0 0 30px rgba(255,140,0,0.1);
+            --xpy-bg-gradient: none;
+        }
+
+        /* LIGHT THEME */
+        body.xpy-light {
+            --xpy-primary: #ff8c00;
+            --xpy-primary-rgb: 255, 140, 0;
+            --xpy-secondary: #ff5500;
+            --xpy-accent: #7c3aed;
+            --xpy-bg: #ffffff;
+            --xpy-text: #1a1a2e;
+            --xpy-text-secondary: #4a5568;
+            --xpy-text-muted: #718096;
+            --xpy-border: rgba(0,0,0,0.08);
+            --xpy-border-glow: rgba(255,140,0,0.3);
+            --xpy-card-bg: rgba(255,255,255,0.85);
+            --xpy-shadow: 0 25px 60px rgba(0,0,0,0.08);
+            --xpy-glow: 0 0 40px rgba(255,140,0,0.05);
+            --xpy-bg-gradient: linear-gradient(160deg, #fef9e7 0%, #fdebd0 25%, #d6eaf8 50%, #e8daef 75%, #fdebd0 100%);
+        }
+
+        /* ============================================================
+           BASE RESET
+           ============================================================ */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            font-family: 'Inter', -apple-system, sans-serif;
+        }
+
+        body {
+            background: var(--xpy-bg);
+            color: var(--xpy-text);
+            transition: background var(--xpy-transition), color var(--xpy-transition);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* BACKGROUNDS */
+        body:not(.xpy-light) {
+            background-image:
+                radial-gradient(ellipse at 20% 30%, rgba(88,28,135,0.3) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 70%, rgba(30,58,138,0.25) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(10,15,40,0.95) 0%, transparent 70%);
+        }
+
+        body.xpy-light {
+            background: var(--xpy-bg-gradient);
+            background-size: 200% 200%;
+            animation: xpy-sunnyGradient 15s ease-in-out infinite alternate;
+        }
+
+        @keyframes xpy-sunnyGradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* ============================================================
+           STARS - Night Mode Only
+           ============================================================ */
+        .xpy-stars {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            display: none;
+        }
+        body:not(.xpy-light) .xpy-stars { display: block; }
+
+        .xpy-star {
+            position: absolute;
+            border-radius: 50%;
+            background: white;
+            animation: xpy-twinkle var(--xpy-d, 2.5s) ease-in-out infinite alternate;
+            will-change: transform, opacity;
+        }
+        @keyframes xpy-twinkle {
+            0% { opacity: 0.1; transform: scale(0.6); }
+            100% { opacity: 1; transform: scale(1.4); }
+        }
+
+        /* ============================================================
+           SHOOTING STARS
+           ============================================================ */
+        .xpy-shooting-star {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            animation: xpy-shoot linear infinite;
+            will-change: transform, opacity;
+            opacity: 0;
+            z-index: 1;
+        }
+        body:not(.xpy-light) .xpy-shooting-star {
+            background: white;
+            box-shadow: 0 0 8px 3px rgba(255,255,255,0.5);
+        }
+        body.xpy-light .xpy-shooting-star {
+            background: #4a5568;
+            box-shadow: 0 0 8px 3px rgba(74,85,104,0.3);
+            display: none;
+        }
+
+        .xpy-shooting-star .xpy-trail {
+            position: absolute;
+            top: 50%;
+            right: 100%;
+            height: 2px;
+            transform: translateY(-50%);
+            border-radius: 2px;
+            width: 120px;
+            transform-origin: right center;
+        }
+        body:not(.xpy-light) .xpy-shooting-star .xpy-trail {
+            background: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,0.9));
+        }
+        body.xpy-light .xpy-shooting-star .xpy-trail {
+            display: none;
+        }
+
+        @keyframes xpy-shoot {
+            0% { transform: translate(0, 0) rotate(35deg); opacity: 0; }
+            5% { opacity: 1; }
+            20% { opacity: 1; }
+            100% { transform: translate(500px, 350px) rotate(35deg); opacity: 0; }
+        }
+
+        /* ============================================================
+           SUN & CLOUDS - Day Mode
+           ============================================================ */
+        .xpy-day-elements {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            display: none;
+            overflow: hidden;
+        }
+        body.xpy-light .xpy-day-elements { display: block; }
+
+        .xpy-sun {
+            position: absolute;
+            top: 5%;
+            right: 8%;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #fbbf24, #f59e0b);
+            box-shadow: 0 0 60px rgba(251, 191, 36, 0.4), 0 0 120px rgba(251, 191, 36, 0.2);
+            animation: xpy-sunGlow 4s ease-in-out infinite alternate;
+        }
+        .xpy-sun::after {
+            content: '';
+            position: absolute;
+            inset: -20px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(251, 191, 36, 0.2), transparent 70%);
+            animation: xpy-sunPulse 3s ease-in-out infinite alternate;
+        }
+        @keyframes xpy-sunGlow {
+            0%, 100% { box-shadow: 0 0 60px rgba(251, 191, 36, 0.4), 0 0 120px rgba(251, 191, 36, 0.2); }
+            50% { box-shadow: 0 0 80px rgba(251, 191, 36, 0.6), 0 0 150px rgba(251, 191, 36, 0.3); }
+        }
+        @keyframes xpy-sunPulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+        }
+
+        .xpy-cloud {
+            position: absolute;
+            background: rgba(255,255,255,0.7);
+            border-radius: 50px;
+            animation: xpy-cloudFloat linear infinite;
+            backdrop-filter: blur(2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        }
+        .xpy-cloud::before,
+        .xpy-cloud::after {
+            content: '';
+            position: absolute;
+            background: inherit;
+            border-radius: 50%;
+        }
+        .xpy-cloud-1 {
+            width: 120px;
+            height: 35px;
+            top: 12%;
+            left: -10%;
+            animation-duration: 25s;
+        }
+        .xpy-cloud-1::before { width: 50px; height: 50px; top: -25px; left: 20px; }
+        .xpy-cloud-1::after { width: 70px; height: 55px; top: -30px; left: 50px; }
+        .xpy-cloud-2 {
+            width: 100px;
+            height: 30px;
+            top: 25%;
+            left: 60%;
+            animation-duration: 30s;
+            animation-delay: -5s;
+        }
+        .xpy-cloud-2::before { width: 40px; height: 40px; top: -20px; left: 15px; }
+        .xpy-cloud-2::after { width: 60px; height: 45px; top: -25px; left: 45px; }
+        .xpy-cloud-3 {
+            width: 80px;
+            height: 25px;
+            top: 8%;
+            left: 40%;
+            animation-duration: 35s;
+            animation-delay: -10s;
+            opacity: 0.5;
+        }
+        .xpy-cloud-3::before { width: 30px; height: 30px; top: -15px; left: 10px; }
+        .xpy-cloud-3::after { width: 45px; height: 35px; top: -20px; left: 35px; }
+
+        @keyframes xpy-cloudFloat {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(calc(100vw + 200px)); }
+        }
+
+        /* ============================================================
+           SIDE DECORATIONS
+           ============================================================ */
+        .xpy-side-left {
+            position: fixed;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            transition: all var(--xpy-transition);
+        }
+        .xpy-side-right {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            transition: all var(--xpy-transition);
+        }
+
+        .xpy-side-item {
+            background: var(--xpy-card-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--xpy-border);
+            border-radius: var(--xpy-radius-sm);
+            padding: 8px 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.7rem;
+            color: var(--xpy-text-secondary);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            min-width: 120px;
+            box-shadow: var(--xpy-glow);
+            will-change: transform;
+        }
+        .xpy-side-item:hover {
+            border-color: var(--xpy-border-glow);
+            transform: translateX(4px) scale(1.02);
+            box-shadow: 0 0 30px rgba(255,140,0,0.08);
+        }
+        .xpy-side-item i {
+            color: var(--xpy-primary);
+            font-size: 0.9rem;
+            transition: transform 0.3s ease;
+        }
+        .xpy-side-item:hover i {
+            transform: rotate(15deg) scale(1.1);
+        }
+        .xpy-side-item .xpy-side-value {
+            color: var(--xpy-text);
+            font-weight: 700;
+        }
+
+        /* ============================================================
+           HEADER
+           ============================================================ */
+        .xpy-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            padding: 12px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--xpy-card-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-bottom: 1px solid var(--xpy-border);
+            transition: all var(--xpy-transition);
+            animation: xpy-headerIn 0.8s ease;
+        }
+        @keyframes xpy-headerIn {
+            0% { opacity: 0; transform: translateY(-20px) scale(0.98); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .xpy-logo {
+            font-size: 1.4rem;
+            font-weight: 900;
+            background: linear-gradient(90deg, var(--xpy-primary), var(--xpy-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .xpy-logo i {
+            -webkit-text-fill-color: initial;
+            color: var(--xpy-primary);
+            font-size: 1.2rem;
+        }
+
+        .xpy-nav {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .xpy-nav-btn {
+            padding: 8px 18px;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-decoration: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: 1.5px solid var(--xpy-border);
+            color: var(--xpy-text-secondary);
+            background: transparent;
+        }
+        .xpy-nav-btn:hover {
+            border-color: var(--xpy-primary);
+            color: var(--xpy-text);
+            transform: translateY(-2px) scale(1.02);
+        }
+        .xpy-nav-btn-primary {
+            background: linear-gradient(135deg, var(--xpy-primary), var(--xpy-secondary));
+            color: white;
+            border: none;
+            box-shadow: 0 4px 20px rgba(255,140,0,0.3);
+        }
+        .xpy-nav-btn-primary:hover {
+            transform: translateY(-2px) scale(1.03);
+            box-shadow: 0 8px 30px rgba(255,140,0,0.4);
+            color: white;
+        }
+
+        /* ============================================================
+           FLOATING THEME BUTTON
+           ============================================================ */
+        .xpy-theme-float {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 200;
+            background: var(--xpy-card-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--xpy-border-glow);
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.2rem;
+            color: var(--xpy-text-secondary);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: var(--xpy-shadow);
+            animation: xpy-floatBtn 3s ease-in-out infinite;
+        }
+        .xpy-theme-float:hover {
+            transform: scale(1.15) rotate(30deg);
+            border-color: var(--xpy-primary);
+            color: var(--xpy-primary);
+            box-shadow: 0 8px 32px rgba(255,140,0,0.3);
+        }
+        @keyframes xpy-floatBtn {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+
+        /* ============================================================
+           HERO SECTION
+           ============================================================ */
+        .xpy-hero {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 70px 32px 50px;
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            height: 100vh;
+        }
+
+        .xpy-hero-content {
+            max-width: 700px;
+            width: 100%;
+            text-align: center;
+            animation: xpy-heroIn 1s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+        }
+        @keyframes xpy-heroIn {
+            0% { opacity: 0; transform: scale(0.95) translateY(30px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .xpy-badge {
+            display: inline-block;
+            background: var(--xpy-card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--xpy-border-glow);
+            border-radius: 30px;
+            padding: 5px 18px;
+            font-size: 0.7rem;
+            color: var(--xpy-text-secondary);
+            margin-bottom: 18px;
+            animation: xpy-badgePulse 3s ease-in-out infinite;
+        }
+        @keyframes xpy-badgePulse {
+            0%, 100% { border-color: var(--xpy-border-glow); }
+            50% { border-color: var(--xpy-primary); }
+        }
+        .xpy-badge i {
+            color: var(--xpy-primary);
+            margin-right: 6px;
+        }
+
+        .xpy-title {
+            font-size: clamp(2.5rem, 6vw, 4.2rem);
+            font-weight: 900;
+            line-height: 1.05;
+            margin-bottom: 14px;
+        }
+        .xpy-title .xpy-highlight {
+            background: linear-gradient(135deg, var(--xpy-primary), var(--xpy-secondary), var(--xpy-accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: xpy-titleGlow 3s ease-in-out infinite;
+        }
+        @keyframes xpy-titleGlow {
+            0%, 100% { filter: drop-shadow(0 0 10px rgba(255,140,0,0)); }
+            50% { filter: drop-shadow(0 0 30px rgba(255,140,0,0.15)); }
+        }
+
+        .xpy-subtitle {
+            font-size: clamp(0.9rem, 1.2vw, 1.1rem);
+            color: var(--xpy-text-secondary);
+            max-width: 550px;
+            margin: 0 auto 20px;
+            line-height: 1.6;
+        }
+
+        /* ============================================================
+           LATEST USER NOTIFICATION
+           ============================================================ */
+        .xpy-latest-user {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: var(--xpy-card-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--xpy-border-glow);
+    border-radius: var(--xpy-radius);
+    padding: 8px 20px;
+    margin: 0 auto 16px;
+    min-height: 44px;
+    max-width: 480px; /* Wider than counter, narrower than shouts */
+    width: 100%;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: xpy-latestIn 0.6s ease-out;
+    box-shadow: var(--xpy-glow);
+}
+        @keyframes xpy-latestIn {
+            0% { opacity: 0; transform: scale(0.9) translateY(-10px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .xpy-latest-user .xpy-latest-icon {
+            color: #22c55e;
+            font-size: 1.1rem;
+            animation: xpy-latestPulse 2s ease-in-out infinite;
+        }
+        @keyframes xpy-latestPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        .xpy-latest-user .xpy-latest-text {
+            font-size: 0.85rem;
+            color: var(--xpy-text-secondary);
+        }
+        .xpy-latest-user .xpy-latest-text strong {
+            color: var(--xpy-primary);
+            font-weight: 700;
+        }
+        .xpy-latest-user .xpy-latest-time {
+            font-size: 0.6rem;
+            color: var(--xpy-text-muted);
+            margin-left: 4px;
+        }
+
+        .xpy-latest-user.xpy-latest-update {
+            animation: xpy-latestUpdate 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            border-color: var(--xpy-primary);
+        }
+        @keyframes xpy-latestUpdate {
+            0% { opacity: 0; transform: scale(0.8) translateY(-10px); }
+            50% { opacity: 1; transform: scale(1.05); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        /* ============================================================
+           FLIP CLOCK COUNTER
+           ============================================================ */
+        .xpy-counter-flip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            background: var(--xpy-card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 6px 16px 6px 12px;
+            border-radius: var(--xpy-radius);
+            border: 1px solid var(--xpy-border-glow);
+            margin-bottom: 18px;
+            box-shadow: var(--xpy-shadow);
+            animation: xpy-counterPulse 2s ease-in-out infinite;
+            min-width: 180px;
+        }
+        @keyframes xpy-counterPulse {
+            0%, 100% { border-color: var(--xpy-border-glow); }
+            50% { border-color: var(--xpy-primary); }
+        }
+
+        .xpy-counter-icon {
+            font-size: 1.2rem;
+            color: var(--xpy-primary);
+            margin-right: 6px;
+            animation: xpy-iconFloat 3s ease-in-out infinite;
+        }
+        @keyframes xpy-iconFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+        }
+
+        .xpy-counter-label {
+            font-size: 0.6rem;
+            color: var(--xpy-text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-right: 6px;
+        }
+
+        .xpy-flip-digits {
+            display: inline-flex;
+            gap: 2px;
+            font-family: 'Inter', monospace;
+            font-weight: 900;
+            font-size: 1.8rem;
+            background: rgba(0,0,0,0.2);
+            padding: 2px 6px;
+            border-radius: 6px;
+            min-width: 80px;
+            justify-content: center;
+            position: relative;
+        }
+        body.xpy-light .xpy-flip-digits {
+            background: rgba(0,0,0,0.04);
+        }
+        .xpy-flip-digit {
+            display: inline-block;
+            min-width: 24px;
+            text-align: center;
+            background: var(--xpy-card-bg);
+            padding: 0 2px;
+            border-radius: 4px;
+            color: var(--xpy-primary);
+            position: relative;
+            transition: transform 0.3s ease;
+        }
+        .xpy-flip-digit.xpy-flip {
+            animation: xpy-flipAnim 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @keyframes xpy-flipAnim {
+            0% { transform: rotateX(0); }
+            50% { transform: rotateX(-90deg); }
+            100% { transform: rotateX(0); }
+        }
+
+        /* ============================================================
+           SHOUT TICKER
+           ============================================================ */
+        .xpy-ticker-section {
+            width: 100%;
+            max-width: 650px;
+            margin: 0 auto 18px;
+            background: var(--xpy-card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: var(--xpy-radius);
+            padding: 8px 14px;
+            border: 1px solid var(--xpy-border);
+            overflow: hidden;
+            height: 42px;
+            position: relative;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .xpy-ticker-section:hover {
+            border-color: var(--xpy-border-glow);
+        }
+        .xpy-ticker-section .xpy-live-dot {
+            position: absolute;
+            top: 50%;
+            right: 12px;
+            transform: translateY(-50%);
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #22c55e;
+            animation: xpy-livePulse 1.5s ease-in-out infinite;
+            box-shadow: 0 0 12px rgba(34,197,94,0.4);
+            z-index: 2;
+        }
+        @keyframes xpy-livePulse {
+            0%, 100% { opacity: 1; transform: translateY(-50%) scale(1); }
+            50% { opacity: 0.4; transform: translateY(-50%) scale(0.7); }
+        }
+
+        .xpy-ticker {
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+            animation: xpy-tickerScroll 30s linear infinite;
+            will-change: transform;
+            height: 100%;
+            padding-right: 28px;
+        }
+        @keyframes xpy-tickerScroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        .xpy-ticker-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 14px;
+            font-size: 0.75rem;
+            color: var(--xpy-text-secondary);
+            flex-shrink: 0;
+        }
+        .xpy-ticker-item img {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid var(--xpy-primary);
+            object-fit: cover;
+        }
+        .xpy-ticker-item strong {
+            color: var(--xpy-primary);
+        }
+        .xpy-ticker-item .xpy-shout-time {
+            font-size: 0.55rem;
+            color: var(--xpy-text-muted);
+            margin-left: 3px;
+        }
+
+        /* ============================================================
+           BUTTONS
+           ============================================================ */
+        .xpy-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+
+        .xpy-btn {
+            padding: 10px 24px;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: 'Inter', sans-serif;
+            text-decoration: none;
+            min-height: 44px;
+            min-width: 140px;
+            border: none;
+            animation: xpy-btnFloat 3s ease-in-out infinite;
+        }
+        .xpy-btn-primary {
+            background: linear-gradient(135deg, var(--xpy-primary), var(--xpy-secondary));
+            color: white;
+            box-shadow: 0 4px 20px rgba(255,140,0,0.3);
+        }
+        .xpy-btn-primary:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 8px 32px rgba(255,140,0,0.4);
+        }
+        .xpy-btn-secondary {
+            background: var(--xpy-card-bg);
+            color: var(--xpy-text);
+            border: 1.5px solid var(--xpy-border);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .xpy-btn-secondary:hover {
+            border-color: var(--xpy-primary);
+            transform: translateY(-3px);
+        }
+        @keyframes xpy-btnFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+        }
+
+        /* ============================================================
+           DIVIDER & GOOGLE
+           ============================================================ */
+        .xpy-divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            max-width: 350px;
+            margin: 0 auto 10px;
+            color: var(--xpy-text-muted);
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .xpy-divider::before,
+        .xpy-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--xpy-border);
+        }
+
+        .xpy-google-btn {
+            padding: 10px 20px;
+            background: var(--xpy-card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1.5px solid var(--xpy-border);
+            border-radius: 30px;
+            color: var(--xpy-text);
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-family: 'Inter', sans-serif;
+            min-height: 40px;
+            padding: 0 24px;
+        }
+        .xpy-google-btn:hover {
+            border-color: var(--xpy-primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(255,140,0,0.08);
+        }
+        .xpy-google-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .xpy-google-icon {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* ============================================================
+           FOOTER
+           ============================================================ */
+        .xpy-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            padding: 8px 32px;
+            text-align: center;
+            font-size: 0.65rem;
+            color: var(--xpy-text-muted);
+            background: var(--xpy-card-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-top: 1px solid var(--xpy-border);
+            transition: all var(--xpy-transition);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+        .xpy-footer a {
+            color: var(--xpy-primary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+        .xpy-footer a:hover {
+            color: var(--xpy-secondary);
+            text-decoration: underline;
+        }
+        .xpy-footer span {
+            opacity: 0.7;
+        }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 1024px) {
+            .xpy-side-left, .xpy-side-right { display: none; }
+        }
+
+        @media (max-width: 768px) {
+            .xpy-header { padding: 10px 16px; }
+            .xpy-logo { font-size: 1.2rem; }
+            .xpy-nav-btn { padding: 6px 14px; font-size: 0.7rem; }
+            .xpy-hero { padding: 60px 16px 40px; }
+            .xpy-title { font-size: 2.2rem; }
+            .xpy-subtitle { font-size: 0.9rem; }
+            .xpy-latest-user { padding: 6px 14px; min-height: 38px; margin-bottom: 12px; }
+            .xpy-latest-user .xpy-latest-text { font-size: 0.75rem; }
+            .xpy-ticker-section { height: 38px; padding: 6px 10px; max-width: 100%; }
+            .xpy-ticker-item { font-size: 0.7rem; padding: 0 10px; }
+            .xpy-ticker-item img { width: 20px; height: 20px; }
+            .xpy-btn { padding: 8px 18px; font-size: 0.8rem; min-height: 40px; min-width: 120px; }
+            .xpy-google-btn { padding: 8px 18px; font-size: 0.75rem; min-height: 38px; }
+            .xpy-footer { padding: 8px 16px; font-size: 0.6rem; gap: 8px; }
+            .xpy-counter-flip { padding: 5px 12px; min-width: 150px; }
+            .xpy-flip-digits { font-size: 1.4rem; min-width: 65px; }
+            .xpy-theme-float { width: 42px; height: 42px; font-size: 1rem; bottom: 16px; left: 16px; }
+            .xpy-sun { width: 60px; height: 60px; top: 3%; right: 5%; }
+            .xpy-cloud-1 { width: 80px; height: 25px; }
+            .xpy-cloud-1::before { width: 35px; height: 35px; top: -18px; left: 15px; }
+            .xpy-cloud-1::after { width: 45px; height: 38px; top: -22px; left: 35px; }
+            .xpy-cloud-2 { width: 70px; height: 20px; }
+            .xpy-cloud-2::before { width: 30px; height: 30px; top: -15px; left: 10px; }
+            .xpy-cloud-2::after { width: 40px; height: 32px; top: -18px; left: 30px; }
+            .xpy-cloud-3 { display: none; }
+        }
+
+        @media (max-width: 480px) {
+            .xpy-header { padding: 8px 12px; }
+            .xpy-logo { font-size: 1rem; }
+            .xpy-nav-btn { padding: 4px 10px; font-size: 0.6rem; }
+            .xpy-hero { padding: 55px 12px 35px; }
+            .xpy-title { font-size: 1.8rem; }
+            .xpy-subtitle { font-size: 0.8rem; }
+            .xpy-latest-user { padding: 4px 10px; min-height: 32px; margin-bottom: 10px; }
+            .xpy-latest-user .xpy-latest-text { font-size: 0.65rem; }
+            .xpy-latest-user .xpy-latest-icon { font-size: 0.8rem; }
+            .xpy-latest-user .xpy-latest-time { display: none; }
+            .xpy-ticker-section { height: 32px; padding: 4px 8px; }
+            .xpy-ticker-item { font-size: 0.6rem; padding: 0 6px; gap: 4px; }
+            .xpy-ticker-item img { width: 16px; height: 16px; }
+            .xpy-ticker-item .xpy-shout-time { display: none; }
+            .xpy-actions { gap: 8px; }
+            .xpy-btn { padding: 6px 14px; font-size: 0.7rem; min-height: 34px; min-width: 100px; }
+            .xpy-google-btn { padding: 6px 14px; font-size: 0.7rem; min-height: 34px; }
+            .xpy-footer { padding: 6px 12px; font-size: 0.5rem; gap: 6px; flex-direction: column; }
+            .xpy-badge { font-size: 0.6rem; padding: 4px 12px; margin-bottom: 12px; }
+            .xpy-divider { max-width: 150px; font-size: 0.5rem; gap: 8px; margin: 6px auto 8px; }
+            .xpy-counter-flip { padding: 4px 8px; min-width: 120px; margin-bottom: 12px; }
+            .xpy-flip-digits { font-size: 1.1rem; min-width: 50px; padding: 1px 3px; }
+            .xpy-flip-digit { min-width: 16px; }
+            .xpy-theme-float { width: 36px; height: 36px; font-size: 0.85rem; bottom: 12px; left: 12px; }
+            .xpy-sun { width: 50px; height: 50px; top: 2%; right: 4%; }
+            .xpy-cloud-1 { width: 60px; height: 20px; }
+            .xpy-cloud-1::before { width: 25px; height: 25px; top: -12px; left: 10px; }
+            .xpy-cloud-1::after { width: 35px; height: 30px; top: -15px; left: 25px; }
+            .xpy-cloud-2 { display: none; }
+        }
+
+        @media (max-height: 650px) {
+            .xpy-hero { padding: 50px 16px 30px; }
+            .xpy-title { font-size: 2rem; margin-bottom: 8px; }
+            .xpy-subtitle { font-size: 0.8rem; margin-bottom: 12px; }
+            .xpy-latest-user { padding: 5px 12px; min-height: 34px; margin-bottom: 10px; }
+            .xpy-latest-user .xpy-latest-text { font-size: 0.7rem; }
+            .xpy-ticker-section { height: 34px; padding: 4px 10px; margin-bottom: 12px; }
+            .xpy-ticker-item { font-size: 0.65rem; padding: 0 8px; }
+            .xpy-ticker-item img { width: 18px; height: 18px; }
+            .xpy-btn { padding: 6px 14px; font-size: 0.75rem; min-height: 34px; min-width: 110px; }
+            .xpy-google-btn { padding: 6px 14px; font-size: 0.7rem; min-height: 32px; }
+            .xpy-badge { margin-bottom: 10px; padding: 4px 14px; font-size: 0.6rem; }
+            .xpy-actions { margin-bottom: 8px; }
+            .xpy-divider { margin: 4px auto 6px; }
+            .xpy-counter-flip { padding: 4px 10px; min-width: 130px; }
+            .xpy-flip-digits { font-size: 1.2rem; min-width: 55px; }
+            .xpy-footer { padding: 6px 16px; font-size: 0.55rem; }
+            .xpy-sun { width: 50px; height: 50px; }
+        }
+
+        @media (max-height: 550px) {
+            .xpy-header { padding: 6px 12px; }
+            .xpy-logo { font-size: 0.9rem; }
+            .xpy-hero { padding: 45px 12px 25px; }
+            .xpy-title { font-size: 1.6rem; margin-bottom: 4px; }
+            .xpy-subtitle { font-size: 0.7rem; margin-bottom: 8px; }
+            .xpy-latest-user { padding: 3px 8px; min-height: 28px; margin-bottom: 6px; }
+            .xpy-latest-user .xpy-latest-text { font-size: 0.6rem; }
+            .xpy-latest-user .xpy-latest-icon { font-size: 0.7rem; }
+            .xpy-ticker-section { height: 28px; padding: 3px 8px; margin-bottom: 8px; }
+            .xpy-ticker-item { font-size: 0.55rem; padding: 0 6px; gap: 4px; }
+            .xpy-ticker-item img { width: 14px; height: 14px; }
+            .xpy-btn { padding: 4px 10px; font-size: 0.65rem; min-height: 28px; min-width: 90px; }
+            .xpy-google-btn { padding: 4px 10px; font-size: 0.65rem; min-height: 28px; }
+            .xpy-badge { margin-bottom: 6px; padding: 3px 10px; font-size: 0.55rem; }
+            .xpy-actions { margin-bottom: 4px; gap: 6px; }
+            .xpy-divider { margin: 2px auto 4px; font-size: 0.45rem; gap: 6px; max-width: 100px; }
+            .xpy-footer { padding: 4px 12px; font-size: 0.45rem; gap: 4px; }
+            .xpy-counter-flip { padding: 3px 6px; min-width: 100px; }
+            .xpy-flip-digits { font-size: 0.9rem; min-width: 40px; padding: 1px 2px; }
+            .xpy-flip-digit { min-width: 12px; }
+            .xpy-theme-float { width: 30px; height: 30px; font-size: 0.7rem; bottom: 10px; left: 10px; }
+            .xpy-sun { width: 40px; height: 40px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Stars - Night Mode -->
+    <div class="xpy-stars" id="xpyStars"></div>
+    
+    <!-- Shooting Stars -->
+    <div class="xpy-shooting-star" id="xpyShootingStar1"><div class="xpy-trail"></div></div>
+    <div class="xpy-shooting-star" id="xpyShootingStar2"><div class="xpy-trail"></div></div>
+    <div class="xpy-shooting-star" id="xpyShootingStar3"><div class="xpy-trail"></div></div>
+
+    <!-- Day Elements -->
+    <div class="xpy-day-elements">
+        <div class="xpy-sun"></div>
+        <div class="xpy-cloud xpy-cloud-1"></div>
+        <div class="xpy-cloud xpy-cloud-2"></div>
+        <div class="xpy-cloud xpy-cloud-3"></div>
+    </div>
+
+    <!-- SIDE DECORATIONS - LEFT -->
+    <div class="xpy-side-left">
+        <div class="xpy-side-item">
+            <i class="fas fa-users"></i>
+            <span>Users <span class="xpy-side-value" id="xpyOnlineCount">{{ stats.users }}</span></span>
+        </div>
+        <div class="xpy-side-item">
+            <i class="fas fa-comment"></i>
+            <span>Shouts <span class="xpy-side-value" id="xpyShoutCount">{{ stats.shouts }}</span></span>
+        </div>
+        <div class="xpy-side-item">
+            <i class="fas fa-rocket"></i>
+            <span>Posts <span class="xpy-side-value">{{ stats.posts }}</span></span>
+        </div>
+    </div>
+
+    <!-- SIDE DECORATIONS - RIGHT -->
+    <div class="xpy-side-right">
+        <div class="xpy-side-item">
+            <i class="fas fa-star"></i>
+            <span>Groups <span class="xpy-side-value">{{ stats.groups }}</span></span>
+        </div>
+        <div class="xpy-side-item">
+            <i class="fas fa-globe"></i>
+            <span>Messages <span class="xpy-side-value">{{ stats.messages }}</span></span>
+        </div>
+        <div class="xpy-side-item">
+            <i class="fas fa-bolt"></i>
+            <span>photos <span class="xpy-side-value">{{ stats.photos }}</span></span>
+        </div>
+    </div>
+
+    <!-- FLOATING THEME BUTTON -->
+    <button class="xpy-theme-float" id="xpyThemeFloat">
+        <i class="fas fa-moon"></i>
+    </button>
+
+    <!-- HEADER -->
+    <header class="xpy-header">
+        <a href="/" class="xpy-logo">
+            <i class="fas fa-rocket"></i> XAPYX
+        </a>
+        <nav class="xpy-nav">
+            <a href="/login/" class="xpy-nav-btn">
+                <i class="fas fa-sign-in-alt"></i> Sign In
+            </a>
+            <a href="/signup/" class="xpy-nav-btn xpy-nav-btn-primary">
+                <i class="fas fa-user-plus"></i> Join
+            </a>
+        </nav>
+    </header>
+
+    <!-- HERO -->
+    <section class="xpy-hero">
+        <div class="xpy-hero-content">
+            <div class="xpy-badge">
+                <i class="fas fa-star"></i> Welcome to the future of social
+            </div>
+
+            <h1 class="xpy-title">
+                Your <span class="xpy-highlight">Social Universe</span><br>
+                Awaits You
+            </h1>
+
+            <p class="xpy-subtitle">
+                XAPYX is where connections thrive, conversations flow, 
+                and communities grow organically in a vibrant digital cosmos.
+            </p>
+
+            
+
+            <!-- Flip Clock Counter -->
+            <div class="xpy-counter-flip">
+                <span class="xpy-counter-icon"><i class="fas fa-users"></i></span>
+                <span class="xpy-counter-label">Explorers</span>
+                <span class="xpy-flip-digits" id="xpyFlipDigits">
+                    <span class="xpy-flip-digit">0</span>
+                    <span class="xpy-flip-digit">0</span>
+                    <span class="xpy-flip-digit">0</span>
+                    <span class="xpy-flip-digit">0</span>
+                    <span class="xpy-flip-digit">0</span>
+                    <span class="xpy-flip-digit">0</span>
+                </span>
+            </div>
+<!-- Latest User Notification -->
+            <div class="xpy-latest-user" id="xpyLatestUser">
+                <span class="xpy-latest-icon"><i class="fas fa-user-plus"></i></span>
+                <span class="xpy-latest-text">
+                    {% if latest_user %}
+                        <strong>@{{ latest_user.username }}</strong> just entered the Universe
+                        <span class="xpy-latest-time">• {{ latest_user.created_at|date:"H:i" }}</span>
+                    {% else %}
+                        <strong>Be the first</strong> to enter the Universe!
+                    {% endif %}
+                </span>
+            </div>
+            <!-- Shout Ticker -->
+            <div class="xpy-ticker-section">
+                <div class="xpy-ticker" id="xpyTicker">
+                    {% for s in shouts %}
+                        <div class="xpy-ticker-item">
+                            {% if s.user.picture %}
+                                <img loading="lazy" src="https://s3.eu-west-1.amazonaws.com/xapyx.com-media/uploads/{{ s.user.picture }}" alt="" onerror="this.onerror=null; this.src='{{ default_avatar }}';">
+                            {% else %}
+                                <img loading="lazy" src="{{ default_avatar }}" alt="">
+                            {% endif %}
+                            <span><strong>@{{ s.user.username }}</strong> {{ s.message|truncatechars:36 }}</span>
+                            <span class="xpy-shout-time">{{ s.created_at|date:"H:i" }}</span>
+                        </div>
+                    {% endfor %}
+                    {% for s in shouts %}
+                        <div class="xpy-ticker-item">
+                            {% if s.user.picture %}
+                                <img loading="lazy" src="https://s3.eu-west-1.amazonaws.com/xapyx.com-media/uploads/{{ s.user.picture }}" alt="" onerror="this.onerror=null; this.src='{{ default_avatar }}';">
+                            {% else %}
+                                <img loading="lazy" src="{{ default_avatar }}" alt="">
+                            {% endif %}
+                            <span><strong>@{{ s.user.username }}</strong> {{ s.message|truncatechars:36 }}</span>
+                            <span class="xpy-shout-time">{{ s.created_at|date:"H:i" }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+                <span class="xpy-live-dot"></span>
+            </div>
+
+            <!-- Actions -->
+            <div class="xpy-actions">
+                <a href="/signup/" class="xpy-btn xpy-btn-primary">
+                    <i class="fas fa-rocket"></i> Join Free
+                </a>
+                <a href="/login/" class="xpy-btn xpy-btn-secondary">
+                    <i class="fas fa-sign-in-alt"></i> Sign In
+                </a>
+            </div>
+
+            <!-- Divider & Google -->
+            <div class="xpy-divider">
+                <span>or continue with</span>
+            </div>
+
+            <button class="xpy-google-btn" id="xpyGoogleBtn">
+                <svg class="xpy-google-icon" viewBox="0 0 48 48">
+                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                </svg>
+                Continue with Google
+            </button>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="xpy-footer">
+        <span>&copy; {% now "Y" %} XAPYX.</span>
+        <a href="/privacy/">Privacy Policy</a>
+        <a href="/guidelines/">Community Guidelines</a>
+        <a href="/terms/">Terms &amp; Conditions</a>
+        <a href="/contact/">Contact</a>
+    </footer>
+
+    <script>
+    (function() {
+        'use strict';
+
+        // ============================================================
+        // STARS
+        // ============================================================
+        function createStars() {
+            var container = document.getElementById('xpyStars');
+            if (!container) return;
+            container.innerHTML = '';
+            var count = window.innerWidth < 480 ? 80 : window.innerWidth < 768 ? 120 : 200;
+            for (var i = 0; i < count; i++) {
+                var star = document.createElement('div');
+                star.className = 'xpy-star';
+                var size = Math.random() * 3 + 0.5;
+                star.style.cssText =
+                    'width:' + size + 'px;height:' + size + 'px;' +
+                    'left:' + (Math.random() * 100) + '%;top:' + (Math.random() * 100) + '%;' +
+                    '--xpy-d:' + ((Math.random() * 4 + 1.5).toFixed(1)) + 's;' +
+                    'animation-delay:' + ((Math.random() * 6).toFixed(1)) + 's;';
+                container.appendChild(star);
+            }
+        }
+
+        // ============================================================
+        // SHOOTING STARS
+        // ============================================================
+        function setupShootingStars() {
+            var stars = [
+                document.getElementById('xpyShootingStar1'),
+                document.getElementById('xpyShootingStar2'),
+                document.getElementById('xpyShootingStar3')
+            ];
+            
+            var configs = [
+                { delay: 2, duration: 3.5, x: 15, y: 10 },
+                { delay: 8, duration: 3, x: 60, y: 20 },
+                { delay: 14, duration: 4, x: 35, y: 5 }
+            ];
+            
+            stars.forEach(function(star, index) {
+                if (!star) return;
+                var config = configs[index];
+                star.style.cssText = 
+                    'left:' + config.x + '%;top:' + config.y + '%;' +
+                    'animation-delay:' + config.delay + 's;' +
+                    'animation-duration:' + config.duration + 's;' +
+                    'opacity:0;';
+                
+                var trail = star.querySelector('.xpy-trail');
+                if (trail) {
+                    trail.style.cssText = 
+                        'position:absolute;top:50%;right:100%;height:2px;width:120px;' +
+                        'transform:translateY(-50%);border-radius:2px;' +
+                        'background:linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,0.9));';
+                }
+            });
+        }
+
+        // ============================================================
+        // FLIP CLOCK COUNTER
+        // ============================================================
+        var flipDigits = document.getElementById('xpyFlipDigits');
+        var currentValue = 0;
+        var targetValue = {{ user_count }};
+        var digits = flipDigits.querySelectorAll('.xpy-flip-digit');
+
+        function setDigits(value) {
+            var str = String(value).padStart(6, '0');
+            for (var i = 0; i < 6; i++) {
+                digits[i].textContent = str[i];
+            }
+        }
+
+        function animateToValue(newValue, duration) {
+            var startValue = currentValue;
+            var startTime = null;
+            var oldStr = String(startValue).padStart(6, '0');
+            var newStr = String(newValue).padStart(6, '0');
+            
+            var firstDiff = -1;
+            for (var i = 0; i < 6; i++) {
+                if (oldStr[i] !== newStr[i]) {
+                    firstDiff = i;
+                    break;
+                }
+            }
+            
+            if (firstDiff === -1) return;
+            
+            function animateDigits(timestamp) {
+                if (!startTime) startTime = timestamp;
+                var progress = Math.min((timestamp - startTime) / duration, 1);
+                var eased = 1 - Math.pow(1 - progress, 3);
+                
+                var currentVal = Math.floor(startValue + (newValue - startValue) * eased);
+                var currentStr = String(currentVal).padStart(6, '0');
+                
+                for (var i = firstDiff; i < 6; i++) {
+                    if (digits[i].textContent !== currentStr[i]) {
+                        digits[i].textContent = currentStr[i];
+                        digits[i].classList.remove('xpy-flip');
+                        void digits[i].offsetWidth;
+                        digits[i].classList.add('xpy-flip');
+                    }
+                }
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animateDigits);
+                } else {
+                    setDigits(newValue);
+                    currentValue = newValue;
+                    
+                    if (newValue - startValue >= 3) {
+                        confetti({
+                            particleCount: 20,
+                            spread: 30,
+                            origin: { y: 0.4, x: 0.5 },
+                            colors: ['#ff8c00', '#ff5500', '#8b5cf6', '#ffcc66'],
+                            startVelocity: 8,
+                            decay: 0.9,
+                            ticks: 100
+                        });
+                    }
+                }
+            }
+            
+            requestAnimationFrame(animateDigits);
+        }
+
+        // ============================================================
+        // LATEST USER NOTIFICATION
+        // ============================================================
+        var latestUserEl = document.getElementById('xpyLatestUser');
+        var currentLatestUser = '{{ latest_user.username|default:"" }}';
+
+        function updateLatestUser(newUser, timestamp) {
+            if (newUser === currentLatestUser) return;
+            
+            currentLatestUser = newUser;
+            
+            var timeStr = '';
+            if (timestamp) {
+                var date = new Date(timestamp);
+                timeStr = '• ' + date.getHours().toString().padStart(2, '0') + ':' + 
+                         date.getMinutes().toString().padStart(2, '0');
+            }
+            
+            latestUserEl.innerHTML = 
+                '<span class="xpy-latest-icon"><i class="fas fa-user-plus"></i></span>' +
+                '<span class="xpy-latest-text">' +
+                    '<strong>@' + newUser + '</strong> just entered the Universe ' +
+                    (timeStr ? '<span class="xpy-latest-time">' + timeStr + '</span>' : '') +
+                '</span>';
+            
+            // Trigger animation
+            latestUserEl.classList.remove('xpy-latest-update');
+            void latestUserEl.offsetWidth;
+            latestUserEl.classList.add('xpy-latest-update');
+            
+            // Small confetti burst for new user
+            confetti({
+                particleCount: 15,
+                spread: 25,
+                origin: { y: 0.4, x: 0.5 },
+                colors: ['#ff8c00', '#ff5500', '#22c55e'],
+                startVelocity: 6,
+                decay: 0.9,
+                ticks: 80
+            });
+        }
+
+        // ============================================================
+        // CHECK FOR NEW USERS
+        // ============================================================
+        function checkUserCount() {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', '/ajax/user-count/', true);
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    try {
+                        var data = JSON.parse(xhr.responseText);
+                        if (data.success && data.count !== undefined) {
+                            if (data.count > currentValue) {
+                                animateToValue(data.count, 1200);
+                            }
+                        }
+                    } catch(e) {
+                        console.log('Error parsing response');
+                    }
+                }
+            };
+            xhr.send();
+        }
+
+        // ============================================================
+        // CHECK FOR LATEST USER
+        // ============================================================
+        function checkLatestUser() {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', '/ajax/latest-user', true);
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    try {
+                        var data = JSON.parse(xhr.responseText);
+                        if (data.success && data.user && data.user.username) {
+                            var username = data.user.username;
+                            if (username !== currentLatestUser) {
+                                updateLatestUser(username, data.user.created_at);
+                            }
+                        }
+                    } catch(e) {
+                        console.log('Error parsing latest user response');
+                    }
+                }
+            };
+            xhr.send();
+        }
+
+
+        // ============================================================
+        // THEME
+        // ============================================================
+        var themeBtn = document.getElementById('xpyThemeFloat');
+        var body = document.body;
+
+        function setTheme(isLight) {
+            if (isLight) {
+                body.classList.add('xpy-light');
+                if (themeBtn) themeBtn.innerHTML = '<i class="fas fa-sun"></i>';
+                document.querySelector('.xpy-day-elements').style.display = 'block';
+                document.querySelectorAll('.xpy-shooting-star').forEach(function(el) {
+                    el.style.display = 'none';
+                });
+            } else {
+                body.classList.remove('xpy-light');
+                if (themeBtn) themeBtn.innerHTML = '<i class="fas fa-moon"></i>';
+                document.querySelector('.xpy-day-elements').style.display = 'none';
+                document.querySelectorAll('.xpy-shooting-star').forEach(function(el) {
+                    el.style.display = 'block';
+                });
+            }
+            localStorage.setItem('xpy-theme', isLight ? 'light' : 'dark');
+        }
+
+        var saved = localStorage.getItem('xpy-theme');
+        if (saved === 'light') {
+            body.classList.add('xpy-light');
+            document.querySelector('.xpy-day-elements').style.display = 'block';
+            document.querySelectorAll('.xpy-shooting-star').forEach(function(el) {
+                el.style.display = 'none';
+            });
+            if (themeBtn) themeBtn.innerHTML = '<i class="fas fa-sun"></i>';
+        } else {
+            document.querySelector('.xpy-day-elements').style.display = 'none';
+            document.querySelectorAll('.xpy-shooting-star').forEach(function(el) {
+                el.style.display = 'block';
+            });
+            if (themeBtn) themeBtn.innerHTML = '<i class="fas fa-moon"></i>';
+        }
+
+        if (themeBtn) {
+            themeBtn.addEventListener('click', function() {
+                setTheme(!body.classList.contains('xpy-light'));
+            });
+        }
+
+        // ============================================================
+        // GOOGLE BUTTON
+        // ============================================================
+        var googleBtn = document.getElementById('xpyGoogleBtn');
+        if (googleBtn) {
+            googleBtn.addEventListener('click', function() {
+                var btn = this;
+                btn.innerHTML = '<span style="display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.2);border-top:2px solid var(--xpy-primary);border-radius:50%;animation:xpy-spin 1s linear infinite;"></span> Connecting...';
+                btn.disabled = true;
+                setTimeout(function()   {
+                    window.location.href = '/google-auth';
+                }, 400);
+            });
+        }
+
+        // ============================================================
+        // TICKER PAUSE
+        // ============================================================
+        var ticker = document.getElementById('xpyTicker');
+        if (ticker) {
+            ticker.addEventListener('mouseenter', function() {
+                this.style.animationPlayState = 'paused';
+            });
+            ticker.addEventListener('mouseleave', function() {
+                this.style.animationPlayState = 'running';
+            });
+        }
+
+        // ============================================================
+        // LIVE STATS UPDATE
+        // ============================================================
+var landingPollInterval = null;
+
+function fetchLandingLive() {
+    fetch('/ajax/landing-live/')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.success) return;
+
+            // Stats sidebar
+            if (data.stats) {
+                var statMap = {
+                    xpyStatUsers: data.stats.users,
+                    xpyStatShouts: data.stats.shouts,
+                    xpyStatPosts: data.stats.posts,
+                    xpyStatGroups: data.stats.groups,
+                    xpyStatMessages: data.stats.messages,
+                    xpyStatPhotos: data.stats.photos,
+                };
+                Object.keys(statMap).forEach(function(id) {
+                    var el = document.getElementById(id);
+                    if (el) el.textContent = Number(statMap[id]).toLocaleString();
+                });
+            }
+
+            // User count (flip counter)
+            if (typeof data.user_count === 'number' && data.user_count > currentValue) {
+                animateToValue(data.user_count, 1200);
+            }
+
+            // Latest user
+            if (data.latest_user && data.latest_user.username) {
+                if (data.latest_user.username !== currentLatestUser) {
+                    updateLatestUser(data.latest_user.username, data.latest_user.created_at);
+                }
+            }
+
+            // New shouts
+            if (data.new_shouts && data.new_shouts.length > 0) {
+                var ticker = document.getElementById('xpyTicker');
+                var defaultAvatar = '{{ default_avatar }}';
+                var newItems = '';
+
+                data.new_shouts.forEach(function(shout) {
+                    var time = new Date(shout.created_at);
+                    var timeStr = time.getHours().toString().padStart(2, '0') + ':' +
+                                 time.getMinutes().toString().padStart(2, '0');
+                    var imgSrc = shout.user_pic
+                    ? 'https://s3.eu-west-1.amazonaws.com/xapyx.com-media/uploads/' + encodeURIComponent(shout.user_pic)
+                    : defaultAvatar;
+
+                newItems += '<div class="xpy-ticker-item">' +
+                    '<img loading="lazy" src="' + imgSrc + '" alt="" onerror="this.onerror=null; this.src=\'' + defaultAvatar + '\';">' +
+                        '<span><strong>@' + encodeURIComponent(shout.username || '') + '</strong> ' +
+                        encodeURIComponent(shout.message || '').substring(0, 35) +
+                        (shout.message && shout.message.length > 35 ? '...' : '') + '</span>' +
+                        '<span class="xpy-shout-time">' + timeStr + '</span>' +
+                        '</div>';
+                });
+
+                if (newItems) {
+                    var existingItems = ticker.innerHTML;
+                    var items = existingItems.split('</div>');
+                    var halfLength = Math.floor(items.length / 2);
+                    var newTicker = '';
+                    for (var i = 0; i < halfLength - 1; i++) {
+                        if (items[i] && items[i].trim()) {
+                            newTicker += items[i] + '</div>';
+                        }
+                    }
+                    newTicker += newItems + newItems;
+                    ticker.innerHTML = newTicker;
+
+                    var section = document.querySelector('.xpy-ticker-section');
+                    section.style.transition = 'border-color 0.3s ease';
+                    section.style.borderColor = 'var(--xpy-primary)';
+                    setTimeout(function() {
+                        section.style.borderColor = '';
+                    }, 1500);
+                }
+            }
+        })
+        .catch(function() { /* silent fail */ });
+}
+
+function startLandingPolling() {
+    if (landingPollInterval) return;
+    fetchLandingLive();
+    landingPollInterval = setInterval(fetchLandingLive, 30000);
+}
+
+function stopLandingPolling() {
+    if (landingPollInterval) {
+        clearInterval(landingPollInterval);
+        landingPollInterval = null;
+    }
+}
+        // ============================================================
+        // GRAND ENTRANCE CONFETTI
+        // ============================================================
+        function grandEntrance() {
+            confetti({
+                particleCount: 70,
+                spread: 55,
+                origin: { y: 0.5, x: 0.5 },
+                colors: ['#ff8c00', '#ff5500', '#8b5cf6', '#ffcc66', '#60a5fa'],
+                startVelocity: 12,
+                decay: 0.9,
+                ticks: 150,
+                gravity: 0.8
+            });
+            
+            setTimeout(function() {
+                confetti({
+                    particleCount: 40,
+                    angle: 70,
+                    spread: 40,
+                    origin: { x: 0.1, y: 0.4 },
+                    colors: ['#ff8c00', '#8b5cf6', '#ffcc66'],
+                    startVelocity: 10,
+                    decay: 0.9,
+                    ticks: 130
+                });
+            }, 300);
+            
+            setTimeout(function() {
+                confetti({
+                    particleCount: 40,
+                    angle: 110,
+                    spread: 40,
+                    origin: { x: 0.9, y: 0.4 },
+                    colors: ['#ff5500', '#8b5cf6', '#60a5fa'],
+                    startVelocity: 10,
+                    decay: 0.9,
+                    ticks: 130
+                });
+            }, 500);
+        }
+
+        // ============================================================
+        // INIT
+        // ============================================================
+        createStars();
+        setupShootingStars();
+        
+        // Start counter at 0 and animate to target
+        setDigits(0);
+        currentValue = 0;
+        
+        // Animate from 0 to target value over 2 seconds
+        setTimeout(function() {
+            animateToValue(targetValue, 2000);
+        }, 500);
+        
+        // Start live updates
+        setTimeout(startLandingPolling, 3000);
+        
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                stopLandingPolling();
+            } else {
+                startLandingPolling();
+            }
+        } )
+        
+        setTimeout(grandEntrance, 800);
+        
+        window.addEventListener('resize', function() {
+            createStars();
+        });
+
+        // Add spin animation
+        var style = document.createElement('style');
+        style.textContent = `
+            @keyframes xpy-spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+
+    })();
+    </script>
+</body>
+</html>

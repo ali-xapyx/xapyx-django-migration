@@ -1,0 +1,210 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>XAPYX | Login</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#ff8c00">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="XAPYX">
+  <link rel="apple-touch-icon" href="/static/images/icons/icon-192x192.png">
+
+  <!-- Fonts & Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/png" href="/static/images/icons/xapyx_icon.png" />
+
+  <!-- SHARED AUTH STYLES -->
+  <link rel="stylesheet" href="{% static 'css/auth.css' %}?v=1">
+  <!-- LOGIN-SPECIFIC STYLES -->
+  <link rel="stylesheet" href="{% static 'css/login.css' %}?v=1">
+</head>
+<body>
+  <!-- Night Stars -->
+  <div class="xpy-stars" id="xpyStars"></div>
+
+  <!-- Day Orbs -->
+  <div class="xpy-day-orbs">
+    <div class="xpy-orb"></div>
+    <div class="xpy-orb"></div>
+    <div class="xpy-orb"></div>
+    <div class="xpy-orb"></div>
+  </div>
+
+  <!-- Alert Container -->
+  <div class="xpy-alert-container" id="xpyAlertContainer"></div>
+
+  <!-- Server-side error (hidden, JS reads it) -->
+  {% if error %}
+  <div id="xpyServerError" data-message="{{ error }}" style="display:none;">{{ error }}</div>
+  {% endif %}
+
+  <div class="xpy-page">
+
+    <!-- LEFT PANEL -->
+    <div class="xpy-side">
+      <div class="xpy-panel">
+        <h3>📡 Live Activity</h3>
+        <div class="xpy-activity-item">
+          <div class="xpy-avatar" style="background:linear-gradient(135deg,#06b6d4,#3b82f6)">NQ</div>
+          <div>
+            <div class="xpy-activity-text"><strong>NovaQuest</strong> just joined</div>
+            <div class="xpy-activity-time">2 min ago</div>
+          </div>
+        </div>
+        <div class="xpy-activity-item">
+          <div class="xpy-avatar" style="background:linear-gradient(135deg,#ec4899,#8b5cf6)">LV</div>
+          <div>
+            <div class="xpy-activity-text"><strong>LunaVibes</strong> posted a shout</div>
+            <div class="xpy-activity-time">5 min ago</div>
+          </div>
+        </div>
+        <div class="xpy-activity-item">
+          <div class="xpy-avatar" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">SS</div>
+          <div>
+            <div class="xpy-activity-text"><strong>StarStrider</strong> leveled up</div>
+            <div class="xpy-activity-time">8 min ago</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="xpy-panel">
+        <h3>🌌 Universe Stats</h3>
+        <div class="xpy-stat-row"><span>Online Now</span><span class="xpy-stat-value">12.4K</span></div>
+        <div class="xpy-stat-row"><span>Shouts Today</span><span class="xpy-stat-value">48.2K</span></div>
+        <div class="xpy-stat-row"><span>New Members</span><span class="xpy-stat-value">1,842</span></div>
+      </div>
+    </div>
+
+    <!-- CENTER: LOGIN CARD -->
+    <div class="xpy-auth-card">
+      <button class="xpy-theme-btn" id="xpyThemeToggle" type="button" title="Toggle theme">🌙</button>
+
+      <div class="xpy-logo">
+        <div class="xpy-logo-icon">X</div>
+        <h1>XAPYX</h1>
+        <p>Your Social Universe</p>
+      </div>
+
+      <div class="xpy-welcome">
+        <h2>Welcome back</h2>
+        <p>Sign in to continue your journey</p>
+      </div>
+
+      <form id="xpyLoginForm" action="{% url 'login' %}" method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next }}">
+
+        <div class="xpy-form-group">
+          <label for="xpyLoginIdentifier">Username, Email or Phone</label>
+          <div class="xpy-input-wrap">
+            <input type="text"
+                   name="login"
+                   id="xpyLoginIdentifier"
+                   placeholder="Enter your username, email or phone"
+                   required
+                   autofocus
+                   autocomplete="username"
+                   value="{{ login_value }}">
+          </div>
+          <div class="xpy-validation-message" id="xpyLoginIdentifierMessage"></div>
+        </div>
+
+        <div class="xpy-form-group">
+          <label for="xpyLoginPassword">Password</label>
+          <div class="xpy-input-wrap">
+            <input type="password"
+                   name="password"
+                   id="xpyLoginPassword"
+                   placeholder="Enter your password"
+                   required
+                   autocomplete="current-password">
+            <button type="button" class="xpy-password-toggle">
+              <i class="fas fa-eye"></i>
+            </button>
+          </div>
+          <div class="xpy-validation-message" id="xpyLoginPasswordMessage"></div>
+        </div>
+
+        <div class="xpy-forgot">
+          <a href="#" id="xpyForgotLink">Forgot password?</a>
+        </div>
+
+        <button type="submit" class="xpy-btn-primary" id="xpyLoginSubmit">
+          <span>Enter the Universe</span>
+          <i class="fas fa-rocket"></i>
+        </button>
+      </form>
+
+      <div class="xpy-divider">or continue with</div>
+
+      <button type="button" class="xpy-btn-google" id="xpyGoogleBtn">
+        <svg class="xpy-google-icon" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        Sign in with Google
+      </button>
+
+      <div class="xpy-signup">
+        Don't have an account? <a href="{% url 'signup' %}{% if next %}?next={{ next|urlencode }}{% endif %}">Create Account</a>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="xpy-side">
+      <div class="xpy-panel">
+        <h3>🪐 Your Orbit</h3>
+        <div class="xpy-orbit-mini">
+          <div class="xpy-planet"></div>
+        </div>
+        <div style="text-align:center;font-size:13px;color:var(--xpy-text-secondary);margin-bottom:8px;">
+          Orbit Strength <strong style="color:#22c55e;">87%</strong>
+        </div>
+        <div style="height:6px;background:rgba(128,128,128,0.15);border-radius:10px;overflow:hidden;">
+          <div style="height:100%;width:87%;background:linear-gradient(90deg,#22c55e,#ff8c00);"></div>
+        </div>
+      </div>
+
+      <div class="xpy-panel">
+        <h3>🔥 Trending</h3>
+        <div class="xpy-activity-item">
+          <div style="font-size:18px;">🚀</div>
+          <div>
+            <div class="xpy-activity-text"><strong>#XAPYXUpdate</strong></div>
+            <div class="xpy-activity-time">12.6K posts</div>
+          </div>
+        </div>
+        <div class="xpy-activity-item">
+          <div style="font-size:18px;">🌌</div>
+          <div>
+            <div class="xpy-activity-text"><strong>#SpaceExploration</strong></div>
+            <div class="xpy-activity-time">8.9K posts</div>
+          </div>
+        </div>
+        <div class="xpy-activity-item">
+          <div style="font-size:18px;">✨</div>
+          <div>
+            <div class="xpy-activity-text"><strong>#DigitalUniverse</strong></div>
+            <div class="xpy-activity-time">6.3K posts</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SHARED AUTH JS -->
+  <script src="{% static 'js/auth.js' %}?v=1"></script>
+  <!-- LOGIN-SPECIFIC JS -->
+  <script src="{% static 'js/login.js' %}?v=1"></script>
+</body>
+</html>

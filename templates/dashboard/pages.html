@@ -1,0 +1,488 @@
+{% extends "dashboard/base_dashboard.html" %}
+{% load static %}
+
+{% block title %}Pages | XAPYX{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/pages.css' %}?v=2">
+{% endblock %}
+
+{% block content %}
+<!-- COSMIC STARS BACKGROUND -->
+<div class="xpy-stars-bg" id="xpyStarsBg"></div>
+
+{% csrf_token %}
+
+<div id="dashboardContainer">
+  <div class="dashboard-inner">
+    <div class="dashboard-flex">
+
+      <!-- MAIN CONTENT -->
+      <div class="dashboard-main">
+        
+        <!-- Page Header -->
+        <div class="page-header">
+          <div class="header-content">
+            <div class="header-left">
+              <h1>
+                <span class="header-icon"><i class="bi bi-file-earmark-text"></i></span>
+                Pages
+              </h1>
+              <p class="subtitle">Join communities, share ideas, and connect with like-minded people</p>
+            </div>
+            <div class="header-actions" style="display:flex; gap:8px;">
+              <a href="{% url 'page_inbox' %}" class="btn-create-page" id="inboxStubBtn"
+                 style="background:rgba(var(--xpy-primary-rgb),0.12);
+                        color:var(--xpy-primary);box-shadow:none;
+                        border:1px solid rgba(var(--xpy-primary-rgb),0.2);
+                        text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+                <i class="fas fa-inbox"></i> Inbox
+              </a>
+              <button class="btn-create-page" data-bs-toggle="modal" data-bs-target="#createPageModal">
+                <i class="bi bi-plus-circle"></i> Create Page
+              </button>
+            </div>
+          </div>
+          
+          <!-- Stats -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon"><i class="bi bi-file-earmark-text"></i></div>
+              <div class="stat-info">
+                <h3>{{ pages|length }}</h3>
+                <p>Total Pages</p>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon"><i class="bi bi-chat-dots"></i></div>
+              <div class="stat-info">
+                <h3>{{ total_posts }}</h3>
+                <p>Total Posts</p>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon"><i class="bi bi-person-check"></i></div>
+              <div class="stat-info">
+                <h3>{{ followed_count }}</h3>
+                <p>Pages Followed</p>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon"><i class="bi bi-people"></i></div>
+              <div class="stat-info">
+                <h3>{{ total_followers }}</h3>
+                <p>Total Followers</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter Section -->
+        <div class="filter-section">
+          <div class="filter-tabs">
+            <button class="filter-tab active" data-filter="all">All Pages</button>
+            <button class="filter-tab" data-filter="following">Following</button>
+            <button class="filter-tab" data-filter="my">My Pages</button>
+          </div>
+          <div class="search-box">
+            <i class="bi bi-search"></i>
+            <input type="text" id="searchPages" placeholder="Search pages...">
+          </div>
+        </div>
+
+        <!-- Mobile Create Button -->
+        <div class="mobile-create-container d-lg-none" id="mobileCreateContainer" style="display: none;">
+          <button class="mobile-create-btn" data-bs-toggle="modal" data-bs-target="#createPageModal">
+            <i class="bi bi-plus-circle"></i> Create New Page
+          </button>
+        </div>
+
+        <!-- Pages Grid -->
+        <div id="pagesContainer" class="pages-grid">
+          {% if not pages %}
+            <div class="empty-state">
+              <div class="empty-icon">
+                <i class="bi bi-file-earmark-text"></i>
+              </div>
+              <h3>No pages yet</h3>
+              <p>Be the first to create a page and build a community!</p>
+              <button class="btn" data-bs-toggle="modal" data-bs-target="#createPageModal">
+                <i class="bi bi-plus-circle"></i> Create First Page
+              </button>
+            </div>
+          {% else %}
+            {% for page in pages %}
+              <div class="page-card" 
+                   data-page-id="{{ page.id }}"
+                   data-following="{{ page.is_following|yesno:'1,0' }}"
+                   data-creator="{{ page.creator_id }}"
+                   data-name="{{ page.title|escape }}"
+                   data-posts="{{ page.post_count }}">
+                
+                <!-- Cover Image -->
+                <div class="page-cover">
+                  <img src="{{ page.cover_image_url }}" alt="{{ page.title|escape }} Cover">
+                  <div class="page-status-badge {% if page.is_following %}following{% else %}public{% endif %}">
+                    {% if page.is_following %}Following{% else %}Public{% endif %}
+                  </div>
+                </div>
+                
+                <!-- Page Header -->
+                <div class="page-header-content">
+                  <div class="page-profile">
+                    <img src="{{ page.profile_image_url }}" alt="{{ page.title|escape }}">
+                  </div>
+                  <div class="page-info">
+                    <h3 class="page-title">
+                      {{ page.title }}
+                      {% if page.is_creator %}
+                        <span class="creator-badge"><i class="bi bi-star-fill"></i> Creator</span>
+                      {% endif %}
+                    </h3>
+                    <p class="page-description">
+                      {{ page.description|default:"No description" }}
+                    </p>
+                    <div class="page-meta">
+                      <div class="page-creator">
+                        <img src="{{ page.creator_picture_url }}" alt="{{ page.creator_name|escape }}">
+                        <span>By {{ page.creator_name }}</span>
+                      </div>
+                      <div class="page-activity">
+                        <i class="bi bi-clock"></i>
+                        <span>{{ page.last_activity_formatted }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Page Stats -->
+                <div class="page-stats">
+                  <div class="stat-item">
+                    <i class="bi bi-people"></i>
+                    <span>{{ page.follower_count }} followers</span>
+                  </div>
+                  <div class="stat-item">
+                    <i class="bi bi-chat"></i>
+                    <span>{{ page.post_count }} posts</span>
+                  </div>
+                  <div class="stat-item">
+                    <i class="bi bi-heart"></i>
+                    <span>0 likes</span>
+                  </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="page-actions">
+                  {% if page.is_creator %}
+                    <div class="creator-actions">
+                      <button class="btn btn-edit-page"
+                              data-page-id="{{ page.id }}"
+                              data-title="{{ page.title|escape }}"
+                              data-description="{{ page.description|escape }}"
+                              data-profile-image="{{ page.profile_image_url }}"
+                              data-cover-image="{{ page.cover_image_url }}">
+                        <i class="bi bi-pencil"></i> Edit
+                      </button>
+                      <button class="btn btn-delete-page"
+                              data-page-id="{{ page.id }}">
+                        <i class="bi bi-trash"></i> Delete
+                      </button>
+                    </div>
+                  {% else %}
+                    <button class="btn btn-follow-page {% if page.is_following %}following{% endif %}" 
+                            data-page-id="{{ page.id }}"
+                            data-following="{{ page.is_following|yesno:'1,0' }}">
+                      <i class="bi bi-{% if page.is_following %}check{% else %}plus{% endif %}"></i>
+                      {% if page.is_following %}Following{% else %}Follow{% endif %}
+                    </button>
+                  {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          {% endif %}
+        </div>
+      </div><!-- /.dashboard-main -->
+
+      <!-- RIGHT WIDGETS -->
+      <div class="pages-widgets">
+        
+        <!-- Page Stats Widget -->
+        <div class="widget-card">
+          <div class="widget-header">
+            <h6><i class="bi bi-bar-chart me-2"></i> Page Stats</h6>
+            <div class="widget-icon"><i class="bi bi-file-earmark-text"></i></div>
+          </div>
+          <div class="page-stats-grid">
+            <div class="page-stat-item">
+              <span class="stat-icon"><i class="bi bi-file-earmark-text"></i></span>
+              <div class="stat-number">{{ pages|length }}</div>
+              <div class="stat-label">Pages</div>
+            </div>
+            <div class="page-stat-item">
+              <span class="stat-icon"><i class="bi bi-person-check" style="color:var(--success-color);"></i></span>
+              <div class="stat-number">{{ followed_count }}</div>
+              <div class="stat-label">Followed</div>
+            </div>
+            <div class="page-stat-item">
+              <span class="stat-icon"><i class="bi bi-chat-dots" style="color:var(--xpy-primary);"></i></span>
+              <div class="stat-number">{{ total_posts }}</div>
+              <div class="stat-label">Posts</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Popular Pages Widget -->
+        {% if popular_pages %}
+        <div class="widget-card">
+          <div class="widget-header">
+            <h6><i class="bi bi-fire me-2"></i> Popular Pages</h6>
+            <div class="widget-icon"><i class="bi bi-trophy"></i></div>
+          </div>
+          {% for page in popular_pages %}
+            <div class="popular-page-item" onclick="window.location.href='/pages/{{ page.id }}/'">
+              <span class="pr-rank">#{{ forloop.counter }}</span>
+              <img src="{{ page.profile_image_url }}" class="pr-avatar" alt="">
+              <div class="pr-info">
+                <div class="pr-name">{{ page.title }}</div>
+                <div class="pr-followers"><i class="bi bi-people"></i> {{ page.follower_count }} followers</div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Recent Pages Widget -->
+        {% if recent_pages %}
+        <div class="widget-card">
+          <div class="widget-header">
+            <h6><i class="bi bi-clock-history me-2"></i> Recent Pages</h6>
+            <div class="widget-icon"><i class="bi bi-clock"></i></div>
+          </div>
+          {% for page in recent_pages %}
+            <div class="recent-page-item" onclick="window.location.href='/pages/{{ page.id }}/'">
+              <img src="{{ page.profile_image_url }}" class="rr-avatar" alt="">
+              <div class="rr-info">
+                <div class="rr-name">{{ page.title }}</div>
+                <div class="rr-activity">
+                  {{ page.last_activity_formatted }}
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Quick Actions Widget -->
+        <div class="widget-card">
+          <div class="widget-header">
+            <h6><i class="bi bi-lightning me-2"></i> Quick Actions</h6>
+            <div class="widget-icon"><i class="bi bi-plus"></i></div>
+          </div>
+          <div class="quick-actions">
+            <button class="quick-action-btn" data-bs-toggle="modal" data-bs-target="#createPageModal">
+              <i class="bi bi-plus-circle"></i> New Page
+            </button>
+            <a href="/friends/" class="quick-action-btn">
+              <i class="bi bi-people-fill"></i> Friends
+            </a>
+            <a href="/chat/" class="quick-action-btn">
+              <i class="bi bi-chat"></i> Messages
+            </a>
+            <a href="/user/{{ user.username }}/" class="quick-action-btn">
+              <i class="bi bi-person"></i> Profile
+            </a>
+          </div>
+        </div>
+
+        <!-- Profile Widget -->
+        <div class="widget-card">
+          <div class="widget-header">
+            <h6><i class="bi bi-person-badge me-2"></i> Your Orbit</h6>
+            <div class="widget-icon"><i class="bi bi-id-card"></i></div>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px; padding:4px 0;">
+            <img src="{% if user.picture %}https://s3.eu-west-1.amazonaws.com/xapyx.com-media/uploads/{{ user.picture }}{% else %}{% static 'images/avatars/default.png' %}{% endif %}" style="width:48px; height:48px; border-radius:50%; object-fit:cover; border:3px solid var(--xpy-primary);">
+            <div>
+              <div style="font-weight:700; color:var(--xpy-text); font-size:0.95rem;">{{ user.name }}</div>
+              <div style="font-size:0.7rem; color:var(--xpy-text-muted);">@{{ user.username }}</div>
+              <div style="font-size:0.6rem; color:var(--xpy-primary); margin-top:2px;">
+                <i class="bi bi-file-earmark-text"></i> {{ followed_count }} followed
+              </div>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; margin-top:8px;">
+            <a href="/user/{{ user.username }}/" class="quick-action-btn" style="flex:1;">
+              <i class="bi bi-eye"></i> View
+            </a>
+            <a href="/settings/" class="quick-action-btn" style="flex:1;">
+              <i class="bi bi-pen"></i> Edit
+            </a>
+          </div>
+        </div>
+
+      </div><!-- /.pages-widgets -->
+
+    </div><!-- /.dashboard-flex -->
+  </div><!-- /.dashboard-inner -->
+</div><!-- /#dashboardContainer -->
+
+<!-- Create Page Modal: #createPageModal -->
+<div class="modal fade" id="createPageModal" tabindex="-1" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-plus-circle-fill me-2" style="color:var(--xpy-primary);"></i>Create New Page</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="createPageForm" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Page Title <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" name="title" placeholder="Give your page a name..." required>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <textarea class="form-control" name="description" rows="5" 
+                      maxlength="500" placeholder="Tell people what your page is about..."></textarea>
+            <small class="form-text">Maximum 500 characters</small>
+          </div>
+          
+          <div class="row g-4 mt-2">
+            <div class="col-md-6">
+              <label class="form-label">Profile Image</label>
+              <div class="file-upload-area">
+                <div class="upload-preview" id="previewProfileImage" onclick="document.getElementById('profileImageInput').click();">
+                  <i class="bi bi-camera"></i>
+                  <span>Click to upload profile image</span>
+                  <small>Recommended: 400&times;400px (Max 5MB)</small>
+                </div>
+                <input type="file" class="d-none" name="profile_image" accept="image/jpeg,image/png,image/gif,image/webp" id="profileImageInput">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Cover Image</label>
+              <div class="file-upload-area">
+                <div class="upload-preview" id="previewCoverImage" onclick="document.getElementById('coverImageInput').click();">
+                  <i class="bi bi-image"></i>
+                  <span>Click to upload cover image</span>
+                  <small>Recommended: 1500&times;500px (Max 5MB)</small>
+                </div>
+                <input type="file" class="d-none" name="cover_image" accept="image/jpeg,image/png,image/gif,image/webp" id="coverImageInput">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="createPageSubmitBtn">Create Page</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Page Modal: #editPageModal -->
+<div class="modal fade" id="editPageModal" tabindex="-1" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-pencil me-2" style="color:var(--xpy-primary);"></i>Edit Page</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="editPageForm" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="page_id" id="editPageId">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Page Title <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" name="title" id="editPageTitle" required>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <textarea class="form-control" name="description" id="editPageDescription" rows="5"></textarea>
+          </div>
+          
+          <div class="row g-4 mt-2">
+            <div class="col-md-6">
+              <label class="form-label">Current Profile Image</label>
+              <div class="current-image">
+                <img id="currentProfileImage" src="" alt="Current">
+              </div>
+              <label class="form-label">Update Profile Image</label>
+              <div class="file-upload-area">
+                <div class="upload-preview" id="editPreviewProfileImage" onclick="document.getElementById('editProfileImageInput').click();">
+                  <i class="bi bi-arrow-repeat"></i>
+                  <span>Click to change profile image</span>
+                  <small>Recommended: 400&times;400px</small>
+                </div>
+                <input type="file" class="d-none" name="profile_image" accept="image/jpeg,image/png,image/gif,image/webp" id="editProfileImageInput">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Current Cover Image</label>
+              <div class="current-image">
+                <img id="currentCoverImage" src="" alt="Current">
+              </div>
+              <label class="form-label">Update Cover Image</label>
+              <div class="file-upload-area">
+                <div class="upload-preview" id="editPreviewCoverImage" onclick="document.getElementById('editCoverImageInput').click();">
+                  <i class="bi bi-arrow-repeat"></i>
+                  <span>Click to change cover image</span>
+                  <small>Recommended: 1500&times;500px</small>
+                </div>
+                <input type="file" class="d-none" name="cover_image" accept="image/jpeg,image/png,image/gif,image/webp" id="editCoverImageInput">
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-text mt-3">
+            <i class="bi bi-info-circle"></i> Leave images empty to keep current ones. Max file size: 5MB
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="editPageSubmitBtn">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal: #deleteConfirmModal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-body text-center p-5">
+        <div class="empty-icon" style="margin:0 auto 16px; background:rgba(239,68,68,0.1);">
+          <i class="bi bi-exclamation-triangle text-danger" style="font-size:2.5rem;"></i>
+        </div>
+        <h4 class="mb-3" style="color:var(--xpy-text);">Delete Page?</h4>
+        <p style="color:var(--xpy-text-muted);">All posts, followers, and data will be permanently deleted. This action cannot be undone.</p>
+      </div>
+      <div class="modal-footer justify-content-center border-0 pt-0 pb-4">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Alert Container -->
+<div id="alertContainer" class="alert-container"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  window.XAPYX_PAGES = {
+    currentUser: {
+      id: {{ user.id|default:"null" }},
+      name: "{{ user.name|escapejs }}"
+    }
+  };
+</script>
+
+<script src="{% static 'js/pages.js' %}?v=3"></script>
+{% endblock %}

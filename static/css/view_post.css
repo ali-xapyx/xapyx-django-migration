@@ -1,0 +1,83 @@
+/* ============================================================
+   XAPYX — View Post page additions
+   Only declares classes NOT present in dashboard.css.
+   Everything else reuses dashboard.css as-is.
+   ============================================================ */
+
+/* Author widget (right panel) */
+.vp-author-widget {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 0;
+}
+
+.vp-author-widget img {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--xpy-primary);
+    flex-shrink: 0;
+}
+
+.vp-author-widget .author-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.vp-author-widget .author-name {
+    font-weight: 700;
+    color: var(--xpy-text);
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.vp-author-widget .author-username {
+    font-size: 0.7rem;
+    color: var(--xpy-text-muted);
+}
+
+/* Your Orbit widget (right panel) */
+.vp-profile-widget {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 0;
+}
+
+.vp-profile-widget img {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--xpy-primary);
+    flex-shrink: 0;
+}
+
+.vp-profile-widget .profile-info-col {
+    flex: 1;
+    min-width: 0;
+}
+
+.vp-profile-widget .profile-name {
+    font-weight: 700;
+    color: var(--xpy-text);
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.vp-profile-widget .profile-username {
+    font-size: 0.7rem;
+    color: var(--xpy-text-muted);
+}
+
+.vp-profile-widget .profile-stats {
+    font-size: 0.6rem;
+    color: var(--xpy-primary);
+    margin-top: 2px;
+}

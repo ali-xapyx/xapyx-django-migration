@@ -1,0 +1,190 @@
+{% extends "dashboard/base_dashboard.html" %}
+{% load static %}
+
+{% block title %}{{ room_name }} | Chat Room | XAPYX{% endblock %}
+
+{% block content %}
+<div id="dashboardContainer" class="no-right-widgets">
+  <div class="dashboard-inner chatroom-chat-inner">
+    <div class="dashboard-flex chatroom-chat-flex">
+      <div class="dashboard-main chatroom-chat-dashboard-main">
+
+        <!-- Off-canvas backdrop for mobile member list -->
+        <div class="chatroom-backdrop" id="chatroomBackdrop" onclick="closeMemberList()"></div>
+
+        <div class="chatroom-chat-wrap">
+
+          <!-- LEFT COLUMN: Room Members List (280px) -->
+          <aside class="chatroom-members-sidebar" id="chatroomMembersSidebar">
+            <div class="chatroom-sidebar-header">
+              <div class="d-flex justify-content-between align-items-center">
+                <h3 class="chatroom-sidebar-title">
+                  <i class="fas fa-users me-2 text-primary"></i>
+                  <span>Members</span>
+                </h3>
+                <button type="button" class="chatroom-close-sidebar-btn d-md-none" onclick="closeMemberList()" aria-label="Close members list">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+              <div class="mt-1">
+                <span class="chatroom-member-count-badge" id="memberCountBadge">Loading...</span>
+              </div>
+            </div>
+
+            <!-- Members Scrollable List -->
+            <div class="chatroom-members-list" id="membersList">
+              <div class="py-4 text-center text-muted">
+                <i class="fas fa-spinner fa-spin me-1"></i> Loading members...
+              </div>
+            </div>
+          </aside>
+
+          <!-- RIGHT COLUMN: Chat Stream Panel -->
+          <section class="chatroom-main-panel" id="chatroomPanel">
+
+            <!-- Chat Header -->
+            <header class="chatroom-header">
+              <div class="d-flex align-items-center gap-3">
+                <a href="/chatrooms/" class="btn-chatroom-back" title="Back to Chat Rooms">
+                  <i class="fas fa-arrow-left"></i>
+                </a>
+                <button type="button" class="chatroom-toggle-members-btn d-md-none" onclick="openMemberList()" aria-label="Toggle members list" title="Members">
+                  <i class="fas fa-users"></i>
+                </button>
+                <div class="chatroom-header-avatar-wrap">
+                  {% if room_pic %}
+                  <img src="{{ room_pic }}" class="chatroom-header-avatar" alt="{{ room_name }}">
+                  {% else %}
+                  <div class="chatroom-header-avatar-placeholder">{{ room_name|slice:":1"|upper }}</div>
+                  {% endif %}
+                </div>
+                <div class="chatroom-header-info">
+                  <h2 class="chatroom-header-name mb-0">{{ room_name }}</h2>
+                  <div class="chatroom-header-meta">
+                    <span class="text-muted small">{{ room_desc|default:"Public discussion room" }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="chatroom-header-actions">
+                {% if is_creator %}
+                <button type="button" class="btn btn-outline-danger btn-sm me-2" id="clearHistoryBtn" title="Clear message history">
+                  <i class="fas fa-eraser me-1"></i> Clear
+                </button>
+                {% endif %}
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="leaveRoomBtn" title="Leave room">
+                  <i class="fas fa-door-open me-1"></i> Leave
+                </button>
+              </div>
+            </header>
+
+            <!-- Messages Stream Area -->
+            <div class="chatroom-messages-container" id="chatroomMessagesContainer">
+              <div class="py-5 text-center text-muted" id="chatroomLoadingState">
+                <i class="fas fa-spinner fa-spin fa-2x text-primary mb-2"></i>
+                <p>Loading messages...</p>
+              </div>
+            </div>
+
+            <!-- Typing indicator area -->
+            <div id="chatroomTypingIndicator" class="chatroom-typing-indicator" style="display: none;">
+              <div class="typing-dots">
+                <span></span><span></span><span></span>
+              </div>
+              <span id="chatroomTypingText" class="chatroom-typing-text">typing...</span>
+            </div>
+
+            <!-- Mention Autocomplete Dropdown Popup -->
+            <div id="mentionDropdown" class="chatroom-mention-dropdown" style="display: none;"></div>
+
+            <!-- Input Area -->
+            <footer class="chatroom-input-area">
+              <!-- Edit message bar -->
+              <div id="chatroomEditBar" class="chatroom-edit-bar" style="display: none;">
+                <div class="chatroom-edit-bar-content">
+                  <i class="fas fa-pencil-alt me-1 text-primary"></i>
+                  <span>Editing message: <strong id="chatroomEditText"></strong></span>
+                </div>
+                <button type="button" class="chatroom-bar-cancel-btn" id="chatroomEditCancelBtn" aria-label="Cancel edit">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+
+              <form id="chatroomMessageForm" class="chatroom-form" onsubmit="return false;">
+                {% csrf_token %}
+                <textarea id="chatroomMessageInput"
+                          class="chatroom-textarea"
+                          rows="1"
+                          placeholder="Type a message (use @ to mention)..."
+                          maxlength="4000"
+                          aria-label="Room message text"></textarea>
+                <button type="submit" class="chatroom-send-btn" id="chatroomSendBtn" title="Send message" aria-label="Send message">
+                  <i class="fas fa-paper-plane"></i>
+                </button>
+              </form>
+            </footer>
+
+          </section>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- REPORT MESSAGE MODAL -->
+<div class="modal fade chatrooms-modal" id="reportMessageModal" tabindex="-1" aria-labelledby="reportMessageModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content chatrooms-modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="reportMessageModalLabel">
+          <i class="fas fa-flag me-2 text-danger"></i>Report Message
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="reportMessageForm" onsubmit="return false;">
+        {% csrf_token %}
+        <input type="hidden" id="reportTargetMsgId">
+        <div class="modal-body">
+          <p class="small text-muted mb-2">Select or enter the reason for reporting this message:</p>
+          <div class="mb-3">
+            <select class="form-select form-select-sm" id="reportReasonSelect">
+              <option value="Spam or advertising">Spam or advertising</option>
+              <option value="Harassment or hate speech">Harassment or hate speech</option>
+              <option value="Inappropriate content">Inappropriate content</option>
+              <option value="other">Other reason...</option>
+            </select>
+          </div>
+          <div class="mb-2 d-none" id="reportCustomReasonWrap">
+            <textarea class="form-control form-control-sm" id="reportCustomReason" rows="2" placeholder="Describe the violation..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger btn-sm" id="submitReportBtn">Submit Report</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Safe JSON metadata for chatroom client script -->
+<script id="chatroomConfig" type="application/json">
+{
+  "roomId": {{ room_id }},
+  "currentUserId": {{ request.user.id|default:0 }},
+  "isAdmin": {% if is_admin %}true{% else %}false{% endif %},
+  "isCreator": {% if is_creator %}true{% else %}false{% endif %},
+  "creatorId": {{ creator_id|default:0 }},
+  "firebaseDbUrl": "https://xapyx-chatroom-chat-default-rtdb.firebaseio.com"
+}
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Firebase RTDB SDK for real-time chatroom synchronization -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script src="{% static 'js/chatroom_chat.js' %}?v=2"></script>
+{% endblock %}

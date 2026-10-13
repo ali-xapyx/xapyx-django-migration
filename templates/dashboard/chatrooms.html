@@ -1,0 +1,246 @@
+{% extends "dashboard/base_dashboard.html" %}
+{% load static %}
+
+{% block title %}Chat Rooms | XAPYX{% endblock %}
+
+{% block content %}
+<div id="dashboardContainer" class="no-right-widgets">
+  <div class="dashboard-inner chatrooms-inner">
+    <div class="dashboard-flex chatrooms-flex">
+      <div class="dashboard-main chatrooms-dashboard-main">
+
+        <!-- Page Header -->
+        <div class="chatrooms-header-wrap">
+          <div class="chatrooms-header-left">
+            <h1 class="chatrooms-page-title">
+              <i class="fas fa-comments me-2 text-primary"></i>
+              <span>Chat Rooms</span>
+            </h1>
+            <p class="chatrooms-page-subtitle">Join public discussion spaces or create your own private rooms.</p>
+          </div>
+          <div class="chatrooms-header-right">
+            <button type="button" class="btn btn-primary chatrooms-create-btn" id="openCreateModalBtn">
+              <i class="fas fa-plus me-1"></i>
+              <span>Create Room</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Tabs and Filters Bar -->
+        <div class="chatrooms-nav-bar">
+          <!-- Tabs: All | My Rooms | Joined -->
+          <ul class="chatrooms-tabs" id="chatroomsTabs">
+            <li class="chatrooms-tab-item">
+              <button type="button" class="chatrooms-tab-btn active" data-tab="all">
+                <i class="fas fa-globe me-1"></i> All Rooms
+              </button>
+            </li>
+            <li class="chatrooms-tab-item">
+              <button type="button" class="chatrooms-tab-btn" data-tab="my">
+                <i class="fas fa-crown me-1"></i> My Rooms
+              </button>
+            </li>
+            <li class="chatrooms-tab-item">
+              <button type="button" class="chatrooms-tab-btn" data-tab="joined">
+                <i class="fas fa-user-check me-1"></i> Joined
+              </button>
+            </li>
+          </ul>
+
+          <!-- Filter Controls: Search & Privacy -->
+          <div class="chatrooms-filter-controls">
+            <div class="chatrooms-search-box">
+              <i class="fas fa-search search-icon"></i>
+              <input type="text" id="chatroomsSearchInput" class="form-control" placeholder="Search rooms..." aria-label="Search rooms">
+            </div>
+            <div class="chatrooms-select-box">
+              <select id="chatroomsPrivacyFilter" class="form-select form-select-sm" aria-label="Filter by privacy">
+                <option value="all">All Types</option>
+                <option value="public">Public</option>
+                <option value="private">Private</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat Rooms Grid Container -->
+        <div class="chatrooms-grid-container" id="chatroomsGrid">
+          <div class="chatrooms-loading-state py-5 text-center">
+            <i class="fas fa-spinner fa-spin fa-2x text-primary mb-2"></i>
+            <p class="text-muted">Loading chat rooms...</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CREATE ROOM MODAL -->
+<div class="modal fade chatrooms-modal" id="createRoomModal" tabindex="-1" aria-labelledby="createRoomModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content chatrooms-modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="createRoomModalLabel">
+          <i class="fas fa-plus-circle me-2 text-primary"></i>Create Chat Room
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="createRoomForm" onsubmit="return false;">
+        {% csrf_token %}
+        <div class="modal-body">
+          <!-- Room Name -->
+          <div class="mb-3">
+            <label for="createRoomName" class="form-label">Room Name <span class="text-danger">*</span></label>
+            <div class="position-relative">
+              <input type="text" class="form-control" id="createRoomName" placeholder="e.g. Anime Fans, Tech Talk" maxlength="150" required>
+              <div id="createNameFeedback" class="chatrooms-name-feedback"></div>
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div class="mb-3">
+            <label for="createRoomDesc" class="form-label">Description</label>
+            <textarea class="form-control" id="createRoomDesc" rows="3" placeholder="What is this room about?"></textarea>
+          </div>
+
+          <!-- Privacy -->
+          <div class="row mb-3">
+            <div class="col-6">
+              <label for="createRoomPrivacy" class="form-label">Privacy</label>
+              <select class="form-select" id="createRoomPrivacy">
+                <option value="public" selected>Public (Anyone can join)</option>
+                <option value="private">Private (Invite code needed)</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label for="createRoomLimit" class="form-label">Member Limit</label>
+              <input type="number" class="form-control" id="createRoomLimit" value="20" min="2" max="500">
+            </div>
+          </div>
+
+          <!-- Picture -->
+          <div class="mb-3">
+            <label for="createRoomPicture" class="form-label">Room Picture (Optional)</label>
+            <input type="file" class="form-control" id="createRoomPicture" accept="image/*">
+            <div id="createPicPreviewWrap" class="mt-2 d-none">
+              <img id="createPicPreview" src="" alt="Preview" class="chatrooms-preview-thumb">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="submitCreateRoomBtn">Create Room</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT ROOM MODAL -->
+<div class="modal fade chatrooms-modal" id="editRoomModal" tabindex="-1" aria-labelledby="editRoomModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content chatrooms-modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editRoomModalLabel">
+          <i class="fas fa-cog me-2 text-primary"></i>Edit Chat Room
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="editRoomForm" onsubmit="return false;">
+        {% csrf_token %}
+        <input type="hidden" id="editRoomId">
+        <div class="modal-body">
+          <!-- Room Name -->
+          <div class="mb-3">
+            <label for="editRoomName" class="form-label">Room Name <span class="text-danger">*</span></label>
+            <div class="position-relative">
+              <input type="text" class="form-control" id="editRoomName" maxlength="150" required>
+              <div id="editNameFeedback" class="chatrooms-name-feedback"></div>
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div class="mb-3">
+            <label for="editRoomDesc" class="form-label">Description</label>
+            <textarea class="form-control" id="editRoomDesc" rows="3"></textarea>
+          </div>
+
+          <!-- Privacy & Limit -->
+          <div class="row mb-3">
+            <div class="col-6">
+              <label for="editRoomPrivacy" class="form-label">Privacy</label>
+              <select class="form-select" id="editRoomPrivacy">
+                <option value="public">Public</option>
+                <option value="private">Private</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label for="editRoomLimit" class="form-label">Member Limit</label>
+              <input type="number" class="form-control" id="editRoomLimit" min="2" max="500">
+            </div>
+          </div>
+
+          <!-- Invite code display (if private) -->
+          <div class="mb-3 d-none" id="editInviteCodeWrap">
+            <label class="form-label">Invite Code</label>
+            <div class="input-group">
+              <input type="text" class="form-control" id="editInviteCode" readonly>
+              <button class="btn btn-outline-secondary" type="button" id="copyInviteCodeBtn" title="Copy Code">
+                <i class="fas fa-copy"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Picture -->
+          <div class="mb-3">
+            <label for="editRoomPicture" class="form-label">Change Picture (Optional)</label>
+            <input type="file" class="form-control" id="editRoomPicture" accept="image/*">
+            <div id="editPicPreviewWrap" class="mt-2 d-none">
+              <img id="editPicPreview" src="" alt="Preview" class="chatrooms-preview-thumb">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="submitEditRoomBtn">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- JOIN PRIVATE ROOM MODAL -->
+<div class="modal fade chatrooms-modal" id="joinPrivateModal" tabindex="-1" aria-labelledby="joinPrivateModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content chatrooms-modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="joinPrivateModalLabel">
+          <i class="fas fa-lock me-2 text-warning"></i>Private Room
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="joinPrivateForm" onsubmit="return false;">
+        {% csrf_token %}
+        <input type="hidden" id="joinPrivateRoomId">
+        <div class="modal-body">
+          <p class="small text-muted mb-3" id="joinPrivateRoomNameText">Enter the invite code to join this room.</p>
+          <div class="mb-3">
+            <label for="joinInviteCode" class="form-label">Invite Code</label>
+            <input type="text" class="form-control text-uppercase text-center font-monospace" id="joinInviteCode" placeholder="ABC12345" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm" id="submitJoinPrivateBtn">Join</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/chatrooms.js' %}?v=1"></script>
+{% endblock %}

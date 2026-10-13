@@ -1,0 +1,164 @@
+{% extends "dashboard/base_dashboard.html" %}
+{% load static %}
+
+{% block title %}Chat Roulette | XAPYX{% endblock %}
+
+{% block content %}
+<div id="dashboardContainer" class="no-right-widgets">
+  <div class="dashboard-inner roulette-inner">
+    <div class="dashboard-flex roulette-flex">
+      <div class="dashboard-main roulette-dashboard-main">
+
+        <div class="roulette-box" id="rouletteBox">
+
+          <!-- ============================================================
+               STATE 1: IDLE / LOBBY
+               ============================================================ -->
+          <div id="rouletteIdleState" class="roulette-state-view">
+            <div class="roulette-hero text-center">
+              <div class="roulette-hero-icon-wrap">
+                <div class="roulette-hero-icon">
+                  <i class="fas fa-random"></i>
+                </div>
+              </div>
+              <h1 class="roulette-hero-title">Chat Roulette</h1>
+              <p class="roulette-hero-desc">
+                Connect instantly with a random member of XAPYX. Completely private, anonymous, and ephemeral.
+              </p>
+
+              <div class="roulette-stats-pill my-4" id="rouletteStatsPill">
+                <span class="roulette-pulse-dot"></span>
+                <span id="rouletteOnlineStats">Loading active users...</span>
+              </div>
+
+              <div class="roulette-cta-wrap mt-2">
+                <button type="button" id="startSearchBtn" class="btn btn-primary btn-lg roulette-btn-start">
+                  <i class="fas fa-play me-2"></i>
+                  <span>Start Searching</span>
+                </button>
+              </div>
+
+              <div class="roulette-features-grid mt-5">
+                <div class="roulette-feature-card">
+                  <div class="feature-icon-wrap text-warning">
+                    <i class="fas fa-bolt"></i>
+                  </div>
+                  <h5>Instant Pairing</h5>
+                  <p>In-memory Redis queue connects you atomically without lag.</p>
+                </div>
+                <div class="roulette-feature-card">
+                  <div class="feature-icon-wrap text-info">
+                    <i class="fas fa-user-secret"></i>
+                  </div>
+                  <h5>Private & Anonymous</h5>
+                  <p>Only your display name and avatar are visible in chat.</p>
+                </div>
+                <div class="roulette-feature-card">
+                  <div class="feature-icon-wrap text-danger">
+                    <i class="fas fa-trash-alt"></i>
+                  </div>
+                  <h5>Ephemeral</h5>
+                  <p>All conversation messages evaporate the moment either user leaves.</p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- ============================================================
+               STATE 2: SEARCHING / QUEUE
+               ============================================================ -->
+          <div id="rouletteWaitingState" class="roulette-state-view d-none">
+            <div class="roulette-waiting-hero text-center">
+              <div class="roulette-radar-wrap">
+                <div class="radar-wave wave-1"></div>
+                <div class="radar-wave wave-2"></div>
+                <div class="radar-wave wave-3"></div>
+                <div class="radar-core">
+                  <i class="fas fa-search fa-2x text-primary"></i>
+                </div>
+              </div>
+
+              <h2 class="roulette-waiting-title mt-4">Searching for a partner<span id="rouletteDots">...</span></h2>
+              <p class="roulette-waiting-subtitle text-muted">
+                Looking for an available member in the queue. You will be paired automatically.
+              </p>
+
+              <div class="mt-4">
+                <button type="button" id="stopSearchBtn" class="btn btn-outline-danger roulette-btn-stop">
+                  <i class="fas fa-times me-2"></i>
+                  <span>Stop Searching</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ============================================================
+               STATE 3: MATCHED (ACTIVE CHAT PANEL)
+               ============================================================ -->
+          <div id="rouletteMatchedState" class="roulette-state-view d-none">
+            <div class="roulette-chat-panel">
+
+              <!-- Chat Header -->
+              <header class="roulette-chat-header">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="roulette-avatar-wrap position-relative">
+                    <img id="roulettePartnerAvatar" src="{% static 'images/avatars/default.png' %}" alt="Avatar" class="roulette-partner-avatar">
+                    <span class="chat-online-indicator"></span>
+                  </div>
+                  <div class="roulette-header-info">
+                    <h3 id="roulettePartnerName" class="roulette-header-name">Anonymous User</h3>
+                    <div class="roulette-header-meta">
+                      <span class="badge bg-success-subtle text-success">Connected</span>
+                      <span id="roulettePartnerUsername" class="text-muted ms-1 small">@user</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="roulette-header-actions d-flex align-items-center gap-2">
+                  <button type="button" id="nextChatBtn" class="btn btn-primary btn-sm roulette-btn-next" title="Next Partner">
+                    <i class="fas fa-forward me-1"></i>
+                    <span>Next</span>
+                  </button>
+                  <button type="button" id="leaveChatBtn" class="btn btn-outline-danger btn-sm" title="Leave Chat">
+                    <i class="fas fa-sign-out-alt me-1"></i>
+                    <span>Leave Chat</span>
+                  </button>
+                </div>
+              </header>
+
+              <!-- Messages Stream Container -->
+              <div class="roulette-messages-container" id="rouletteMessagesContainer">
+                <!-- Message rows dynamically populated here -->
+              </div>
+
+              <!-- Scroll to Bottom Floating Button -->
+              <button type="button" id="rouletteScrollBtn" class="roulette-scroll-bottom-btn d-none" aria-label="Scroll to bottom">
+                <i class="fas fa-arrow-down"></i>
+              </button>
+
+              <!-- Chat Input Area -->
+              <footer class="roulette-input-area">
+                <form id="rouletteSendForm" class="d-flex align-items-center gap-2 w-100" onsubmit="return false;">
+                  {% csrf_token %}
+                  <input type="text" id="rouletteMsgInput" class="form-control roulette-msg-input" placeholder="Type a message to your partner..." autocomplete="off">
+                  <button type="submit" id="rouletteSendBtn" class="btn btn-primary roulette-send-btn" aria-label="Send">
+                    <i class="fas fa-paper-plane"></i>
+                  </button>
+                </form>
+              </footer>
+
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/roulette.js' %}?v=2"></script>
+{% endblock %}

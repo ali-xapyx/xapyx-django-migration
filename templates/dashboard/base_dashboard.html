@@ -1,0 +1,546 @@
+
+{% load static %}
+<!DOCTYPE html>
+<html lang="en"
+      data-theme="{{ request.user.theme_mode|default:'light' }}"
+      data-bs-theme="{{ request.user.theme_mode|default:'light' }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>{% block title %}XAPYX{% endblock %}</title>
+
+
+  <!-- External CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="{% static 'images/icons/xapyx_icon.png' %}">
+
+  {% comment %} Firebase {% endcomment %}
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
+  <script>
+      window.shoutboxFirebase = firebase.initializeApp({
+          apiKey: "AIzaSyBm7vfiDWxYp_caWmtRAHqflo3PjpIgNcI",
+          databaseURL: "https://xapyx-shoutbox-default-rtdb.firebaseio.com",
+          // ... other config
+      }, 'shoutbox');
+  </script>
+
+  <!-- Firebase Modular SDK for notifications-->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+  import {
+    getDatabase, ref, onChildAdded, onValue, off,
+    query, orderByKey, limitToLast
+  } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";
+
+  const notificationsConfig = {
+    apiKey: "AIzaSyDYX3xZ_S_0TSCumdAl3b3u5LmI1hzPJ4Q",
+    authDomain: "xapyx-notifications.firebaseapp.com",
+    databaseURL: "https://xapyx-notifications-default-rtdb.firebaseio.com",
+    projectId: "xapyx-notifications",
+    storageBucket: "xapyx-notifications.firebasestorage.app",
+    messagingSenderId: "151754965872",
+    appId: "1:151754965872:web:8512a599c72f1c5640c5b5"
+  };
+
+  try {
+    const app = initializeApp(notificationsConfig, "notifications");
+    const db = getDatabase(app);
+
+    window.notificationsDb       = db;
+    window.firebaseRef           = ref;
+    window.firebaseOnChildAdded  = onChildAdded;
+    window.firebaseOnValue       = onValue;
+    window.firebaseOff           = off;
+    window.firebaseQuery         = query;
+    window.firebaseOrderByKey    = orderByKey;
+    window.firebaseLimitToLast   = limitToLast;
+
+    console.log('✅ Firebase notifications ready');
+  } catch (e) {
+    console.warn('Firebase notifications init failed:', e);
+  }
+</script>
+
+  <!-- Dashboard CSS -->
+  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=14">
+
+  {% block extra_css %}{% endblock %}
+</head>
+<body data-page="{{ active_page|default:'dashboard' }}">
+  <!-- Starfield: two containers (dashboard.js uses xpyStarsBg, sidebar.js uses xpyStars) -->
+  <div class="xpy-stars-bg" id="xpyStarsBg"></div>
+  <div class="xpy-stars" id="xpyStars"></div>
+
+  <!-- ============================================================
+       HEADER
+       ============================================================ -->
+  <header class="main-header">
+      <button type="button" class="header-hamburger" id="headerHamburger" aria-label="Open menu">
+        <i class="bi bi-list"></i>
+      </button>
+      <a href="/feed/" class="logo-link">
+        <div class="inline-svg-logo" id="themeLogo">{{ svg_logo|safe }}</div>
+      </a>
+
+    <div class="header-actions">
+      <!-- Notification Bell -->
+      <div class="notification-wrapper">
+        <div class="notification-trigger" id="notificationTrigger">
+          <i class="fas fa-bell"></i>
+          <span class="notification-badge" style="display:none;">0</span>
+        </div>
+        <div class="notification-panel" id="notificationPanel">
+          <div class="notification-header">
+            <div class="d-flex align-items-center justify-content-between w-100">
+              <h6 class="mb-0 fw-bold">Notifications</h6>
+            </div>
+            <div class="mt-2">
+              <a href="/notifications/">See all →</a>
+            </div>
+          </div>
+          <div class="notification-list" id="notificationList">
+            <div class="notification-item empty">
+              <i class="fas fa-bell-slash me-2"></i>
+              <span>No notifications yet</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Theme Toggle (dark/light) -->
+      <button class="theme-toggle-btn" id="themeToggleBtn" title="Toggle theme">
+        <i class="fas fa-moon" id="themeIcon"></i>
+      </button>
+
+      <!-- Theme Color Picker -->
+      <div class="theme-picker-wrapper">
+        <button class="theme-toggle-btn" id="themeTrigger" title="Theme color">
+          <i class="fas fa-palette"></i>
+        </button>
+        <div class="theme-picker-popup" id="themePickerPopup">
+          <div class="theme-header">
+            <h6 class="theme-title">Theme Color</h6>
+            <button class="theme-close" onclick="closeThemePicker()">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="color-preset-section">
+            <div class="section-label">Quick Colors</div>
+            <div class="color-preset-grid">
+              <div class="color-preset" data-color="#ff8c00" style="background:#ff8c00;"></div>
+              <div class="color-preset" data-color="#3498db" style="background:#3498db;"></div>
+              <div class="color-preset" data-color="#2ecc71" style="background:#2ecc71;"></div>
+              <div class="color-preset" data-color="#e74c3c" style="background:#e74c3c;"></div>
+              <div class="color-preset" data-color="#9b59b6" style="background:#9b59b6;"></div>
+              <div class="color-preset" data-color="#f39c12" style="background:#f39c12;"></div>
+              <div class="color-preset" data-color="#1abc9c" style="background:#1abc9c;"></div>
+              <div class="color-preset" data-color="#e67e22" style="background:#e67e22;"></div>
+              <div class="color-preset" data-color="#d35400" style="background:#d35400;"></div>
+              <div class="color-preset" data-color="#c0392b" style="background:#c0392b;"></div>
+              <div class="color-preset" data-color="#8e44ad" style="background:#8e44ad;"></div>
+              <div class="color-preset" data-color="#FF6B8B" style="background:#FF6B8B;"></div>
+            </div>
+          </div>
+          <div class="custom-color-picker">
+            <label class="section-label">Custom Color</label>
+            <input type="color" id="customColorPicker" class="custom-color-input" value="{{ request.user.theme_color|default:'#ff8c00' }}">
+          </div>
+          <div class="theme-actions">
+            <button class="btn btn-secondary" onclick="resetTheme()">Reset</button>
+            <button class="btn btn-primary" onclick="saveTheme()">Save Theme</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Profile Mini + Dropdown -->
+      <div class="profile-mini" id="profileMini">
+        {% if request.user.picture %}
+          <img src="https://s3.eu-west-1.amazonaws.com/xapyx.com-media/uploads/{{ request.user.picture }}"
+               alt="{{ request.user.name }}"
+               class="avatar-mini-img" width="36" height="36"
+               data-default-avatar="{% static 'images/avatars/default.png' %}">
+        {% else %}
+          <img src="{% static 'images/avatars/default.png' %}"
+               alt="{{ request.user.name }}"
+               class="avatar-mini-img" width="36" height="36">
+        {% endif %}
+        <span>{{ request.user.name|default:request.user.username }} ▾</span>
+      </div>
+      <div id="profileDropdown" class="profile-dropdown">
+        <div class="profile-info">
+          <div class="fw-semibold">{{ request.user.name|default:request.user.username }}</div>
+          <small class="text-muted">@{{ request.user.username }}</small>
+        </div>
+        <a class="dropdown-item" href="/user/{{ request.user.username }}/">
+          <i class="fas fa-user-circle"></i> My Profile
+        </a>  
+        <div class="dropdown-divider"></div>
+        <a class="dropdown-item text-danger" href="#" onclick="document.getElementById('logoutForm').submit(); return false;">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+        <form id="logoutForm" action="{% url 'logout' %}" method="POST" style="display:none;">
+          {% csrf_token %}
+        </form>
+      </div>
+    </div>
+  </header>
+    <!-- ============================================================
+       SIDEBAR
+       ============================================================ -->
+  <nav id="sidebar" class="sidebar">
+    <button class="sidebar-close-btn" id="sidebarCloseBtn" type="button">
+      <i class="fas fa-times"></i>
+    </button>
+
+    <div class="user-card" onclick="window.location.href='/user/{{ request.user.username }}/'">
+      <div class="avatar">
+        {% if request.user.picture %}
+          <img src="https://s3.eu-west-1.amazonaws.com/xapyx.com-media/uploads/{{ request.user.picture }}"
+               alt="{{ request.user.name }}"
+               class="avatar-img" width="40" height="40"
+               data-default-avatar="{% static 'images/avatars/default.png' %}">
+        {% else %}
+          <img src="{% static 'images/avatars/default.png' %}"
+               alt="{{ request.user.name }}"
+               class="avatar-img" width="40" height="40">
+        {% endif %}
+        <span class="online-dot"></span>
+      </div>
+      <div class="user-info">
+        <h4>{{ request.user.name|default:request.user.username }}</h4>
+        <span>@{{ request.user.username }}</span>
+      </div>
+    </div>
+
+    <div class="sidebar-menu">
+      <ul class="nav flex-column" style="list-style:none;padding:0;margin:0;">
+        <li class="nav-item {% if active_page == 'dashboard' %}active{% endif %}">
+          <a href="/feed/" class="nav-link">
+            <span class="nav-icon"><i class="fas fa-home"></i></span>
+            <span>Dashboard</span>
+          </a>
+        </li>
+        <li class="nav-item {% if active_page == 'friends' %}active{% endif %}">
+          <a href="/friends/" class="nav-link">
+            <span class="nav-icon"><i class="fas fa-users"></i></span>
+            <span>Friends</span>
+            <span class="badge-nav" id="friendsNavBadge" style="display:none;">0</span>
+          </a>
+        </li>
+        <li class="nav-item {% if active_page == 'shoutbox' %}active{% endif %}">
+          <a href="/shoutbox/" class="nav-link">
+            <span class="nav-icon"><i class="fas fa-bullhorn"></i></span>
+            <span>Shout Box</span>
+          </a>
+        </li>
+        <li class="nav-item {% if active_page == 'chat' %}active{% endif %}">
+          <a href="/chat/" class="nav-link">
+            <span class="nav-icon"><i class="fas fa-comment-dots"></i></span>
+            <span>Chat</span>
+          </a>
+        </li>
+        <li class="nav-item {% if active_page == 'chatrooms' %}active{% endif %}">
+          <a href="/chatrooms/" class="nav-link">
+            <span class="nav-icon"><i class="fas fa-comments"></i></span>
+            <span>Chat Rooms</span>
+          </a>
+        </li>
+        <li class="nav-item {% if active_page == 'roulette' %}active{% endif %}">
+          <a href="/roulette/" class="nav-link">
+            <span class="nav-icon"><i class="fas fa-random"></i></span>
+            <span>Roulette</span>
+          </a>
+        </li>
+        <li class="nav-item {% if active_page == 'groups' %}active{% endif %}">
+          <a href="/groups/" class="nav-link">
+            <span class="nav-icon"><i class="fas fa-layer-group"></i></span>
+            <span>Groups</span>
+          </a>
+        </li>
+        <li class="nav-item {% if active_page == 'pages' %}active{% endif %}">
+          <a href="/pages/" class="nav-link">
+            <span class="nav-icon"><i class="fas fa-file-alt"></i></span>
+            <span>Pages</span>
+          </a>
+        </li>
+        <li class="nav-item {% if active_page == 'games' %}active{% endif %}">
+          <a href="/games/" class="nav-link">
+            <span class="nav-icon"><i class="fas fa-gamepad"></i></span>
+            <span>Games</span>
+          </a>
+        </li>
+        <li class="nav-item {% if active_page == 'leaderboard' %}active{% endif %}">
+          <a href="/leaderboard/" class="nav-link">
+            <span class="nav-icon"><i class="fas fa-trophy"></i></span>
+            <span>Leaderboard</span>
+          </a>
+        </li>
+        <li class="nav-item {% if active_page == 'support' %}active{% endif %}">
+          <a href="/support/" class="nav-link">
+            <span class="nav-icon"><i class="fas fa-headset"></i></span>
+            <span>Support</span>
+          </a>
+        </li>
+        <li class="nav-item logout-menu-item">
+          <a href="#" class="logout-menu-link"
+             onclick="event.preventDefault(); document.getElementById('sidebarLogoutForm').submit();">
+            <span class="nav-icon"><i class="fas fa-sign-out-alt"></i></span>
+            <span>Logout</span>
+          </a>
+          <form id="sidebarLogoutForm" action="{% url 'logout' %}" method="POST" style="display:none;">
+            {% csrf_token %}
+          </form>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Orbit Level (static placeholder for now) -->
+    <div class="orbit-level">
+      <div class="orbit-level-header">
+        <h5><i class="fas fa-rocket"></i> Orbit Level</h5>
+        <span class="level-num" id="levelNum">24</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width:62%"></div>
+      </div>
+      <p id="xpText">12,560 / 20,000 XP</p>
+    </div>
+  </nav>
+
+  <!-- ============================================================
+       MOBILE BOTTOM NAV
+       ============================================================ -->
+<nav id="mobileNavbar" class="mobile-navbar" aria-label="Primary">
+  <a href="/feed/" class="mobile-nav-item {% if active_page == 'dashboard' %}active{% endif %}">
+    <i class="bi bi-house"></i>
+    <span>Home</span>
+  </a>
+  <a href="/friends/" class="mobile-nav-item {% if active_page == 'friends' %}active{% endif %}">
+    <i class="bi bi-people"></i>
+    <span>Friends</span>
+    <span class="mobile-badge" id="friendsMobileBadge" style="display:none;">0</span>
+  </a>
+  <button type="button" class="mobile-nav-item mobile-nav-plus" id="mobileNavPlus" aria-label="Create">
+    <span class="plus-circle"><i class="bi bi-plus-lg"></i></span>
+  </button>
+  <a href="/chat/" class="mobile-nav-item {% if active_page == 'chat' %}active{% endif %}">
+    <i class="bi bi-chat-dots"></i>
+    <span>Chat</span>
+  </a>
+  <button type="button" class="mobile-nav-item" id="mobileNavMenu" aria-label="Menu">
+    <i class="bi bi-list"></i>
+    <span>Menu</span>
+  </button>
+</nav>
+
+<!-- Bottom-sheet for + -->
+<div class="mobile-sheet-backdrop" id="mobileSheetBackdrop"></div>
+<div class="mobile-sheet" id="mobileSheet" aria-hidden="true">
+  <div class="mobile-sheet-handle"></div>
+
+  <div class="mobile-sheet-section">
+    <div class="mobile-sheet-label">Create</div>
+    <div class="mobile-sheet-grid">
+      <button class="mobile-sheet-item" data-action="post" type="button">
+        <span class="mobile-sheet-icon"><i class="bi bi-pencil-square"></i></span>
+        <span>Post</span>
+      </button>
+      <button class="mobile-sheet-item" data-action="poll" type="button">
+        <span class="mobile-sheet-icon"><i class="bi bi-bar-chart"></i></span>
+        <span>Poll</span>
+      </button>
+      <button class="mobile-sheet-item" data-action="shout" type="button">
+        <span class="mobile-sheet-icon"><i class="bi bi-megaphone"></i></span>
+        <span>Shout</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="mobile-sheet-section">
+    <div class="mobile-sheet-label">Media</div>
+    <div class="mobile-sheet-grid">
+      <button class="mobile-sheet-item" data-action="camera" type="button">
+        <span class="mobile-sheet-icon"><i class="bi bi-camera"></i></span>
+        <span>Camera</span>
+      </button>
+      <button class="mobile-sheet-item" data-action="gallery" type="button">
+        <span class="mobile-sheet-icon"><i class="bi bi-image"></i></span>
+        <span>Gallery</span>
+      </button>
+      <button class="mobile-sheet-item" data-action="video" type="button">
+        <span class="mobile-sheet-icon"><i class="bi bi-camera-video"></i></span>
+        <span>Video</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="mobileCameraBtn" style="display:none;" aria-hidden="true"></div>
+
+  <!-- Overlay (mobile sidebar) -->
+  <div id="overlay" class="overlay"></div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer"></div>
+
+  <!-- ============================================================ -->
+<!-- POLL MODAL -->
+<!-- ============================================================ -->
+<div class="modal fade" id="pollModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Create Poll</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="pollQuestion" class="form-control mb-3" placeholder="Ask a question...">
+        <div id="pollOptionsContainer">
+          <div class="input-group mb-2">
+            <input type="text" class="form-control poll-option" placeholder="Option 1">
+          </div>
+          <div class="input-group mb-2">
+            <input type="text" class="form-control poll-option" placeholder="Option 2">
+          </div>
+        </div>
+        <button type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="addPollOption()">
+          <i class="bi bi-plus"></i> Add Option
+        </button>
+        <div class="mt-3">
+          <label class="form-label">Duration</label>
+          <select id="pollDuration" class="form-select">
+            <option value="1">1 day</option>
+            <option value="3">3 days</option>
+            <option value="7" selected>7 days</option>
+            <option value="14">14 days</option>
+            <option value="30">30 days</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="addPollToPost()">Add Poll</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- EDIT POST MODAL -->
+<!-- ============================================================ -->
+<div class="modal fade" id="editPostModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Edit Post</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <textarea id="editPostContent" class="form-control" rows="4" maxlength="1000"></textarea>
+        <div class="text-end mt-1"><small class="char-count" id="editCharCount">1000</small></div>
+        <div id="editMediaPreview" class="media-preview mt-3"></div>
+        <div class="edit-media-options">
+          <button type="button" class="edit-media-btn" onclick="document.getElementById('editImageInput').click()">
+            <i class="bi bi-image"></i> Add Photo
+          </button>
+          <button type="button" class="edit-media-btn" onclick="document.getElementById('editVideoInput').click()">
+            <i class="bi bi-camera-video"></i> Add Video
+          </button>
+        </div>
+        <input type="file" id="editImageInput" accept="image/*" style="display:none;" onchange="handleEditMediaSelect(event, 'image')">
+        <input type="file" id="editVideoInput" accept="video/*" style="display:none;">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveEditBtn">Save Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- MEDIA VIEWER MODAL (fullscreen image/video) -->
+<!-- ============================================================ -->
+<div class="modal fade" id="mediaViewerModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-content">
+      <div class="modal-body p-0">
+        ...
+          <div id="mediaCarousel" class="carousel slide" data-bs-ride="false" data-bs-touch="true" data-bs-interval="false">
+          <div class="carousel-inner" id="mediaCarouselInner"></div>
+          <div class="carousel-indicators" id="mediaIndicators"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Floating close button — lives outside the modal so nothing can cover it -->
+<button type="button" id="mediaViewerCloseFloat" class="media-viewer-close" style="display:none; position:fixed; top:16px; right:16px; z-index:2147483647; width:44px; height:44px; border-radius:50%; background:rgba(0,0,0,0.75); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); color:#fff; border:1px solid rgba(255,255,255,0.25); align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,0.45);">
+  <i class="bi bi-x-lg" style="font-size:20px; color:#fff;"></i>
+</button>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var modalEl = document.getElementById('mediaViewerModal');
+    var closeBtn = document.getElementById('mediaViewerCloseFloat');
+    if (!modalEl || !closeBtn) return;
+
+    modalEl.addEventListener('show.bs.modal', function() {
+        closeBtn.style.display = 'flex';
+    });
+    modalEl.addEventListener('hidden.bs.modal', function() {
+        closeBtn.style.display = 'none';
+    });
+    closeBtn.addEventListener('click', function() {
+        var inst = bootstrap.Modal.getInstance(modalEl);
+        if (inst) inst.hide();
+    });
+});
+</script>
+
+  <!-- ============================================================
+       MAIN CONTENT (each page fills this)
+       ============================================================ -->
+  {% block content %}{% endblock %}
+
+  <!-- ============================================================
+       RIGHT WIDGETS (each page fills this, optional)
+       ============================================================ -->
+  {% block right_widgets %}{% endblock %}
+
+  <!-- ============================================================
+       CONFIG — serverside values passed to JS
+       ============================================================ -->
+  <script type="application/json" id="xpy-config">
+  {
+    "isLoggedIn": true,
+    "userId": {{ request.user.id }},
+    "themeColor": "{{ request.user.theme_color|default:'#ff8c00' }}",
+    "themeMode": "{{ request.user.theme_mode|default:'light' }}",
+    "friends": {{ friends_json|default:"[]"|safe }},
+    "blockedUsers": {{ blocked_users_json|default:"[]"|safe }}
+  }
+  </script>
+  <script>
+    window.XPY_CONFIG = JSON.parse(document.getElementById('xpy-config').textContent);
+  </script>
+
+  <!-- External JS (CDN) -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Sidebar JS (theme manager, notifications, sidebar toggle, camera, toast) -->
+  <script src="{% static 'js/mobile_nav.js' %}?v=1"></script>
+  <script src="{% static 'js/upload.js' %}?v=2"></script>
+  <script src="{% static 'js/sidebar.js' %}?v=3"></script>
+  <script src="{% static 'js/dashboard.js' %}?v=5"></script>
+  <script src="{% static 'js/avatar-lightbox.js' %}?v=1"></script>
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

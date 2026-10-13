@@ -1,0 +1,223 @@
+{% extends "dashboard/base_dashboard.html" %}
+{% load static %}
+
+{% block title %}View Post | XAPYX{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/view_post.css' %}?v=1">
+{% endblock %}
+
+{% block content %}
+<div id="dashboardContainer">
+  <div class="dashboard-inner">
+    <div class="dashboard-flex">
+      <div class="dashboard-main">
+        <div id="vpPostContainer" class="posts-wrapper">
+          <div class="loading-spinner">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading post...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block right_widgets %}
+<aside class="dashboard-widgets" id="rightWidgetsPanel">
+
+  <!-- Post Stats -->
+  <div class="widget-card">
+    <div class="widget-header">
+      <h6><i class="bi bi-bar-chart me-2"></i> Post Stats</h6>
+      <div class="widget-icon"><i class="bi bi-graph-up"></i></div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="stat-number" id="widgetLikes">0</div>
+        <div class="stat-label">Likes</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" id="widgetComments">0</div>
+        <div class="stat-label">Comments</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" id="widgetViews">0</div>
+        <div class="stat-label">Views</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Post Author -->
+  <div class="widget-card" id="vpAuthorWidget" style="display:none;">
+    <div class="widget-header">
+      <h6><i class="bi bi-person me-2"></i> Post Author</h6>
+      <div class="widget-icon"><i class="bi bi-person-fill"></i></div>
+    </div>
+    <div class="vp-author-widget">
+      <img id="vpAuthorAvatar" src="" alt="">
+      <div class="author-info">
+        <div class="author-name" id="vpAuthorName">—</div>
+        <div class="author-username" id="vpAuthorUsername">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="widget-card">
+    <div class="widget-header">
+      <h6><i class="bi bi-lightning me-2"></i> Quick Actions</h6>
+      <div class="widget-icon"><i class="bi bi-plus"></i></div>
+    </div>
+    <div class="quick-actions">
+      <a href="/feed/" class="quick-action-btn"><i class="bi bi-house"></i> Home</a>
+      <a href="/friends/" class="quick-action-btn"><i class="bi bi-people-fill"></i> Friends</a>
+      <a href="/chat/" class="quick-action-btn"><i class="bi bi-chat"></i> Messages</a>
+      <a href="/user/{{ user.username }}/" class="quick-action-btn"><i class="bi bi-person"></i> Profile</a>
+    </div>
+  </div>
+
+  <!-- Your Orbit -->
+  <div class="widget-card">
+    <div class="widget-header">
+      <h6><i class="bi bi-rocket me-2"></i> Your Orbit</h6>
+      <div class="widget-icon"><i class="bi bi-id-card"></i></div>
+    </div>
+    <div class="vp-profile-widget">
+      {% if user.picture %}
+        <img src="https://s3.eu-west-1.amazonaws.com/xapyx.com-media/uploads/{{ user.picture }}"
+             alt="{{ user.name }}"
+             data-default-avatar="{% static 'images/avatars/default.png' %}">
+      {% else %}
+        <img src="{% static 'images/avatars/default.png' %}" alt="{{ user.name }}">
+      {% endif %}
+      <div class="profile-info-col">
+        <div class="profile-name">{{ user.name|default:user.username }}</div>
+        <div class="profile-username">@{{ user.username }}</div>
+        <div class="profile-stats"><i class="bi bi-person-check"></i> Active</div>
+      </div>
+    </div>
+    <div style="display:flex; gap:8px; margin-top:8px;">
+      <a href="/user/{{ user.username }}/" class="quick-action-btn" style="flex:1;">
+        <i class="bi bi-eye"></i> View
+      </a>
+    </div>
+  </div>
+
+</aside>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Confirm boxes (JS in dashboard.js hooks into these) -->
+<div class="custom-confirm-overlay" id="customConfirmOverlay"></div>
+<div class="custom-confirm-box" id="customConfirmBox">
+  <div class="custom-confirm-header">
+    <i class="bi bi-exclamation-triangle custom-confirm-icon"></i>
+    <h5 class="custom-confirm-title" id="confirmTitle">Confirm Action</h5>
+  </div>
+  <p class="custom-confirm-message" id="confirmMessage">Are you sure you want to proceed?</p>
+  <div class="custom-confirm-buttons">
+    <button class="custom-confirm-btn cancel" id="confirmCancel">Cancel</button>
+    <button class="custom-confirm-btn confirm" id="confirmOk">OK</button>
+  </div>
+</div>
+
+<div class="custom-confirm-box" id="deleteConfirmBox">
+  <div class="custom-confirm-header">
+    <i class="bi bi-trash custom-confirm-icon" style="color:#ef4444"></i>
+    <h5 class="custom-confirm-title">Delete Post</h5>
+  </div>
+  <p class="custom-confirm-message">Are you sure you want to delete this post? This action cannot be undone.</p>
+  <div class="custom-confirm-buttons">
+    <button class="custom-confirm-btn cancel" id="deleteCancel">Cancel</button>
+    <button class="custom-confirm-btn danger" id="deleteOk">Delete</button>
+  </div>
+</div>
+
+<!-- Mentions dropdown (populated by dashboard.js) -->
+<div class="mentions-dropdown" id="mentionsDropdown"></div>
+
+<script>
+(function () {
+  var vpPostId = {{ post_id }};
+
+  function boot() {
+    // dashboard.js's main DOMContentLoaded early-returns on non-feed pages,
+    // so initialise the systems view_post needs manually.
+    if (typeof setupCustomConfirms === 'function') setupCustomConfirms();
+    if (typeof setupMentionHandlers === 'function') setupMentionHandlers();
+
+    fetch('/api/posts/get/?post_id=' + vpPostId)
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var container = document.getElementById('vpPostContainer');
+        if (!data || !data.success || !data.post) {
+          container.innerHTML =
+            '<div class="empty-state">' +
+              '<i class="bi bi-exclamation-triangle"></i>' +
+              '<h5>Post not found</h5>' +
+              '<p>This post may have been deleted or is not accessible.</p>' +
+              '<a href="/feed/" class="post-submit-btn" style="text-decoration:none;display:inline-flex;margin-top:12px;">Go to Dashboard</a>' +
+            '</div>';
+          return;
+        }
+
+        var post = data.post;
+        var el = createPostElement(post);
+
+        // Un-truncate content + drop the "See more" link — this is the detail page.
+        var seeMore = el.querySelector('.see-more-container');
+        if (seeMore) seeMore.remove();
+        var contentEl = el.querySelector('.post-content');
+        if (contentEl) contentEl.innerHTML = formatMentions(post.content || '');
+
+        container.innerHTML = '';
+        container.appendChild(el);
+
+        // Right-widget numbers
+        document.getElementById('widgetLikes').textContent = post.likes || 0;
+        document.getElementById('widgetComments').textContent = post.comments_count || 0;
+        document.getElementById('widgetViews').textContent = post.views || 0;
+
+        // Author widget
+        if (post.author) {
+          document.getElementById('vpAuthorWidget').style.display = '';
+          document.getElementById('vpAuthorAvatar').src = post.author.picture;
+          document.getElementById('vpAuthorName').textContent = post.author.name;
+          document.getElementById('vpAuthorUsername').textContent = '@' + post.author.username;
+        }
+
+        // Auto-expand comments and load them
+        var commentsSection = document.getElementById('comments-' + vpPostId);
+        if (commentsSection) {
+          commentsSection.classList.add('expanded');
+          loadComments(vpPostId, 1, post.source || 'user');
+        }
+
+        // Arm view tracking + media observers on the freshly-inserted card
+        if (typeof setupPostViewTracking === 'function') setupPostViewTracking();
+        if (typeof applyAllAmbientBackgrounds === 'function') {
+          setTimeout(applyAllAmbientBackgrounds, 250);
+        }
+      })
+      .catch(function (err) {
+        console.error('view_post load error:', err);
+        document.getElementById('vpPostContainer').innerHTML =
+          '<div class="empty-state">' +
+            '<i class="bi bi-exclamation-triangle"></i>' +
+            '<h5>Error loading post</h5>' +
+            '<p>Please try again.</p>' +
+          '</div>';
+      });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();
+</script>
+{% endblock %}

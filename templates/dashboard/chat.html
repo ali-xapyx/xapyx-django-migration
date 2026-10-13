@@ -1,0 +1,209 @@
+{% extends "dashboard/base_dashboard.html" %}
+{% load static %}
+
+{% block title %}Chat | XAPYX{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=11">
+{% endblock %}
+
+{% block content %}
+<script>document.body.classList.add('chat-page');</script>
+<div id="dashboardContainer" class="no-right-widgets">
+  <div class="dashboard-inner page-inbox-inner">
+    <div class="dashboard-flex page-inbox-flex">
+      <div class="dashboard-main page-inbox-dashboard-main">
+
+        <!-- Off-canvas backdrop for mobile sidebar -->
+        <div class="page-inbox-backdrop" id="chatBackdrop" onclick="closeChatSidebar()"></div>
+
+        <div class="page-inbox-wrap chat-wrap">
+          
+          <!-- LEFT COLUMN: Conversation List (320px) -->
+          <aside class="page-inbox-sidebar chat-sidebar" id="chatSidebar">
+            
+            <div class="page-inbox-sidebar-header chat-sidebar-header">
+              <div class="d-flex justify-content-between align-items-center">
+                <h2 class="page-inbox-sidebar-title">
+                  <i class="fas fa-comment-dots me-2"></i>
+                  <span>Direct Messages</span>
+                </h2>
+                <button type="button" class="page-inbox-close-btn d-md-none" onclick="closeChatSidebar()" aria-label="Close sidebar">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+              <div class="d-flex justify-content-between align-items-center mt-2">
+                <span class="page-inbox-sidebar-subtitle" id="convCount">Loading...</span>
+              </div>
+            </div>
+
+            <!-- Search Filter -->
+            <div class="chat-search-wrap px-3 py-2 border-bottom">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text bg-transparent border-end-0 text-muted">
+                  <i class="fas fa-search"></i>
+                </span>
+                <input type="text" id="chatSearchInput" class="form-control border-start-0 ps-0" placeholder="Search chats..." aria-label="Search chats">
+              </div>
+            </div>
+
+            <!-- Conversations Scrollable List -->
+            <div class="page-inbox-conv-list" id="conversationsList">
+              <div class="page-inbox-loading py-5 text-center">
+                <i class="fas fa-spinner fa-spin fa-2x"></i>
+                <p class="mt-2 text-muted">Loading chats...</p>
+              </div>
+            </div>
+
+          </aside>
+
+          <!-- RIGHT COLUMN: Chat Panel -->
+          <section class="page-inbox-chat chat-main-panel" id="chatPanel">
+            
+            <!-- Chat Header -->
+            <header class="page-inbox-chat-header" id="chatHeader" style="display: none;">
+              <div class="d-flex align-items-center gap-2 gap-md-3">
+                <button type="button" class="chat-back-btn" id="chatBackBtn" aria-label="Back to chats">
+                  <i class="fas fa-chevron-left"></i>
+                </button>
+                <button type="button" class="page-inbox-toggle-btn d-none" onclick="openChatSidebar()" aria-label="Open conversation list">
+                  <i class="fas fa-bars"></i>
+                </button>
+                <div class="page-inbox-header-avatar-wrap position-relative">
+                  <img id="chatAvatar" class="page-inbox-header-avatar" src="{% static 'images/avatars/default.png' %}" alt="Avatar">
+                  <span id="chatOnlineDot" class="chat-online-indicator d-none"></span>
+                </div>
+                <div class="page-inbox-header-info">
+                  <h3 id="chatName" class="page-inbox-header-name">Conversation</h3>
+                  <div class="page-inbox-header-meta">
+                    <span id="chatStatus" class="page-inbox-header-status text-muted">Active</span>
+                  </div>
+                </div>
+              </div>
+              <div class="page-inbox-header-actions">
+                <a id="chatProfileLink" href="#" class="btn-notif-action" target="_blank" rel="noopener">
+                  <i class="fas fa-user me-1"></i>
+                  <span class="d-none d-sm-inline">Profile</span>
+                </a>
+              </div>
+            </header>
+
+            <!-- Messages Stream Area -->
+            <div class="page-inbox-messages-container" id="messagesContainer">
+              <div class="page-inbox-empty-chat" id="emptyStatePlaceholder">
+                <div class="page-inbox-empty-icon">
+                  <i class="fas fa-comments"></i>
+                </div>
+                <h4>Select a Chat</h4>
+                <p>Choose a friend from the list to start messaging in real-time.</p>
+              </div>
+            </div>
+
+            <!-- Typing indicator area -->
+            <div id="chatTypingIndicator" class="chat-typing-indicator" style="display: none;">
+              <div class="typing-dots">
+                <span></span><span></span><span></span>
+              </div>
+              <span id="chatTypingText" class="chat-typing-text">typing...</span>
+            </div>
+
+            <!-- Chat Input Area -->
+            <footer class="page-inbox-input-area" id="inputArea" style="display: none;">
+
+              <!-- Reply Preview Bar -->
+              <div id="chatReplyPreview" class="chat-reply-preview" style="display: none;">
+                <div class="chat-reply-preview-content">
+                  <div class="chat-reply-preview-title">
+                    <i class="fas fa-reply me-1"></i>
+                    <span>Replying to <strong id="chatReplyUser">User</strong></span>
+                  </div>
+                  <div class="chat-reply-preview-text" id="chatReplyText">Quoted message</div>
+                </div>
+                <button type="button" class="chat-bar-cancel-btn" id="chatReplyCancelBtn" aria-label="Cancel reply">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+
+              <!-- Edit Message Bar -->
+              <div id="chatEditBar" class="chat-edit-bar" style="display: none;">
+                <div class="chat-edit-bar-content">
+                  <div class="chat-edit-bar-title">
+                    <i class="fas fa-edit me-1"></i>
+                    <span>Editing message</span>
+                  </div>
+                  <div class="chat-edit-bar-text" id="chatEditText">Message to edit</div>
+                </div>
+                <button type="button" class="chat-bar-cancel-btn" id="chatEditCancelBtn" aria-label="Cancel edit">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+
+              <!-- Voice Recording Bar -->
+              <div id="chatVoiceRecordingBar" class="chat-voice-recording-bar" style="display: none;">
+                <div class="voice-recording-pulse"></div>
+                <span class="voice-recording-timer" id="chatVoiceTimer">00:00</span>
+                <span class="voice-recording-label">Recording voice note...</span>
+                <div class="voice-recording-controls">
+                  <button type="button" class="chat-voice-action-btn cancel" id="chatVoiceCancelBtn" title="Discard">
+                    <i class="fas fa-trash-alt"></i>
+                  </button>
+                  <button type="button" class="chat-voice-action-btn send" id="chatVoiceSendBtn" title="Send voice note">
+                    <i class="fas fa-paper-plane"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Standard Message Form -->
+              <form id="messageForm" class="page-inbox-form" onsubmit="return false;">
+                {% csrf_token %}
+                <input type="file" id="chatFileInput" style="display: none;" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.zip,.txt">
+                <button type="button" class="chat-icon-btn" id="chatAttachBtn" title="Attach image or file" aria-label="Attach file">
+                  <i class="fas fa-paperclip"></i>
+                </button>
+                <button type="button" class="chat-icon-btn" id="chatVoiceBtn" title="Record voice note" aria-label="Record voice note">
+                  <i class="fas fa-microphone"></i>
+                </button>
+                <textarea id="messageInput"
+                          class="page-inbox-textarea"
+                          rows="1"
+                          placeholder="Type a message..."
+                          maxlength="2000"
+                          aria-label="Message text"></textarea>
+                <button type="submit" class="page-inbox-send-btn" id="sendBtn" title="Send message" aria-label="Send message">
+                  <i class="fas fa-paper-plane"></i>
+                </button>
+              </form>
+            </footer>
+
+          </section>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Upload Progress Overlay -->
+<div id="chatUploadProgress" class="chat-upload-overlay" style="display: none;">
+  <i class="fas fa-spinner fa-spin me-2"></i>
+  <span id="chatUploadProgressText">Uploading file...</span>
+</div>
+
+<!-- Safe JSON metadata for client scripts -->
+<script id="chatConfig" type="application/json">
+{
+  "selectedFriendId": {{ selected_friend_id|default:0 }},
+  "currentUserId": {{ request.user.id|default:0 }},
+  "currentUserPicture": "{{ request.user.picture|default:'' }}",
+  "firebaseDbUrl": "https://xapyx-chat-default-rtdb.firebaseio.com"
+}
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Firebase RTDB SDK for real-time DM listeners -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script src="{% static 'js/chat.js' %}?v=3"></script>
+{% endblock %}

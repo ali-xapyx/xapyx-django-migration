@@ -1,0 +1,207 @@
+{% extends "dashboard/base_dashboard.html" %}
+{% load static %}
+
+{% block title %}Shout Box | XAPYX{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/shoutbox.css' %}?v=1">
+{% endblock %}
+
+{% block content %}
+<div class="shoutbox-page-wrapper">
+
+  <div class="shoutbox-main">
+
+    <div class="shoutbox-header">
+      <div class="header-left">
+        <div class="header-icon"><i class="fas fa-bullhorn"></i></div>
+        <div class="header-title">
+          Global Shoutbox
+          <span class="live-badge"><span class="dot"></span> LIVE</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="shout-stats">
+          <span class="stat-item stat-last-shout">
+            <i class="fas fa-clock"></i>
+            <span class="stat-value">{{ last_shout_time }}</span>
+          </span>
+          <span class="stat-item">
+            <i class="fas fa-comment"></i>
+            <span class="stat-value">{{ shout_count }}</span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="shout-messages-wrapper">
+      <div id="shoutList" class="shout-list">
+        <div class="sbx-loading-text">
+          <div class="sbx-loading-dots"><span></span><span></span><span></span></div>
+          <p>Loading messages...</p>
+        </div>
+      </div>
+      <button id="scrollToBottomBtn" class="scroll-bottom-btn" title="Jump to newest">
+        <i class="fas fa-arrow-down"></i>
+      </button>
+    </div>
+
+    <div class="sbx-typing-indicator" id="typingIndicator">
+      <div class="sbx-typing-content">
+        <span class="sbx-loading-dots"><span></span><span></span><span></span></span>
+        <span class="typing-text" id="typingText"></span>
+      </div>
+    </div>
+
+    <div class="shout-input-wrapper" style="position: relative;">
+      <div class="sbx-mentions-popup" id="mentionSuggestions"></div>
+      <form id="shoutForm" autocomplete="off">
+        <div class="input-wrapper">
+          <input type="text" id="shoutInput" name="message" class="form-control shout-input"
+                 placeholder="Type your shout here... (max 140)" maxlength="140" required>
+          <span class="char-count-inside" id="charCountInside">140</span>
+          <button id="shoutBtn" class="btn btn-primary" type="submit">
+            <i class="fas fa-paper-plane"></i>
+          </button>
+        </div>
+      </form>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block right_widgets %}
+<aside class="shoutbox-widgets">
+
+  <!-- Shout Stats -->
+  <div class="widget-card">
+    <div class="widget-header">
+      <h6><i class="fas fa-chart-simple me-2"></i> Shout Stats</h6>
+      <div class="widget-icon"><i class="fas fa-bullhorn"></i></div>
+    </div>
+    <div class="shout-stats-grid">
+      <div class="shout-stat-item">
+        <span class="stat-icon"><i class="fas fa-comment"></i></span>
+        <div class="stat-number">{{ shout_count }}</div>
+        <div class="stat-label">Your Shouts</div>
+      </div>
+      <div class="shout-stat-item">
+        <span class="stat-icon"><i class="fas fa-users"></i></span>
+        <div class="stat-number">{{ friends_count }}</div>
+        <div class="stat-label">Friends</div>
+      </div>
+      <div class="shout-stat-item">
+        <span class="stat-icon"><i class="fas fa-clock"></i></span>
+        <div class="stat-number">{{ last_shout_time }}</div>
+        <div class="stat-label">Last Shout</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Shouters -->
+  <div class="widget-card">
+    <div class="widget-header">
+      <h6><i class="fas fa-crown me-2"></i> Top Shouters</h6>
+      <div class="widget-icon"><i class="fas fa-star"></i></div>
+    </div>
+    {% if top_shouters %}
+      {% for s in top_shouters %}
+        <div class="top-shouter-item">
+          <span class="shouter-rank">#{{ forloop.counter }}</span>
+          <img src="{{ s.picture }}" class="shouter-avatar" alt="">
+          <div class="shouter-info">
+            <div class="shouter-name">{{ s.name }}</div>
+            <div class="shouter-count">{{ s.shout_count }} shouts</div>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="sbx-widget-empty"><i class="fas fa-inbox"></i> No shouters yet</div>
+    {% endif %}
+  </div>
+
+  <!-- Recent Shouts -->
+  <div class="widget-card">
+    <div class="widget-header">
+      <h6><i class="fas fa-clock-history me-2"></i> Recent Shouts</h6>
+      <div class="widget-icon"><i class="fas fa-bell"></i></div>
+    </div>
+    {% if recent_activity %}
+      <div class="activity-feed">
+        {% for a in recent_activity %}
+          <div class="activity-item">
+            <img src="{{ a.picture }}" class="activity-avatar" alt="">
+            <span class="activity-text"><strong>{{ a.name }}</strong></span>
+            <span class="activity-time">{{ a.time_ago }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="sbx-widget-empty"><i class="fas fa-inbox"></i> No recent shouts</div>
+    {% endif %}
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="widget-card">
+    <div class="widget-header">
+      <h6><i class="fas fa-lightning me-2"></i> Quick Actions</h6>
+      <div class="widget-icon"><i class="fas fa-plus"></i></div>
+    </div>
+    <div class="quick-actions">
+      <a href="/shoutbox/" class="quick-action-btn"><i class="fas fa-bullhorn"></i> Shout</a>
+      <a href="/friends/" class="quick-action-btn"><i class="fas fa-user-plus"></i> Friends</a>
+      <a href="/chat/" class="quick-action-btn"><i class="fas fa-comment"></i> Messages</a>
+      <a href="/user/{{ user.username }}/" class="quick-action-btn"><i class="fas fa-user"></i> Profile</a>
+    </div>
+  </div>
+
+  <!-- Your Orbit -->
+  <div class="widget-card">
+    <div class="widget-header">
+      <h6><i class="fas fa-user-astronaut me-2"></i> Your Orbit</h6>
+      <div class="widget-icon"><i class="fas fa-id-card"></i></div>
+    </div>
+    <div class="vp-profile-widget">
+      <img src="{{ user_picture }}" alt="{{ user.name }}">
+      <div class="profile-info-col">
+        <div class="profile-name">{{ user.name|default:user.username }}</div>
+        <div class="profile-username">@{{ user.username }}</div>
+        <div class="profile-stats"><i class="fas fa-bullhorn"></i> {{ shout_count }} shouts</div>
+      </div>
+    </div>
+    <div style="display:flex; gap:8px; margin-top:8px;">
+      <a href="/user/{{ user.username }}/" class="quick-action-btn" style="flex:1;">
+        <i class="fas fa-eye"></i> View
+      </a>
+    </div>
+  </div>
+</aside>
+  <div class="custom-confirm-overlay" id="customConfirmOverlay"></div>
+  <div class="custom-confirm-box" id="customConfirmBox">
+  <div class="custom-confirm-header">
+    <i class="bi bi-exclamation-triangle custom-confirm-icon"></i>
+    <h5 class="custom-confirm-title" id="confirmTitle">Confirm Action</h5>
+  </div>
+  <p class="custom-confirm-message" id="confirmMessage">Are you sure?</p>
+  <div class="custom-confirm-buttons">
+    <button class="custom-confirm-btn cancel" id="confirmCancel">Cancel</button>
+    <button class="custom-confirm-btn confirm" id="confirmOk">Delete</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.SHOUTBOX_CONFIG = {
+  currentUser: {
+    id: {{ user.id }},
+    name: "{{ user.name|escapejs }}",
+    username: "{{ user.username|escapejs }}",
+    picture: "{{ user_picture }}"
+  },
+  friends: {{ friends_json|safe }}
+};
+</script>
+<script src="{% static 'js/shoutbox.js' %}?v=1"></script>
+{% endblock %}

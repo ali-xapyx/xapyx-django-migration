@@ -1,0 +1,1872 @@
+        /* friends css */
+        /* ============================================================
+           COSMIC THEME - Complete CSS in Head
+           ============================================================ */
+        
+        :root {
+            --xpy-primary: #ff8c00;
+            --xpy-primary-rgb: 255, 140, 0;
+            --xpy-secondary: #ff5500;
+            --xpy-accent: #8b5cf6;
+            --xpy-bg: #050510;
+            --xpy-text: #e8e8ff;
+            --xpy-text-secondary: #a8b8d8;
+            --xpy-text-muted: #7888a8;
+            --xpy-border: rgba(255,255,255,0.08);
+            --xpy-border-glow: rgba(255,140,0,0.35);
+            --xpy-card-bg: rgba(12,12,35,0.6);
+            --xpy-shadow: 0 25px 60px rgba(255,140,0,0.08);
+            --xpy-radius: 16px;
+            --xpy-radius-sm: 10px;
+            --xpy-transition: 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            --xpy-glow: 0 0 30px rgba(255,140,0,0.05);
+            --bg-color: #050510;
+            --card-bg: rgba(12,12,35,0.6);
+            --bg-secondary: rgba(20,20,50,0.4);
+            --bg-tertiary: rgba(30,30,60,0.3);
+            --text-color: #e8e8ff;
+            --text-muted: #7888a8;
+            --text-secondary: #a8b8d8;
+            --border-color: rgba(255,255,255,0.08);
+            --border-glow: rgba(255,140,0,0.3);
+            --shadow-color: rgba(255,140,0,0.05);
+            --hover-bg: rgba(255,255,255,0.04);
+            --hover-bg-light: rgba(255,255,255,0.02);
+            --success-color: #22c55e;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --info-color: #3b82f6;
+            --card-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            --glow-effect: 0 0 40px rgba(255,140,0,0.04);
+            --sidebar-width: 280px;
+            --right-widgets-width: 320px;
+            --header-height: 70px;
+            --mobile-nav-height: 65px;
+        }
+
+        /* Light theme */
+        [data-theme="light"] {
+            --xpy-primary: #ff8c00;
+            --xpy-primary-rgb: 255, 140, 0;
+            --xpy-secondary: #ff5500;
+            --xpy-accent: #7c3aed;
+            --xpy-bg: #f0f2f7;
+            --xpy-text: #1a1a2e;
+            --xpy-text-secondary: #4a5568;
+            --xpy-text-muted: #718096;
+            --xpy-border: #e2e8f0;
+            --xpy-border-glow: #fed7aa;
+            --xpy-card-bg: rgba(255,255,255,0.85);
+            --xpy-shadow: 0 25px 60px rgba(0,0,0,0.08);
+            --xpy-glow: 0 0 40px rgba(255,140,0,0.05);
+            --xpy-bg-gradient: linear-gradient(160deg, #fef9e7 0%, #fdebd0 25%, #d6eaf8 50%, #e8daef 75%, #fdebd0 100%);
+            --primary-color: #ff8c00;
+            --primary-rgb: 255, 140, 0;
+            --bg-color: #f8f6f0;
+            --card-bg: #ffffff;
+            --bg-secondary: #f0ede6;
+            --bg-tertiary: #e8e4da;
+            --text-color: #1a1a2e;
+            --text-muted: #718096;
+            --text-secondary: #4a5568;
+            --border-color: rgba(0,0,0,0.08);
+            --border-glow: rgba(255,140,0,0.25);
+            --shadow-color: rgba(0,0,0,0.06);
+            --hover-bg: rgba(0,0,0,0.04);
+            --hover-bg-light: rgba(0,0,0,0.02);
+            --card-shadow: 0 8px 32px rgba(0,0,0,0.08);
+            --glow-effect: 0 0 30px rgba(255,140,0,0.04);
+        }
+
+        /* ============================================================
+           COSMIC BACKGROUND
+           ============================================================ */
+        body {
+            background: var(--xpy-bg) !important;
+            background-image:
+                radial-gradient(ellipse at 20% 30%, rgba(88,28,135,0.25) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 70%, rgba(30,58,138,0.2) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(10,15,40,0.95) 0%, transparent 70%);
+            color: var(--xpy-text);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100dvh;
+        }
+
+        [data-theme="light"] body {
+            background: var(--xpy-bg-gradient) !important;
+            background-size: 200% 200% !important;
+            animation: xpy-sunnyGradient 15s ease-in-out infinite alternate;
+        }
+
+        @keyframes xpy-sunnyGradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* ============================================================
+           STARS OVERLAY
+           ============================================================ */
+        .xpy-stars-bg {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .xpy-star-dot {
+            position: absolute;
+            border-radius: 50%;
+            background: white;
+            animation: xpy-twinkle var(--xpy-d, 2.5s) ease-in-out infinite alternate;
+            will-change: transform, opacity;
+        }
+
+        @keyframes xpy-twinkle {
+            0% { opacity: 0.1; transform: scale(0.6); }
+            100% { opacity: 1; transform: scale(1.4); }
+        }
+
+        /* ============================================================
+           MAIN LAYOUT - FIXED SIDEBAR OFFSET
+           ============================================================ */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            width: 100%;
+            max-width: 100vw;
+            overflow-x: hidden;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* The main content area - offset for sidebar + right widgets */
+        .friends-page-wrapper {
+            width: 100%;
+            min-height: 100dvh;
+            background: transparent;
+            overflow-x: hidden;
+            transition: margin-left 0.3s ease, margin-right 0.3s ease, width 0.3s ease;
+            position: relative;
+            z-index: 1;
+        }
+
+        .friends-container {
+            width: 100%;
+            margin: 0 auto;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        /* DESKTOP: Account for left sidebar + right widgets */
+        @media (min-width: 1024px) {
+            .friends-page-wrapper {
+                margin-left: var(--sidebar-width, 280px);
+                margin-right: var(--right-widgets-width, 320px);
+                width: calc(100% - var(--sidebar-width, 280px) - var(--right-widgets-width, 320px));
+                min-width: 0;
+            }
+            .friends-container {
+                padding-top: 70px;
+                padding-left: 24px;
+                padding-right: 24px;
+                padding-bottom: 30px;
+                max-width: 100%;
+            }
+        }
+
+        /* TABLET: Only left sidebar */
+        @media (max-width: 1023px) and (min-width: 768px) {
+            .friends-page-wrapper {
+                margin-left: 220px;
+                margin-right: 0;
+                width: calc(100% - 220px);
+            }
+            .friends-container {
+                padding-top: 60px;
+                padding-left: 20px;
+                padding-right: 20px;
+                padding-bottom: 30px;
+                max-width: 100%;
+            }
+        }
+
+        /* MOBILE: Full width */
+        @media (max-width: 767px) {
+            .friends-page-wrapper {
+                margin-left: 0;
+                margin-right: 0;
+                width: 100%;
+                padding: 0;
+            }
+            .friends-container {
+                padding-top: 60px;
+                padding-left: 0;
+                padding-right: 0;
+                padding-bottom: 70px;
+                max-width: 100%;
+            }
+        }
+
+        /* ============================================================
+           FLEX LAYOUT - MAIN + FIXED WIDGETS
+           ============================================================ */
+        .friends-flex {
+            display: flex;
+            gap: 24px;
+            width: 100%;
+            align-items: flex-start;
+            position: relative;
+        }
+
+        .friends-main {
+            flex: 1;
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        /* ============================================================
+           FIXED RIGHT WIDGETS
+           ============================================================ */
+        .friends-widgets {
+            width: var(--right-widgets-width, 320px);
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            position: fixed;
+            right: 0;
+            top: 70px;
+            bottom: 0;
+            background: var(--xpy-card-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-left: 1px solid var(--xpy-border);
+            padding: 20px 16px 30px;
+            overflow-y: auto;
+            z-index: 1045;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .friends-widgets::-webkit-scrollbar {
+            width: 4px;
+        }
+        .friends-widgets::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .friends-widgets::-webkit-scrollbar-thumb {
+            background: var(--xpy-border);
+            border-radius: 4px;
+        }
+        .friends-widgets::-webkit-scrollbar-thumb:hover {
+            background: var(--xpy-border-glow);
+        }
+
+        .friends-widgets .widget-card {
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 1023px) {
+            .friends-widgets {
+                display: none;
+            }
+            .friends-main {
+                max-width: 100%;
+            }
+        }
+
+        /* ============================================================
+           WIDGET CARDS
+           ============================================================ */
+        .widget-card {
+            background: var(--xpy-card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: var(--xpy-radius);
+            padding: 16px 18px;
+            border: 1px solid var(--xpy-border);
+            box-shadow: var(--card-shadow);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .widget-card:hover {
+            border-color: var(--xpy-border-glow);
+            box-shadow: var(--glow-effect), var(--card-shadow);
+            transform: translateY(-2px);
+        }
+
+        .widget-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .widget-header h6 {
+            margin: 0;
+            font-weight: 700;
+            font-size: 0.7rem;
+            color: var(--xpy-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .widget-header .widget-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            background: rgba(var(--xpy-primary-rgb), 0.15);
+            color: var(--xpy-primary);
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+        }
+
+        .quick-action-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            padding: 7px 8px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--xpy-border);
+            border-radius: var(--xpy-radius-sm);
+            color: var(--xpy-text-secondary);
+            text-decoration: none;
+            font-size: 0.65rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .quick-action-btn:hover {
+            background: rgba(var(--xpy-primary-rgb), 0.08);
+            border-color: var(--xpy-border-glow);
+            color: var(--xpy-primary);
+            transform: translateY(-2px);
+        }
+
+        .quick-action-btn i {
+            font-size: 0.8rem;
+        }
+
+        /* Friend Stats Widget */
+        .friend-stat-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            background: rgba(255,255,255,0.03);
+            border-radius: var(--xpy-radius-sm);
+            border: 1px solid var(--xpy-border);
+            transition: all 0.3s ease;
+        }
+
+        .friend-stat-item:hover {
+            background: rgba(var(--xpy-primary-rgb), 0.06);
+            border-color: var(--xpy-border-glow);
+        }
+
+        .friend-stat-item .stat-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .friend-stat-item .stat-icon.online {
+            background: rgba(34, 197, 94, 0.15);
+            color: #22c55e;
+        }
+        .friend-stat-item .stat-icon.pending {
+            background: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+        }
+        .friend-stat-item .stat-icon.total {
+            background: rgba(var(--xpy-primary-rgb), 0.15);
+            color: var(--xpy-primary);
+        }
+
+        .friend-stat-item .stat-info {
+            flex: 1;
+        }
+
+        .friend-stat-item .stat-info .stat-number {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: var(--xpy-text);
+            line-height: 1.2;
+        }
+
+        .friend-stat-item .stat-info .stat-label {
+            font-size: 0.6rem;
+            color: var(--xpy-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        /* Recent Activity Widget */
+        .activity-list {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            background: rgba(255,255,255,0.03);
+            border-radius: var(--xpy-radius-sm);
+            border: 1px solid var(--xpy-border);
+            transition: all 0.3s ease;
+        }
+
+        .activity-item:hover {
+            background: rgba(var(--xpy-primary-rgb), 0.06);
+            border-color: var(--xpy-border-glow);
+        }
+
+        .activity-item .activity-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1px solid var(--xpy-border-glow);
+            flex-shrink: 0;
+        }
+
+        .activity-item .activity-text {
+            flex: 1;
+            font-size: 0.7rem;
+            color: var(--xpy-text-secondary);
+        }
+
+        .activity-item .activity-text strong {
+            color: var(--xpy-text);
+            font-weight: 600;
+        }
+
+        .activity-item .activity-text .activity-action {
+            color: var(--xpy-text-muted);
+        }
+
+        .activity-item .activity-time {
+            font-size: 0.55rem;
+            color: var(--xpy-text-muted);
+            white-space: nowrap;
+        }
+
+        /* ============================================================
+           FRIENDS PAGE HEADER
+           ============================================================ */
+        .friends-header {
+            background: var(--xpy-card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: var(--xpy-radius);
+            padding: 24px 28px;
+            margin-bottom: 20px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--xpy-border);
+            transition: all 0.4s ease;
+        }
+
+        .friends-header:hover {
+            border-color: var(--xpy-border-glow);
+        }
+
+        @media (max-width: 767px) {
+            .friends-header {
+                padding: 16px 14px;
+                border-radius: 0;
+                border-left: none;
+                border-right: none;
+                margin-bottom: 10px;
+            }
+        }
+
+        .header-content {
+            text-align: center;
+        }
+
+        .friends-main-title {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--xpy-text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 767px) {
+            .friends-main-title {
+                font-size: 1.4rem;
+                flex-direction: column;
+                gap: 8px;
+                margin-bottom: 14px;
+            }
+        }
+
+        .friends-main-title i {
+            color: var(--xpy-primary);
+            font-size: 1.8rem;
+        }
+
+        @media (max-width: 767px) {
+            .friends-main-title i {
+                font-size: 1.4rem;
+            }
+        }
+
+        /* ===== STATS GRID ===== */
+        .header-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 767px) {
+            .header-stats {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+        }
+
+        .stat-link {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .stat-box {
+            background: rgba(255,255,255,0.03);
+            border-radius: var(--xpy-radius-sm);
+            padding: 14px 10px;
+            border: 2px solid var(--xpy-border);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            text-align: center;
+        }
+
+        [data-theme="light"] .stat-box {
+            background: rgba(0,0,0,0.02);
+        }
+
+        .stat-box:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--card-shadow);
+            border-color: var(--xpy-border-glow);
+        }
+
+        .stat-box.active {
+            border-color: var(--xpy-primary);
+            background: rgba(var(--xpy-primary-rgb), 0.08);
+        }
+
+        .stat-box.add-friend {
+            border: 2px dashed var(--xpy-border-glow);
+        }
+
+        .stat-box.add-friend:hover {
+            background: rgba(var(--xpy-primary-rgb), 0.08);
+            border-color: var(--xpy-primary);
+        }
+
+        .stat-number {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: var(--xpy-primary);
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+
+        @media (max-width: 767px) {
+            .stat-number {
+                font-size: 1.3rem;
+            }
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: var(--xpy-text-muted);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        @media (max-width: 767px) {
+            .stat-label {
+                font-size: 0.6rem;
+            }
+        }
+
+        .stat-box .notification-badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: var(--danger-color);
+            color: white;
+            font-size: 0.6rem;
+            min-width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            border: 2px solid var(--xpy-card-bg);
+            animation: badgePulse 2s infinite;
+        }
+
+        @keyframes badgePulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+        }
+
+        /* ============================================================
+           MAIN CONTENT
+           ============================================================ */
+        .friends-main-content {
+            background: var(--xpy-card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: var(--xpy-radius);
+            padding: 24px 28px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--xpy-border);
+            transition: all 0.4s ease;
+        }
+
+        .friends-main-content:hover {
+            border-color: var(--xpy-border-glow);
+        }
+
+        @media (max-width: 767px) {
+            .friends-main-content {
+                padding: 16px 14px;
+                border-radius: 0;
+                border-left: none;
+                border-right: none;
+                margin-bottom: 0;
+            }
+        }
+
+        .section-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--xpy-border);
+        }
+
+        .section-title h2 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin: 0;
+            color: var(--xpy-text);
+        }
+
+        .section-title h2 i {
+            color: var(--xpy-primary);
+            margin-right: 8px;
+        }
+
+        .section-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .btn-action {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 1px solid var(--xpy-border);
+            background: rgba(255,255,255,0.03);
+            color: var(--xpy-text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-action:hover {
+            background: rgba(var(--xpy-primary-rgb), 0.08);
+            border-color: var(--xpy-border-glow);
+            color: var(--xpy-primary);
+            transform: translateY(-2px);
+        }
+
+        /* ============================================================
+           CONTENT LOADING
+           ============================================================ */
+        .content-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            color: var(--xpy-text-muted);
+            text-align: center;
+        }
+
+        .content-loading p {
+            margin-top: 15px;
+            font-size: 0.9rem;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--xpy-border);
+            border-top: 3px solid var(--xpy-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loading-spinner.small {
+            width: 20px;
+            height: 20px;
+            border-width: 2px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* ============================================================
+           EMPTY STATES
+           ============================================================ */
+        .content-empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--xpy-text-muted);
+        }
+
+        /* Top icon only — big circle look */
+        .content-empty > i:first-child {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            opacity: 0.3;
+            color: var(--xpy-text-muted);
+            display: block;
+        }
+
+        /* Icons inside buttons — normal size, not the 3rem top-icon style */
+        .content-empty button i {
+            font-size: 0.9rem !important;
+            margin: 0 !important;
+            opacity: 1 !important;
+            color: inherit !important;
+            display: inline-block !important;
+        }
+
+        .content-empty h4 {
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+            color: var(--xpy-text);
+            font-weight: 600;
+        }
+
+        .content-empty p {
+            margin-bottom: 20px;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+            font-size: 0.9rem;
+        }
+
+        .content-error {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--xpy-text-muted);
+        }
+
+        .content-error i {
+            font-size: 2.5rem;
+            margin-bottom: 16px;
+            color: var(--danger-color);
+            opacity: 0.6;
+        }
+
+        .content-error h4 {
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+            color: var(--xpy-text);
+        }
+
+        .btn-retry {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 24px;
+            background: linear-gradient(135deg, var(--xpy-primary), var(--xpy-secondary));
+            color: white;
+            border: none;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .btn-retry:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(var(--xpy-primary-rgb), 0.3);
+        }
+
+        /* ============================================================
+           FRIEND ITEMS
+           ============================================================ */
+        .friends-list,
+        .requests-list,
+        .sent-requests-list,
+        .search-results-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .friend-item,
+        .request-item,
+        .sent-request-item,
+        .search-result-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 18px;
+            background: rgba(255,255,255,0.03);
+            border-radius: var(--xpy-radius-sm);
+            border: 1px solid var(--xpy-border);
+            transition: all 0.3s ease;
+            gap: 15px;
+            width: 100%;
+        }
+
+        [data-theme="light"] .friend-item,
+        [data-theme="light"] .request-item,
+        [data-theme="light"] .sent-request-item,
+        [data-theme="light"] .search-result-item {
+            background: rgba(0,0,0,0.02);
+        }
+
+        .friend-item:hover,
+        .request-item:hover,
+        .sent-request-item:hover,
+        .search-result-item:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--card-shadow);
+            border-color: var(--xpy-border-glow);
+        }
+
+        @media (max-width: 767px) {
+            .friend-item,
+            .request-item,
+            .sent-request-item,
+            .search-result-item {
+                flex-direction: column;
+                align-items: stretch;
+                padding: 14px;
+                gap: 12px;
+            }
+        }
+
+        .friend-item-main,
+        .request-item-main,
+        .sent-request-item-main {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* ===== AVATARS ===== */
+        .friend-avatar,
+        .request-avatar,
+        .sent-request-avatar,
+        .search-result-avatar {
+            position: relative;
+            flex-shrink: 0;
+            text-decoration: none;
+        }
+
+        .friend-avatar img,
+        .request-avatar img,
+        .sent-request-avatar img,
+        .search-result-avatar img {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--xpy-primary);
+            transition: border-color 0.3s ease;
+        }
+
+        @media (max-width: 767px) {
+            .friend-avatar img,
+            .request-avatar img,
+            .sent-request-avatar img,
+            .search-result-avatar img {
+                width: 44px;
+                height: 44px;
+            }
+        }
+
+        .friend-avatar .online-dot-mini {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 12px;
+            height: 12px;
+            background: var(--success-color);
+            border-radius: 50%;
+            border: 2px solid var(--xpy-card-bg);
+        }
+
+        /* ===== INFO ===== */
+        .friend-info,
+        .request-info,
+        .sent-request-info,
+        .search-result-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .friend-name,
+        .request-name,
+        .sent-request-name,
+        .search-result-name {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--xpy-text);
+            text-decoration: none;
+            display: block;
+            margin-bottom: 3px;
+            transition: color 0.2s;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .friend-name:hover,
+        .request-name:hover,
+        .sent-request-name:hover,
+        .search-result-name:hover {
+            color: var(--xpy-primary);
+        }
+
+        .friend-username,
+        .request-username,
+        .sent-request-username,
+        .search-result-username {
+            color: var(--xpy-text-muted);
+            font-size: 0.8rem;
+        }
+
+        .friend-meta,
+        .request-meta,
+        .sent-request-meta {
+            margin-top: 3px;
+            font-size: 0.7rem;
+            color: var(--xpy-text-muted);
+        }
+
+        /* ===== ACTION BUTTONS ===== */
+        .friend-actions,
+        .request-actions,
+        .sent-request-actions,
+        .search-result-actions {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 767px) {
+            .friend-actions,
+            .request-actions,
+            .sent-request-actions,
+            .search-result-actions {
+                gap: 6px;
+                width: 100%;
+                justify-content: flex-end;
+            }
+        }
+
+        .btn-action-small {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 1px solid var(--xpy-border);
+            background: rgba(255,255,255,0.03);
+            color: var(--xpy-text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        [data-theme="light"] .btn-action-small {
+            background: rgba(0,0,0,0.03);
+        }
+
+        .btn-action-small:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--card-shadow);
+        }
+
+        .btn-action-small.btn-accept:hover {
+            background: var(--success-color);
+            color: white;
+            border-color: var(--success-color);
+        }
+
+        .btn-action-small.btn-decline:hover,
+        .btn-action-small.btn-cancel:hover,
+        .btn-action-small.btn-remove:hover {
+            background: var(--danger-color);
+            color: white;
+            border-color: var(--danger-color);
+        }
+
+        .btn-action-small.btn-add:hover,
+        .btn-action-small.btn-message:hover {
+            background: rgba(var(--xpy-primary-rgb), 0.15);
+            color: var(--xpy-primary);
+            border-color: var(--xpy-border-glow);
+        }
+
+        /* ============================================================
+           ADD FRIENDS SECTION
+           ============================================================ */
+        .add-friends-container {
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .search-box {
+            margin-bottom: 24px;
+            width: 100%;
+        }
+
+        .search-input-group {
+            position: relative;
+            display: flex;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .search-input-group i {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--xpy-text-muted);
+            z-index: 3;
+            pointer-events: none;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 12px 16px 12px 44px !important;
+            border: 2px solid var(--xpy-border);
+            border-radius: var(--xpy-radius-sm);
+            font-size: 0.95rem;
+            background: rgba(255,255,255,0.03);
+            color: var(--xpy-text);
+            transition: all 0.3s ease;
+            width: 100%;
+            font-family: 'Inter', sans-serif;
+        }
+
+        [data-theme="light"] .search-input {
+            background: rgba(0,0,0,0.02);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--xpy-primary);
+            box-shadow: 0 0 0 3px rgba(var(--xpy-primary-rgb), 0.1);
+        }
+
+        .search-input::placeholder {
+            color: var(--xpy-text-muted);
+        }
+
+        .search-results {
+            margin-top: 16px;
+            width: 100%;
+        }
+
+        .search-placeholder {
+            text-align: center;
+            padding: 50px 20px;
+            color: var(--xpy-text-muted);
+        }
+
+        .search-placeholder i {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            opacity: 0.3;
+            color: var(--xpy-text-muted);
+        }
+
+        .search-placeholder h4 {
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+            color: var(--xpy-text);
+        }
+
+        .search-placeholder p {
+            font-size: 0.9rem;
+        }
+
+        .search-info {
+            text-align: center;
+            padding: 30px 20px;
+            color: var(--xpy-text-muted);
+            font-style: italic;
+            font-size: 0.9rem;
+        }
+
+        /* ============================================================
+           CUSTOM CONFIRM BOXES
+           ============================================================ */
+        .custom-confirm-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(10px);
+            z-index: 999998;
+            display: none;
+        }
+
+        .custom-confirm-overlay.show {
+            display: block;
+        }
+
+        .custom-confirm-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            background: var(--xpy-card-bg);
+            backdrop-filter: blur(30px);
+            border-radius: var(--xpy-radius);
+            padding: 28px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            z-index: 999999;
+            max-width: 400px;
+            width: 90%;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid var(--xpy-border);
+        }
+
+        .custom-confirm-box.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .custom-confirm-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .custom-confirm-icon {
+            font-size: 28px;
+            color: var(--xpy-primary);
+        }
+
+        .custom-confirm-title {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--xpy-text);
+        }
+
+        .custom-confirm-message {
+            margin: 0 0 24px 0;
+            color: var(--xpy-text-secondary);
+            line-height: 1.6;
+            font-size: 0.9rem;
+        }
+
+        .custom-confirm-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .custom-confirm-btn {
+            padding: 8px 24px;
+            border-radius: var(--xpy-radius-sm);
+            border: none;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 80px;
+        }
+
+        .custom-confirm-btn.cancel {
+            background: rgba(255,255,255,0.05);
+            color: var(--xpy-text-secondary);
+            border: 1px solid var(--xpy-border);
+        }
+
+        .custom-confirm-btn.cancel:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .custom-confirm-btn.confirm {
+            background: linear-gradient(135deg, var(--xpy-primary), var(--xpy-secondary));
+            color: white;
+        }
+
+        .custom-confirm-btn.confirm:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(var(--xpy-primary-rgb), 0.3);
+        }
+
+        .custom-confirm-btn.danger {
+            background: linear-gradient(135deg, var(--danger-color), #dc2626);
+            color: white;
+        }
+
+        .custom-confirm-btn.danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.3);
+        }
+
+        /* ============================================================
+           TOAST CONTAINER
+           ============================================================ */
+        .toast-container {
+            position: fixed;
+            top: 80px;
+            right: 24px;
+            z-index: 999999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-width: 350px;
+            pointer-events: none;
+        }
+
+        .toast-notification {
+            background: var(--xpy-card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--xpy-border);
+            border-radius: var(--xpy-radius-sm);
+            padding: 14px 18px;
+            box-shadow: var(--card-shadow);
+            transform: translateX(120%);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            pointer-events: auto;
+            max-width: 350px;
+            border-left: 4px solid var(--xpy-primary);
+        }
+
+        .toast-notification.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .toast-notification.success {
+            border-left-color: var(--success-color);
+        }
+        .toast-notification.error {
+            border-left-color: var(--danger-color);
+        }
+        .toast-notification.warning {
+            border-left-color: var(--warning-color);
+        }
+        .toast-notification.info {
+            border-left-color: var(--info-color);
+        }
+
+        .toast-content {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toast-icon {
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .toast-notification.success .toast-icon {
+            color: var(--success-color);
+        }
+        .toast-notification.error .toast-icon {
+            color: var(--danger-color);
+        }
+        .toast-notification.warning .toast-icon {
+            color: var(--warning-color);
+        }
+        .toast-notification.info .toast-icon {
+            color: var(--info-color);
+        }
+
+        .toast-message {
+            flex: 1;
+            font-size: 0.85rem;
+            color: var(--xpy-text);
+            line-height: 1.4;
+        }
+
+        .toast-close {
+            background: none;
+            border: none;
+            color: var(--xpy-text-muted);
+            font-size: 1rem;
+            cursor: pointer;
+            padding: 4px;
+            transition: color 0.2s;
+        }
+
+        .toast-close:hover {
+            color: var(--xpy-text);
+        }
+
+        /* ============================================================
+           SCROLLBAR
+           ============================================================ */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--xpy-border);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--xpy-border-glow);
+        }
+
+        /* ============================================================
+           ANIMATIONS
+           ============================================================ */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .content-container {
+            animation: fadeIn 0.4s ease;
+        }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 480px) {
+            .friends-main-title {
+                font-size: 1.2rem;
+            }
+            
+            .stat-box {
+                padding: 10px 6px;
+            }
+            
+            .stat-number {
+                font-size: 1.1rem;
+            }
+            
+            .stat-label {
+                font-size: 0.55rem;
+            }
+            
+            .friend-item,
+            .request-item,
+            .sent-request-item,
+            .search-result-item {
+                padding: 12px;
+            }
+            
+            .friend-avatar img,
+            .request-avatar img,
+            .sent-request-avatar img,
+            .search-result-avatar img {
+                width: 40px;
+                height: 40px;
+            }
+            
+            .btn-action-small {
+                width: 30px;
+                height: 30px;
+                font-size: 0.8rem;
+            }
+            
+            .section-title h2 {
+                font-size: 1rem;
+            }
+        }
+
+        @media (max-width: 380px) {
+            .friends-main-title {
+                font-size: 1rem;
+            }
+            
+            .header-stats {
+                grid-template-columns: 1fr 1fr;
+                gap: 6px;
+            }
+            
+            .stat-box {
+                padding: 8px 4px;
+            }
+            
+            .stat-number {
+                font-size: 1rem;
+            }
+            
+            .stat-label {
+                font-size: 0.5rem;
+            }
+        }
+
+        /* Friends page spinner — uses own class to avoid dashboard.css conflict */
+        .friends-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--xpy-border);
+            border-top: 3px solid var(--xpy-primary);
+            border-radius: 50%;
+            animation: friendsSpin 1s linear infinite;
+        }
+        @keyframes friendsSpin {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+        }
+
+/* ============================================================
+FRIENDS PAGE — UI ENHANCEMENTS
+Append-only overrides. No functionality changes.
+============================================================ */
+
+/* ------------------------------------------------------------
+   A2. Bigger, clearer action buttons (avatar / message / remove)
+   ------------------------------------------------------------ */
+.btn-action-small {
+    width: 40px !important;
+    height: 40px !important;
+    font-size: 0.95rem !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid var(--xpy-border) !important;
+    color: var(--xpy-text-secondary) !important;
+    transition: all 0.18s ease !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    border-radius: 50% !important;
+    cursor: pointer !important;
+}
+
+html[data-theme="light"] .btn-action-small {
+    background: rgba(0, 0, 0, 0.03) !important;
+}
+
+.btn-action-small i {
+    font-size: 0.95rem !important;
+    line-height: 1 !important;
+}
+
+.btn-action-small:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15) !important;
+}
+
+.btn-action-small.btn-message:hover {
+    background: rgba(var(--xpy-primary-rgb), 0.12) !important;
+    border-color: var(--xpy-primary) !important;
+    color: var(--xpy-primary) !important;
+}
+
+.btn-action-small.btn-accept:hover {
+    background: var(--success-color) !important;
+    border-color: var(--success-color) !important;
+    color: #fff !important;
+}
+
+.btn-action-small.btn-decline:hover,
+.btn-action-small.btn-cancel:hover,
+.btn-action-small.btn-remove:hover {
+    background: var(--danger-color) !important;
+    border-color: var(--danger-color) !important;
+    color: #fff !important;
+}
+
+.btn-action-small.btn-add:hover {
+    background: var(--xpy-primary) !important;
+    border-color: var(--xpy-primary) !important;
+    color: #fff !important;
+}
+
+/* ------------------------------------------------------------
+   B1. Stronger typographic hierarchy on stat boxes
+   ------------------------------------------------------------ */
+.stat-box {
+    min-height: 105px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    padding: 14px 10px !important;
+}
+
+.stat-box .stat-number {
+    font-size: 2rem !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    letter-spacing: -0.03em !important;
+}
+
+.stat-box .stat-number i {
+    font-size: 1.9rem !important;
+    line-height: 1 !important;
+}
+
+.stat-box .stat-label {
+    font-size: 0.62rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.7px !important;
+    text-transform: uppercase !important;
+    opacity: 0.9 !important;
+}
+
+/* Make the "Add Friend" box's icon match number weight visually */
+.stat-box.add-friend .stat-number i {
+    font-weight: 800 !important;
+}
+
+/* ------------------------------------------------------------
+   B3. Refined active state with subtle inner glow
+   ------------------------------------------------------------ */
+.stat-box.active {
+    box-shadow: 0 0 0 1px rgba(var(--xpy-primary-rgb), 0.4),
+                inset 0 0 20px rgba(var(--xpy-primary-rgb), 0.06) !important;
+}
+
+/* ------------------------------------------------------------
+   C1. Bigger avatars in Recent Activity widget
+   ------------------------------------------------------------ */
+.activity-item .activity-avatar {
+    width: 38px !important;
+    height: 38px !important;
+    border-width: 2px !important;
+}
+
+.activity-item .activity-text {
+    font-size: 0.76rem !important;
+    line-height: 1.35 !important;
+}
+
+.activity-item .activity-time {
+    font-size: 0.62rem !important;
+}
+
+/* ------------------------------------------------------------
+   C2. Add color-coded icons in Recent Activity items
+   ------------------------------------------------------------ */
+.activity-item .activity-text strong {
+    font-weight: 700 !important;
+}
+
+/* ------------------------------------------------------------
+   Friend card — subtle polish
+   ------------------------------------------------------------ */
+.friend-item,
+.request-item,
+.sent-request-item,
+.search-result-item {
+    padding: 16px 20px !important;
+    transition: all 0.2s ease !important;
+}
+
+.friend-item:hover,
+.request-item:hover,
+.sent-request-item:hover,
+.search-result-item:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Truncate long names / usernames cleanly */
+.friend-name,
+.request-name,
+.sent-request-name,
+.search-result-name {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    max-width: 100% !important;
+}
+
+.friend-username,
+.request-username,
+.sent-request-username,
+.search-result-username {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    max-width: 100% !important;
+}
+
+/* Slightly larger friend avatar (matches bigger buttons) */
+.friend-avatar img,
+.request-avatar img,
+.sent-request-avatar img,
+.search-result-avatar img {
+    width: 56px !important;
+    height: 56px !important;
+}
+
+/* Meta line spacing */
+.friend-meta,
+.request-meta,
+.sent-request-meta {
+    margin-top: 4px !important;
+    font-size: 0.72rem !important;
+}
+
+/* ------------------------------------------------------------
+   D2. Mobile — full-width pill buttons with labels
+   ------------------------------------------------------------ */
+@media (max-width: 767px) {
+
+    /* Card stacks vertically */
+    .friend-item,
+    .request-item,
+    .sent-request-item,
+    .search-result-item {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        padding: 14px !important;
+        gap: 12px !important;
+    }
+
+    /* Actions row goes full-width */
+    .friend-actions,
+    .request-actions,
+    .sent-request-actions,
+    .search-result-actions {
+        width: 100% !important;
+        display: flex !important;
+        gap: 8px !important;
+        justify-content: stretch !important;
+    }
+
+    /* Buttons become pill-shaped with labels */
+    .btn-action-small {
+        flex: 1 !important;
+        width: auto !important;
+        height: 40px !important;
+        border-radius: 20px !important;
+        padding: 0 12px !important;
+        font-size: 0.78rem !important;
+        font-weight: 600 !important;
+        gap: 6px !important;
+    }
+
+    /* Add text labels via pseudo-elements */
+    .btn-action-small.btn-message::after  { content: 'Message'; }
+    .btn-action-small.btn-remove::after   { content: 'Remove'; }
+    .btn-action-small.btn-accept::after   { content: 'Accept'; }
+    .btn-action-small.btn-decline::after  { content: 'Decline'; }
+    .btn-action-small.btn-cancel::after   { content: 'Cancel'; }
+    .btn-action-small.btn-add::after      { content: 'Add'; }
+
+    /* Avatar + name row inside card still uses flex */
+    .friend-item-main,
+    .request-item-main,
+    .sent-request-item-main,
+    .search-result-item-main {
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+    }
+
+    /* Stat boxes: 2×2 grid on mobile */
+    .header-stats {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+    }
+
+    .stat-box {
+        min-height: 92px !important;
+        padding: 12px 8px !important;
+    }
+
+    .stat-box .stat-number {
+        font-size: 1.7rem !important;
+    }
+
+    /* Recent activity avatars slightly smaller on mobile */
+    .activity-item .activity-avatar {
+        width: 32px !important;
+        height: 32px !important;
+    }
+
+    /* Friend avatars stay reasonable size */
+    .friend-avatar img,
+    .request-avatar img,
+    .sent-request-avatar img,
+    .search-result-avatar img {
+        width: 48px !important;
+        height: 48px !important;
+    }
+}
+
+/* ------------------------------------------------------------
+   Ultra-small phones — tighter still
+   ------------------------------------------------------------ */
+@media (max-width: 400px) {
+    .stat-box {
+        min-height: 82px !important;
+    }
+
+    .stat-box .stat-number {
+        font-size: 1.5rem !important;
+    }
+
+    .stat-box .stat-label {
+        font-size: 0.55rem !important;
+    }
+
+    .friend-name,
+    .request-name,
+    .sent-request-name,
+    .search-result-name {
+        font-size: 0.9rem !important;
+    }
+}
+
+
+/* Add Friend button — pill with icon */
+.btn-action-small.btn-add {
+    background: linear-gradient(135deg, var(--xpy-primary), var(--xpy-secondary));
+    color: #fff;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.78rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.2s ease;
+    box-shadow: 0 4px 14px rgba(var(--xpy-primary-rgb), 0.25);
+    width: auto;
+    height: auto;
+}
+
+.btn-action-small.btn-add:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(var(--xpy-primary-rgb), 0.35);
+}
+
+.btn-action-small.btn-add:active {
+    transform: scale(0.97);
+}
+
+.btn-action-small.btn-add:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* If it's rendered as the small circle icon (no text) */
+.btn-action-small.btn-add:not(:has(span)) {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 50%;
+    justify-content: center;
+}
+
+.btn-action-small.btn-add i {
+    font-size: 0.85rem;
+}
+
+/* Empty state button — orange, overrides Bootstrap */
+.content-empty .btn-primary,
+.content-empty .btn,
+#emptyState .btn-primary {
+    background: linear-gradient(135deg, var(--xpy-primary), var(--xpy-secondary)) !important;
+    border: none !important;
+    color: #fff !important;
+    padding: 10px 22px !important;
+    border-radius: 22px !important;
+    font-weight: 600 !important;
+    font-size: 0.9rem !important;
+    min-height: 42px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    box-shadow: 0 4px 16px rgba(var(--xpy-primary-rgb), 0.25) !important;
+    transition: transform 0.15s ease, box-shadow 0.2s ease !important;
+    cursor: pointer !important;
+    text-decoration: none !important;
+}
+.content-empty .btn-primary:hover,
+#emptyState .btn-primary:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 22px rgba(var(--xpy-primary-rgb), 0.35) !important;
+    background: linear-gradient(135deg, var(--xpy-primary), var(--xpy-secondary)) !important;
+    color: #fff !important;
+}

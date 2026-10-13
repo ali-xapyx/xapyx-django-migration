@@ -1,0 +1,149 @@
+{% extends "dashboard/base_dashboard.html" %}
+{% load static %}
+
+{% block title %}Page Inbox | XAPYX{% endblock %}
+
+{% block content %}
+<div id="dashboardContainer" class="no-right-widgets">
+  <div class="dashboard-inner page-inbox-inner">
+    <div class="dashboard-flex page-inbox-flex">
+      <div class="dashboard-main page-inbox-dashboard-main">
+
+        <!-- Off-canvas backdrop for mobile sidebar -->
+        <div class="page-inbox-backdrop" id="pageInboxBackdrop" onclick="closePageInboxSidebar()"></div>
+
+        <div class="page-inbox-wrap">
+          
+          <!-- LEFT COLUMN: Conversation List (320px) -->
+          <aside class="page-inbox-sidebar" id="pageInboxSidebar">
+            
+            <div class="page-inbox-sidebar-header">
+              <div class="d-flex justify-content-between align-items-center">
+                <h2 class="page-inbox-sidebar-title">
+                  <i class="fas fa-inbox me-2"></i>
+                  <span>{% if is_page_admin %}Page Inbox{% else %}Page Messages{% endif %}</span>
+                </h2>
+                <button type="button" class="page-inbox-close-btn d-md-none" onclick="closePageInboxSidebar()" aria-label="Close sidebar">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+              <div class="d-flex justify-content-between align-items-center mt-2">
+                <span class="page-inbox-sidebar-subtitle" id="convCount">Loading conversations...</span>
+                {% if is_page_admin %}
+                <span class="badge page-inbox-admin-pill">Page Admin</span>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Page switcher for Page Admins -->
+            {% if is_page_admin and user_pages|length > 1 %}
+            <div class="page-inbox-filter-wrap">
+              <label for="pageFilterSelect" class="visually-hidden">Filter by Page</label>
+              <select id="pageFilterSelect" class="page-inbox-select">
+                <option value="all">All Pages ({{ user_pages|length }})</option>
+                {% for page in user_pages %}
+                <option value="{{ page.id }}" {% if selected_page_id == page.id %}selected{% endif %}>
+                  {{ page.title }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            {% endif %}
+
+            <!-- Conversations Scrollable List -->
+            <div class="page-inbox-conv-list" id="conversationsList">
+              <div class="page-inbox-loading">
+                <i class="fas fa-spinner fa-spin fa-2x"></i>
+                <p class="mt-2 text-muted">Loading conversations...</p>
+              </div>
+            </div>
+
+          </aside>
+
+          <!-- RIGHT COLUMN: Chat Panel -->
+          <section class="page-inbox-chat" id="pageInboxChat">
+            
+            <!-- Chat Header -->
+            <header class="page-inbox-chat-header" id="chatHeader" style="display: none;">
+              <div class="d-flex align-items-center gap-3">
+                <button type="button" class="page-inbox-toggle-btn d-md-none" onclick="openPageInboxSidebar()" aria-label="Open conversation list">
+                  <i class="fas fa-bars"></i>
+                </button>
+                <div class="page-inbox-header-avatar-wrap">
+                  <img id="chatAvatar" class="page-inbox-header-avatar" src="{% static 'images/avatars/default.png' %}" alt="Avatar">
+                </div>
+                <div class="page-inbox-header-info">
+                  <h3 id="chatName" class="page-inbox-header-name">Conversation</h3>
+                  <div class="page-inbox-header-meta">
+                    <span id="chatStatus" class="page-inbox-header-status text-muted">Active</span>
+                    <span id="chatTypeBadge" class="page-inbox-type-badge" style="display:none;"></span>
+                  </div>
+                </div>
+              </div>
+              <div class="page-inbox-header-actions">
+                <a id="chatProfileLink" href="#" class="btn-notif-action" target="_blank" rel="noopener">
+                  <i class="fas fa-external-link-alt me-1"></i>
+                  <span class="d-none d-sm-inline">View</span>
+                </a>
+              </div>
+            </header>
+
+            <!-- Messages Stream Area -->
+            <div class="page-inbox-messages-container" id="messagesContainer">
+              <div class="page-inbox-empty-chat" id="emptyStatePlaceholder">
+                <div class="page-inbox-empty-icon">
+                  <i class="fas fa-comments"></i>
+                </div>
+                <h4>Select a Conversation</h4>
+                <p>Choose a conversation from the sidebar to view messages and reply.</p>
+              </div>
+            </div>
+
+            <!-- Chat Input Area -->
+            <footer class="page-inbox-input-area" id="inputArea" style="display: none;">
+              <form id="messageForm" class="page-inbox-form" onsubmit="return false;">
+                {% csrf_token %}
+                <div class="d-flex align-items-center me-1">
+                  <button type="button" class="page-inbox-attach-btn" id="attachBtn" title="Attach media" style="background:none;border:none;color:var(--xpy-text-muted);font-size:1.1rem;padding:6px 10px;cursor:pointer;">
+                    <i class="fas fa-paperclip"></i>
+                  </button>
+                  <input type="file" id="mediaInput" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt" style="display:none;">
+                </div>
+                <textarea id="messageInput"
+                          class="page-inbox-textarea"
+                          rows="1"
+                          placeholder="Type a message..."
+                          maxlength="2000"
+                          aria-label="Message text"></textarea>
+                <button type="submit" class="page-inbox-send-btn" id="sendBtn" title="Send message" aria-label="Send message">
+                  <i class="fas fa-paper-plane"></i>
+                </button>
+              </form>
+            </footer>
+
+          </section>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Safe JSON metadata for client scripts -->
+<script id="pageInboxConfig" type="application/json">
+{
+  "selectedConvId": {{ selected_conv_id|default:0 }},
+  "selectedPageId": {{ selected_page_id|default:0 }},
+  "isPageAdmin": {{ is_page_admin|yesno:"true,false" }},
+  "currentUserId": {{ request.user.id|default:0 }}
+}
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Firebase App & Database Compat SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+<script src="{% static 'js/page_inbox.js' %}?v=1"></script>
+{% endblock %}

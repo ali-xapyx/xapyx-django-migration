@@ -1,0 +1,10 @@
+.env
+.env
+*.pem
+.firebase-admin.json
+venv/
+__pycache__/
+*.pyc
+.tmp/
+*.log
+*.bak

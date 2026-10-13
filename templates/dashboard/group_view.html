@@ -1,0 +1,425 @@
+{% extends "dashboard/base_dashboard.html" %}
+{% load static %}
+
+{% block title %}{{ group.title }} | XAPYX{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/groups.css' %}?v=8">
+{% endblock %}
+
+{% block content %}
+<div id="dashboardContainer">
+  <div class="dashboard-inner gv-inner">
+    <div class="dashboard-flex">
+      <div class="dashboard-main">
+
+        <!-- ══════════════════════════════════════════════
+             DESKTOP HEADER
+             ══════════════════════════════════════════════ -->
+        <div class="gv-header">
+          <div class="gv-cover" style="background-image:url('{{ group.cover_image_url }}');">
+            <div class="gv-cover-overlay"></div>
+          </div>
+          <div class="gv-header-body">
+            <div class="gv-profile">
+              <img src="{{ group.profile_image_url }}" alt="{{ group.title }}"
+                   onerror="this.src='/static/images/avatars/default.png'">
+            </div>
+            <div class="gv-details">
+              <h1 class="gv-title">
+                {{ group.title }}
+                <span class="gv-privacy-badge {{ group.privacy }}">
+                  <i class="bi bi-{% if group.privacy == 'private' %}lock-fill{% else %}globe2{% endif %}"></i>
+                  {{ group.privacy|title }}
+                </span>
+                {% if group.post_approval %}
+                  <span class="gv-approval-badge"><i class="bi bi-shield-check"></i> Approval</span>
+                {% endif %}
+              </h1>
+              <p class="gv-description">{{ group.description|default:"No description" }}</p>
+
+              <div class="gv-stats-bar">
+                <div class="gv-stat">
+                  <span class="gv-stat-num" id="gvPostCount">{{ posts_count }}</span>
+                  <span class="gv-stat-label">Posts</span>
+                </div>
+                <div class="gv-stat gv-clickable" onclick="gvOpenMembersModal()">
+                  <span class="gv-stat-num" id="gvMemberCount">{{ members_count }}</span>
+                  <span class="gv-stat-label">Members</span>
+                </div>
+              </div>
+
+              <div class="gv-actions-bar">
+                {% if membership_status == 'none' %}
+                  <button class="gv-btn gv-btn-join" type="button"
+                          onclick="gvJoinGroup()">
+                    <i class="bi bi-person-plus"></i>
+                    {% if group.privacy == 'private' %}Request to Join{% else %}Join Group{% endif %}
+                  </button>
+                {% elif membership_status == 'pending' %}
+                  <button class="gv-btn gv-btn-pending" type="button" disabled>
+                    <i class="bi bi-clock-history"></i> Request Pending
+                  </button>
+                {% elif is_member %}
+                  <button class="gv-btn gv-btn-leave" type="button" onclick="gvLeaveGroup()">
+                    <i class="bi bi-box-arrow-right"></i> Leave Group
+                  </button>
+                {% endif %}
+
+                <button class="gv-btn gv-btn-secondary" type="button" onclick="gvShareGroup()">
+                  <i class="bi bi-share"></i> Share
+                </button>
+                <button class="gv-btn gv-btn-secondary" type="button" onclick="gvShowInfoModal()">
+                  <i class="bi bi-info-circle"></i> Info
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ══════════════════════════════════════════════
+             MOBILE HEADER
+             ══════════════════════════════════════════════ -->
+        <div class="gv-header-mobile">
+          <div class="gv-cover-mobile" style="background-image:url('{{ group.cover_image_url }}');"></div>
+          <div class="gv-mobile-body">
+            <div class="gv-mobile-top">
+              <img src="{{ group.profile_image_url }}" class="gv-mobile-avatar" alt=""
+                   onerror="this.src='/static/images/avatars/default.png'">
+              <div class="gv-mobile-info">
+                <h1 class="gv-mobile-title">
+                  {{ group.title }}
+                  <span class="gv-privacy-badge-mobile {{ group.privacy }}">
+                    <i class="bi bi-{% if group.privacy == 'private' %}lock-fill{% else %}globe2{% endif %}"></i>
+                  </span>
+                </h1>
+                <p class="gv-mobile-desc">{{ group.description|default:"No description" }}</p>
+                <div class="gv-mobile-stats">
+                  <span><strong id="gvPostCountMobile">{{ posts_count }}</strong> Posts</span>
+                  <span onclick="gvOpenMembersModal()" style="cursor:pointer;">
+                    <strong id="gvMemberCountMobile">{{ members_count }}</strong> Members
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="gv-mobile-actions">
+              {% if membership_status == 'none' %}
+                <button class="gv-btn gv-btn-join" type="button" onclick="gvJoinGroup()">
+                  <i class="bi bi-person-plus"></i>
+                  {% if group.privacy == 'private' %}Request{% else %}Join{% endif %}
+                </button>
+              {% elif membership_status == 'pending' %}
+                <button class="gv-btn gv-btn-pending" type="button" disabled>
+                  <i class="bi bi-clock-history"></i> Pending
+                </button>
+              {% elif is_member %}
+                <button class="gv-btn gv-btn-leave" type="button" onclick="gvLeaveGroup()">
+                  <i class="bi bi-box-arrow-right"></i> Leave
+                </button>
+              {% endif %}
+              <button class="gv-btn gv-btn-secondary" type="button" onclick="gvShareGroup()">
+                <i class="bi bi-share"></i>
+              </button>
+              <button class="gv-btn gv-btn-secondary" type="button" onclick="gvShowInfoModal()">
+                <i class="bi bi-info-circle"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ══════════════════════════════════════════════
+             CREATE POST / INFO CARDS
+             ══════════════════════════════════════════════ -->
+        {% if can_post %}
+        <div class="create-post-section">
+          <div class="create-post-card">
+            <div class="d-flex">
+              {% if user.picture %}
+                <img src="https://s3.eu-west-1.amazonaws.com/xapyx.com-media/uploads/{{ user.picture }}"
+                     class="create-post-avatar" width="42" height="42" alt="Your profile">
+              {% else %}
+                <img src="{% static 'images/avatars/default.png' %}" class="create-post-avatar" width="42" height="42" alt="">
+              {% endif %}
+              <div class="flex-grow-1 ms-3" style="position:relative;">
+                <textarea id="gvPostContent" class="post-textarea"
+                          placeholder="Share something with {{ group.title }}..."
+                          maxlength="1000" rows="1"></textarea>
+
+                <div id="gvMediaPreview" class="media-preview d-none"></div>
+
+                <div class="post-options">
+                  <div class="options-left">
+                    <button type="button" class="option-btn" title="Add Photo"
+                            onclick="document.getElementById('gvImageInput').click()">
+                      <i class="bi bi-image"></i>
+                    </button>
+                    <button type="button" class="option-btn" title="Add Video"
+                            onclick="document.getElementById('gvVideoInput').click()">
+                      <i class="bi bi-camera-video"></i>
+                    </button>
+                  </div>
+                  <div class="options-right">
+                    <span class="char-count" id="gvCharCount">1000</span>
+                    <button type="button" id="gvPostSubmit" class="post-submit-btn">Post</button>
+                  </div>
+                </div>
+
+                <input type="file" id="gvImageInput" accept="image/*" multiple style="display:none;">
+                <input type="file" id="gvVideoInput" accept="video/*" multiple style="display:none;">
+              </div>
+            </div>
+          </div>
+        </div>
+        {% elif is_member and group.post_approval and not is_admin %}
+          <div class="gv-info-card">
+            <i class="bi bi-info-circle-fill"></i>
+            <span>Posts require admin approval before they appear in the group feed.</span>
+          </div>
+        {% elif not is_member and membership_status != 'pending' %}
+          <div class="gv-info-card">
+            <i class="bi bi-lock-fill"></i>
+            <span>Join this group to see and create posts.</span>
+            <button class="gv-btn gv-btn-join" type="button" onclick="gvJoinGroup()">
+              {% if group.privacy == 'private' %}Request to Join{% else %}Join Group{% endif %}
+            </button>
+          </div>
+        {% endif %}
+
+        <!-- ══════════════════════════════════════════════
+             POSTS FEED
+             ══════════════════════════════════════════════ -->
+        <div id="gvFeedContainer" class="gv-feed">
+          <div class="gv-loading">
+            <div class="spinner-border text-primary"></div>
+          </div>
+        </div>
+
+        <div id="gvLoadMoreContainer" class="text-center mt-3 d-none">
+          <button id="gvLoadMoreBtn" class="gv-load-more-btn" type="button">
+            <i class="bi bi-arrow-clockwise me-1"></i> Load More Posts
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     MODALS (outside #dashboardContainer)
+     ══════════════════════════════════════════════ -->
+
+<!-- Info Modal -->
+<div class="modal fade" id="gvInfoModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-info-circle me-2"></i>Group Information</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="text-center mb-4">
+          <img src="{{ group.profile_image_url }}" width="80" height="80"
+               style="object-fit:cover;border:3px solid var(--xpy-primary);border-radius:var(--xpy-radius-sm);"
+               onerror="this.src='/static/images/avatars/default.png'">
+          <h5 class="mt-3" style="color:var(--xpy-text);">{{ group.title }}</h5>
+        </div>
+        <p style="color:var(--xpy-text-secondary);"><strong>Admin:</strong> {{ creator.name }}</p>
+        <p style="color:var(--xpy-text-secondary);"><strong>Created:</strong> {{ group.created_date_display }}</p>
+        <p style="color:var(--xpy-text-secondary);"><strong>Privacy:</strong> {{ group.privacy|title }}</p>
+        {% if group.post_approval %}
+          <p style="color:var(--xpy-text-secondary);"><strong>Post Approval:</strong> Required</p>
+        {% endif %}
+        <p style="color:var(--xpy-text-secondary);"><strong>Description:</strong><br>{{ group.description|default:"No description" }}</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- All Members Modal -->
+<div class="modal fade" id="gvMembersModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-people me-2"></i>Members</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0" id="gvMembersList">
+        <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Image viewer -->
+<div class="modal fade" id="gvImageViewerModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content" style="background:rgba(0,0,0,0.95);">
+      <div class="modal-header border-0">
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0 text-center">
+        <img id="gvImageViewerImg" src="" style="max-width:100%;max-height:85vh;object-fit:contain;">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Custom confirms -->
+<div class="custom-confirm-overlay" id="customConfirmOverlay"></div>
+<div class="custom-confirm-box" id="customConfirmBox">
+  <div class="custom-confirm-header">
+    <i class="bi bi-exclamation-triangle custom-confirm-icon"></i>
+    <h5 class="custom-confirm-title" id="confirmTitle">Confirm</h5>
+  </div>
+  <p class="custom-confirm-message" id="confirmMessage">Are you sure?</p>
+  <div class="custom-confirm-buttons">
+    <button class="custom-confirm-btn cancel" id="confirmCancel">Cancel</button>
+    <button class="custom-confirm-btn confirm" id="confirmOk">OK</button>
+  </div>
+</div>
+
+<div class="custom-confirm-box" id="gvDeleteConfirmBox">
+  <div class="custom-confirm-header">
+    <i class="bi bi-trash custom-confirm-icon" style="color:#ef4444;"></i>
+    <h5 class="custom-confirm-title">Delete Post</h5>
+  </div>
+  <p class="custom-confirm-message">This post and all its comments will be deleted. Cannot be undone.</p>
+  <div class="custom-confirm-buttons">
+    <button class="custom-confirm-btn cancel" id="gvDeleteCancel">Cancel</button>
+    <button class="custom-confirm-btn danger" id="gvDeleteOk">Delete</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block right_widgets %}
+<aside class="dashboard-widgets" id="rightWidgetsPanel">
+
+  <!-- Group Info -->
+  <div class="widget-card">
+    <div class="widget-header">
+      <h6><i class="bi bi-info-circle me-2"></i> Group Info</h6>
+      <div class="widget-icon"><i class="bi bi-info"></i></div>
+    </div>
+    <div class="gv-info-item">
+      <i class="bi bi-person-badge"></i>
+      <span><strong>Admin:</strong>
+        <a href="/user/{{ creator.username }}/" class="gv-admin-link">{{ creator.name }}</a>
+      </span>
+    </div>
+    <div class="gv-info-item">
+      <i class="bi bi-shield-lock"></i>
+      <span><strong>Privacy:</strong> {{ group.privacy|title }}</span>
+    </div>
+    {% if group.post_approval %}
+    <div class="gv-info-item">
+      <i class="bi bi-check2-circle" style="color:var(--warning-color);"></i>
+      <span><strong>Post Approval:</strong> Required</span>
+    </div>
+    {% endif %}
+    <div class="gv-info-item">
+      <i class="bi bi-calendar"></i>
+      <span><strong>Created:</strong> {{ group.created_date_display }}</span>
+    </div>
+    <div class="gv-info-item">
+      <i class="bi bi-people"></i>
+      <span><strong>Members:</strong> {{ members_count }}</span>
+    </div>
+    <div class="gv-info-item">
+      <i class="bi bi-chat"></i>
+      <span><strong>Posts:</strong> {{ posts_count }}</span>
+    </div>
+  </div>
+
+  <!-- Recent Members -->
+  <div class="widget-card">
+    <div class="widget-header">
+      <h6><i class="bi bi-people me-2"></i> Recent Members</h6>
+      <div class="widget-icon"><i class="bi bi-person-plus"></i></div>
+    </div>
+    <div class="gv-members-list">
+      {% for m in recent_members %}
+        <a href="/user/{{ m.username }}/" class="gv-member-item">
+          <img src="{{ m.picture }}" class="gv-member-avatar" width="32" height="32" alt=""
+               onerror="this.src='/static/images/avatars/default.png'">
+          <div class="gv-member-info">
+            <div class="gv-member-name">
+              {{ m.name }}
+              {% if m.is_admin %}<span class="gv-member-role">Admin</span>{% endif %}
+            </div>
+          </div>
+        </a>
+      {% empty %}
+        <div class="gv-widget-empty">No members yet</div>
+      {% endfor %}
+    </div>
+    <button class="quick-action-btn" style="width:100%;margin-top:10px;" type="button"
+            onclick="gvOpenMembersModal()">
+      <i class="bi bi-eye"></i> View All Members
+    </button>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="widget-card">
+    <div class="widget-header">
+      <h6><i class="bi bi-lightning me-2"></i> Quick Actions</h6>
+      <div class="widget-icon"><i class="bi bi-plus"></i></div>
+    </div>
+    <div class="quick-actions">
+      <a href="/groups/" class="quick-action-btn"><i class="bi bi-people-fill"></i> All Groups</a>
+      <a href="/friends/" class="quick-action-btn"><i class="bi bi-people"></i> Friends</a>
+      <a href="/chat/" class="quick-action-btn"><i class="bi bi-chat"></i> Messages</a>
+      <a href="/user/{{ user.username }}/" class="quick-action-btn"><i class="bi bi-person"></i> Profile</a>
+    </div>
+  </div>
+
+  <!-- Your Orbit -->
+  <div class="widget-card">
+    <div class="widget-header">
+      <h6><i class="bi bi-rocket me-2"></i> Your Orbit</h6>
+      <div class="widget-icon"><i class="bi bi-id-card"></i></div>
+    </div>
+    <div class="grp-profile-widget">
+      {% if user.picture %}
+        <img src="https://s3.eu-west-1.amazonaws.com/xapyx.com-media/uploads/{{ user.picture }}" alt="">
+      {% else %}
+        <img src="{% static 'images/avatars/default.png' %}" alt="">
+      {% endif %}
+      <div class="grp-profile-info">
+        <div class="grp-profile-name">{{ user.name|default:user.username }}</div>
+        <div class="grp-profile-username">@{{ user.username }}</div>
+        <div class="grp-profile-stats">
+          <i class="bi bi-people-fill"></i>
+          {% if is_member %}Member{% else %}Visitor{% endif %}
+        </div>
+      </div>
+    </div>
+    <div style="display:flex; gap:8px; margin-top:8px;">
+      <a href="/user/{{ user.username }}/" class="quick-action-btn" style="flex:1;">
+        <i class="bi bi-eye"></i> View
+      </a>
+    </div>
+  </div>
+
+</aside>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.GV_CONFIG = {
+  groupId: {{ group.id }},
+  userId: {{ user.id }},
+  isMember: {{ is_member|yesno:"true,false" }},
+  isAdmin: {{ is_admin|yesno:"true,false" }},
+  isCreator: {{ is_creator|yesno:"true,false" }},
+  canPost: {{ can_post|yesno:"true,false" }},
+  membershipStatus: "{{ membership_status }}",
+  privacy: "{{ group.privacy }}",
+  groupTitle: "{{ group.title|escapejs }}",
+};
+</script>
+<script src="{% static 'js/group_view.js' %}?v=2"></script>
+{% endblock %}

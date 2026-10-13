@@ -1,0 +1,337 @@
+{% extends "dashboard/base_dashboard.html" %}
+{% load static %}
+
+{% block title %}Feed | XAPYX{% endblock %}
+
+{% block extra_css %}
+{% endblock %}
+
+{% block content %}
+<div id="dashboardContainer">
+  <div class="dashboard-inner">
+    <div class="dashboard-flex">
+
+      <!-- MAIN CONTENT -->
+      <div class="dashboard-main">
+
+        <!-- ============================================================
+             CREATE POST SECTION
+             ============================================================ -->
+        <div class="create-post-section">
+          <div class="create-post-card">
+            <div class="d-flex">
+              {% if user.picture %}
+                <img src="https://s3.eu-west-1.amazonaws.com/xapyx.com-media/uploads/{{ user.picture }}"
+                     class="create-post-avatar" width="42" height="42"
+                     alt="Your profile"
+                     onclick="window.location.href='/user/{{ user.username }}/'"
+                     data-default-avatar="{% static 'images/avatars/default.png' %}">
+              {% else %}
+                <img src="{% static 'images/avatars/default.png' %}"
+                     class="create-post-avatar" width="42" height="42"
+                     alt="Your profile"
+                     onclick="window.location.href='/user/{{ user.username }}/'">
+              {% endif %}
+              <div class="flex-grow-1 ms-3" style="position: relative;">
+                <textarea id="postContent"
+                          class="post-textarea"
+                          placeholder="What's on your mind, {{ first_name }}?"
+                          maxlength="1000"
+                          rows="1"></textarea>
+
+                <div id="mediaPreview" class="media-preview d-none"></div>
+                <div id="pollPreview" class="poll-preview d-none"></div>
+
+                <div class="post-options">
+                  <div class="options-left">
+                    <button type="button" class="option-btn" title="Add Photo"
+                            onclick="document.getElementById('imageInput').click()">
+                      <i class="bi bi-image"></i>
+                    </button>
+                    <button type="button" class="option-btn" title="Add Video"
+                            onclick="document.getElementById('videoInput').click()">
+                      <i class="bi bi-camera-video"></i>
+                    </button>
+                    <button type="button" class="option-btn" title="Create Poll"
+                            onclick="showPollModal()">
+                      <i class="bi bi-bar-chart"></i>
+                    </button>
+                  </div>
+                  <div class="options-right">
+                    <span class="char-count" id="charCount">1000</span>
+                    <button type="button" id="postSubmit" class="post-submit-btn">Post</button>
+                  </div>
+                </div>
+
+                <input type="file" id="imageInput" accept="image/*" multiple style="display:none;">
+                <input type="file" id="videoInput" accept="video/*" multiple style="display:none;">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================
+             SHOUT MARQUEE
+             ============================================================ -->
+        <div class="shout-marquee-section">
+          <div class="marquee-header">
+            <h5><i class="bi bi-megaphone"></i> Live Shouts</h5>
+            <span class="live-badge">
+              <span class="dot"></span> LIVE
+            </span>
+          </div>
+          <div class="shout-marquee-track" id="shoutMarqueeTrack">
+            {% if shouts %}
+              {% for s in shouts %}
+                <div class="shout-card-moving" onclick="window.location.href='/shoutbox/'">
+                  <div class="shout-card-top">
+                    <img src="{{ s.picture }}" class="shout-card-avatar" width="30" height="30" alt=""
+                         data-default-avatar="{% static 'images/avatars/default.png' %}">
+                    <div class="shout-card-user">
+                      <div class="shout-card-name">{{ s.name }}</div>
+                      <div class="shout-card-username">@{{ s.username }}</div>
+                    </div>
+                  </div>
+                  <div class="shout-card-message">{{ s.message }}</div>
+                  <div class="shout-card-bottom">
+                    <span class="shout-card-time">{{ s.created_at|timesince|slice:':7' }} ago</span>
+                    <span class="shout-card-badge"><i class="bi bi-chat"></i></span>
+                  </div>
+                  <div class="shout-card-glow"></div>
+                </div>
+              {% endfor %}
+              {% for s in shouts %}
+                <div class="shout-card-moving" onclick="window.location.href='/shoutbox/'">
+                  <div class="shout-card-top">
+                    <img src="{{ s.picture }}" class="shout-card-avatar" width="30" height="30" alt=""
+                         data-default-avatar="{% static 'images/avatars/default.png' %}">
+                    <div class="shout-card-user">
+                      <div class="shout-card-name">{{ s.name }}</div>
+                      <div class="shout-card-username">@{{ s.username }}</div>
+                    </div>
+                  </div>
+                  <div class="shout-card-message">{{ s.message }}</div>
+                  <div class="shout-card-bottom">
+                    <span class="shout-card-time">{{ s.created_at|timesince|slice:':7' }} ago</span>
+                    <span class="shout-card-badge"><i class="bi bi-chat"></i></span>
+                  </div>
+                  <div class="shout-card-glow"></div>
+                </div>
+              {% endfor %}
+            {% else %}
+              <div style="display:flex;align-items:center;justify-content:center;width:100%;padding:20px;color:var(--xpy-text-muted);">
+                <i class="bi bi-megaphone me-2"></i> No shouts yet. Be the first!
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- ============================================================
+             POSTS FEED
+             ============================================================ -->
+        <div class="posts-wrapper">
+          <div class="section-title">
+            <h4><i class="bi bi-newspaper"></i> Recent Posts</h4>
+          </div>
+          <div id="feedContainer" class="feed-container">
+            <div class="loading-spinner">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /dashboard-main -->
+    </div><!-- /dashboard-flex -->
+  </div><!-- /dashboard-inner -->
+</div><!-- /dashboardContainer -->
+{% endblock %}
+
+{% block right_widgets %}
+<!-- ============================================================
+     RIGHT WIDGETS PANEL
+     ============================================================ -->
+<aside class="dashboard-widgets" id="rightWidgetsPanel">
+
+  <!-- Stats Widget -->
+  <div class="widget-card">
+    <div class="widget-header">
+      <h6><i class="bi bi-graph-up me-2"></i> Your Stats</h6>
+      <div class="widget-icon"><i class="bi bi-person"></i></div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="stat-number">{{ stats.posts }}</div>
+        <div class="stat-label">Posts</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">{{ stats.likes }}</div>
+        <div class="stat-label">Likes</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">{{ stats.comments }}</div>
+        <div class="stat-label">Comments</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">{{ stats.views }}</div>
+        <div class="stat-label">Views</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">{{ stats.shouts }}</div>
+        <div class="stat-label">Shouts</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">{{ stats.page_posts }}</div>
+        <div class="stat-label">Page Posts</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Engagement Widget -->
+  <div class="widget-card">
+    <div class="widget-header">
+      <h6><i class="bi bi-heart me-2"></i> Engagement</h6>
+      <div class="widget-icon"><i class="bi bi-activity"></i></div>
+    </div>
+    <div class="engagement-ring">
+      <div class="ring-circle">
+        <svg viewBox="0 0 56 56">
+          <circle class="ring-bg" cx="28" cy="28" r="22"/>
+          <circle class="ring-progress" cx="28" cy="28" r="22"
+                  stroke-dasharray="{{ engagement|floatformat:1 }} 138.23"/>
+        </svg>
+        <div class="ring-center">
+          <div class="ring-number">{{ engagement|floatformat:1 }}</div>
+          <div class="ring-label">/ 10</div>
+        </div>
+      </div>
+      <div class="ring-details">
+        <div class="ring-stat">
+          <span class="ring-stat-label">Likes</span>
+          <span class="ring-stat-value">{{ stats.likes }}</span>
+        </div>
+        <div class="ring-stat">
+          <span class="ring-stat-label">Comments</span>
+          <span class="ring-stat-value">{{ stats.comments }}</span>
+        </div>
+        <div class="ring-stat">
+          <span class="ring-stat-label">Posts</span>
+          <span class="ring-stat-value">{{ stats.posts }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    <!-- Recent Activity Widget -->
+  {% if recent_activity %}
+  <div class="widget-card">
+    <div class="widget-header">
+      <h6><i class="bi bi-clock-history me-2"></i> Recent Activity</h6>
+      <div class="widget-icon"><i class="bi bi-bell"></i></div>
+    </div>
+    <div class="activity-list">
+      {% for activity in recent_activity %}
+      <div class="activity-item">
+        <div class="activity-icon
+          {% if activity.type == 'post' %}post{% elif activity.type == 'shout' %}shout{% elif activity.type == 'page_post' %}page_post{% endif %}">
+          {% if activity.type == 'post' %}
+            <i class="bi bi-file-text"></i>
+          {% elif activity.type == 'shout' %}
+            <i class="bi bi-megaphone"></i>
+          {% else %}
+            <i class="bi bi-file-earmark"></i>
+          {% endif %}
+        </div>
+        <span class="activity-text">
+          <strong>You</strong> {{ activity.action }}
+        </span>
+        <span class="activity-time">{{ activity.created_at|timesince|slice:':7' }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Quick Actions -->
+  <div class="widget-card">
+    <div class="widget-header">
+      <h6><i class="bi bi-lightning me-2"></i> Quick Actions</h6>
+      <div class="widget-icon"><i class="bi bi-plus"></i></div>
+    </div>
+    <div class="quick-actions">
+      <a href="/create-post/" class="quick-action-btn">
+        <i class="bi bi-pencil-square"></i> New Post
+      </a>
+      <a href="/shoutbox/" class="quick-action-btn">
+        <i class="bi bi-megaphone"></i> Shout
+      </a>
+      <a href="/create-page/" class="quick-action-btn">
+        <i class="bi bi-plus-circle"></i> Create Page
+      </a>
+      <a href="/user/{{ user.username }}/" class="quick-action-btn">
+        <i class="bi bi-person"></i> Profile
+      </a>
+    </div>
+  </div>
+
+  <!-- Total Stats Summary -->
+  <div class="widget-card">
+    <div class="widget-header">
+      <h6><i class="bi bi-bar-chart-fill me-2"></i> Total Stats</h6>
+      <div class="widget-icon"><i class="bi bi-globe"></i></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+      <div class="stat-item" style="padding:6px 4px;">
+        <div class="stat-number" style="font-size:1rem;">{{ stats.posts|add:stats.page_posts }}</div>
+        <div class="stat-label">Total Posts</div>
+      </div>
+      <div class="stat-item" style="padding:6px 4px;">
+        <div class="stat-number" style="font-size:1rem;">{{ stats.views }}</div>
+        <div class="stat-label">Total Views</div>
+      </div>
+      <div class="stat-item" style="padding:6px 4px;">
+        <div class="stat-number" style="font-size:1rem;">{{ stats.likes|add:stats.comments }}</div>
+        <div class="stat-label">Interactions</div>
+      </div>
+      <div class="stat-item" style="padding:6px 4px;">
+        <div class="stat-number" style="font-size:1rem;">{{ stats.page_posts }}</div>
+        <div class="stat-label">Page Posts</div>
+      </div>
+    </div>
+  </div>
+
+</aside>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Custom Confirm Boxes (JS in dashboard.js hooks into these) -->
+<div class="custom-confirm-overlay" id="customConfirmOverlay"></div>
+<div class="custom-confirm-box" id="customConfirmBox">
+  <div class="custom-confirm-header">
+    <i class="bi bi-exclamation-triangle custom-confirm-icon"></i>
+    <h5 class="custom-confirm-title" id="confirmTitle">Confirm Action</h5>
+  </div>
+  <p class="custom-confirm-message" id="confirmMessage">Are you sure you want to proceed?</p>
+  <div class="custom-confirm-buttons">
+    <button class="custom-confirm-btn cancel" id="confirmCancel">Cancel</button>
+    <button class="custom-confirm-btn confirm" id="confirmOk">OK</button>
+  </div>
+</div>
+
+<div class="custom-confirm-box" id="deleteConfirmBox">
+  <div class="custom-confirm-header">
+    <i class="bi bi-trash custom-confirm-icon" style="color:#ef4444"></i>
+    <h5 class="custom-confirm-title">Delete Post</h5>
+  </div>
+  <p class="custom-confirm-message">Are you sure you want to delete this post? This action cannot be undone.</p>
+  <div class="custom-confirm-buttons">
+    <button class="custom-confirm-btn cancel" id="deleteCancel">Cancel</button>
+    <button class="custom-confirm-btn danger" id="deleteOk">Delete</button>
+  </div>
+</div>
+
+<!-- Mentions Dropdown (populated by dashboard.js) -->
+<div class="mentions-dropdown" id="mentionsDropdown"></div>
+
+{% endblock %}

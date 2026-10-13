@@ -1,0 +1,223 @@
+# landing/urls.py
+from django.urls import path
+from . import views
+urlpatterns = [
+    #Default load page
+    path('', views.landing_page, name='landing'),
+
+    #User count
+    path('ajax/user-count/', views.ajax_get_user_count, name='ajax_user_count'),
+
+    #latest user
+    path('ajax/latest-user/', views.ajax_get_latest_user, name='ajax_latest_user'),
+
+    #new shouts
+    path('ajax/new-shouts/', views.ajax_get_new_shouts, name='ajax_new_shouts'),
+
+    #stats view
+    path('ajax/stats/', views.ajax_get_stats, name='ajax_get_stats'),
+
+    #Landing page
+    path('ajax/landing-live/', views.ajax_landing_live, name='ajax_landing_live'),
+
+    #Feed Page
+    path('feed/', views.feed_view, name='feed'),
+    path('notifications/', views.notifications_page, name='notifications_page'),
+
+    # Authentication pages
+    path('login/', views.login_view, name='login'),
+    path('signup/', views.signup_view, name='signup'),
+    path('logout/', views.logout_view, name='logout'),
+
+    # Auth check endpoints
+    path('ajax/check-username/', views.ajax_check_username, name='ajax_check_username'),
+    path('ajax/check-email/', views.ajax_check_email, name='ajax_check_email'),
+    path('ajax/check-phone/', views.ajax_check_phone, name='ajax_check_phone'),
+
+    #suggest username
+    path('ajax/suggest-username/', views.ajax_suggest_username, name='ajax_suggest_username'),
+    
+    # API Posts endpoints
+    path('api/posts/', views.api_posts_list, name='api_posts_list'),
+    path('api/posts/create/', views.api_posts_create, name='api_posts_create'),
+    path('api/posts/react/', views.api_posts_react, name='api_posts_react'),
+    path('api/posts/save/', views.api_posts_save, name='api_posts_save'),
+    path('api/posts/view/', views.api_posts_view, name='api_posts_view'),
+    path('api/posts/comments/', views.api_posts_get_comments, name='api_posts_get_comments'),
+    path('api/posts/comments/add/', views.api_posts_add_comment, name='api_posts_add_comment'),
+    path('api/posts/comments/delete/', views.api_posts_delete_comment, name='api_posts_delete_comment'),
+    path('api/posts/vote/', views.api_posts_vote_poll, name='api_posts_vote_poll'),
+    path('api/posts/delete/', views.api_posts_delete, name='api_posts_delete'),
+    path('api/posts/count/', views.api_posts_get_count, name='api_posts_get_count'),
+    path('api/posts/get/', views.api_posts_get, name='api_posts_get'),
+    path('api/posts/edit/', views.api_posts_edit, name='api_posts_edit'),
+    path('api/upload/presign/', views.api_upload_presign, name='api_upload_presign'),       
+    path('api/user/theme/', views.api_user_theme, name='api_user_theme'),
+
+    #Api notifications
+    path('api/notifications/count/', views.api_notifications_count, name='api_notifications_count'),
+    path('api/notifications/delete/', views.api_notifications_delete, name='api_notifications_delete'),
+    path('api/notifications/mark-read/<int:notif_id>/', views.api_notifications_mark_read, name='api_notifications_mark_read'),
+    path('api/notifications/read-all/', views.api_notifications_read_all, name='api_notifications_read_all'),
+    path('api/notifications/list/', views.api_notifications_list, name='api_notifications_list'),
+    path('api/notifications/page/', views.api_notifications_page, name='api_notifications_page'),
+    path('api/notifications/clear-all/', views.api_notifications_clear_all, name='api_notifications_clear_all'),
+
+
+    #API for friends endpoint
+    # Friends page
+    path('friends/', views.friends_view, name='friends'),
+    path('api/friends/counts/', views.api_friends_counts, name='api_friends_counts'),
+    path('api/friends/check/', views.api_friends_check, name='api_friends_check'),
+    path('api/friends/get-friend-id/', views.api_friends_get_id, name='api_friends_get_id'),
+    path('api/friends/send-request/', views.api_friends_send_request, name='api_friends_send_request'), 
+    path('api/friends/accept/', views.api_friends_accept, name='api_friends_accept'),
+    path('api/friends/decline/', views.api_friends_decline, name='api_friends_decline'),
+    path('api/friends/cancel/', views.api_friends_cancel, name='api_friends_cancel'),
+    path('api/friends/remove/', views.api_friends_remove, name='api_friends_remove'),
+    path('api/friends/list/', views.api_friends_list, name='api_friends_list'),
+    path('api/friends/pending/', views.api_friends_pending, name='api_friends_pending'),
+    path('api/friends/sent/', views.api_friends_sent, name='api_friends_sent'),
+    path('api/friends/suggested/', views.api_friends_suggested, name='api_friends_suggested'),
+    path('api/friends/search/', views.api_friends_search, name='api_friends_search'),
+    path('api/friends/recent-activity/', views.api_friends_recent_activity, name='api_friends_recent_activity'),
+
+    # Profile page
+    path('user/<int:user_id>/', views.user_profile_view, name='user_profile'),
+    path('user/<str:username>/', views.user_profile_view, name='user_profile_by_name'),
+    path('profile/', views.user_profile_view, name='my_profile'), 
+
+    # Profile API
+    path('api/profile/action/', views.api_profile_action, name='api_profile_action'),
+    path('api/user-posts/', views.api_user_posts_list, name='api_user_posts_list'),
+
+    # Single post view
+    path('post/<int:post_id>/', views.view_post_view, name='view_post'),
+
+    # Shout Box
+    path('shoutbox/', views.shoutbox_view, name='shoutbox'),
+    path('api/shouts/list/', views.api_shouts_list, name='api_shouts_list'),
+    path('api/shouts/friends/', views.api_shouts_friends, name='api_shouts_friends'),
+    path('api/shouts/create/', views.api_shouts_create, name='api_shouts_create'),
+    path('api/shouts/delete/', views.api_shouts_delete, name='api_shouts_delete'),
+
+    # Leaderboard
+    path('leaderboard/', views.leaderboard_view, name='leaderboard'),
+    path('api/leaderboard/status/', views.api_lb_status, name='api_lb_status'),
+    path('api/leaderboard/promotions/', views.api_lb_promotions, name='api_lb_promotions'),
+    path('api/leaderboard/create/', views.api_lb_create, name='api_lb_create'),
+    path('api/leaderboard/activate/', views.api_lb_activate, name='api_lb_activate'),
+    path('api/leaderboard/deactivate/', views.api_lb_deactivate, name='api_lb_deactivate'),
+    path('api/leaderboard/reset/', views.api_lb_reset, name='api_lb_reset'),
+    path('api/leaderboard/delete/', views.api_lb_delete, name='api_lb_delete'),
+
+    # Support
+    path('support/', views.support_view, name='support'),
+    path('api/support/tickets/', views.api_support_tickets, name='api_support_tickets'),
+    path('api/support/messages/', views.api_support_messages, name='api_support_messages'),
+    path('api/support/create-ticket/', views.api_support_create_ticket, name='api_support_create_ticket'),
+    path('api/support/save-message/', views.api_support_save_message, name='api_support_save_message'),
+    path('api/support/upload-media/', views.api_support_upload_media, name='api_support_upload_media'),
+    path('api/support/mark-read/', views.api_support_mark_read, name='api_support_mark_read'),
+
+    # Groups
+    path('groups/', views.groups_view, name='groups'),
+    path('groups/<int:group_id>/', views.group_view_view, name='group_view'),
+    path('api/groups/list/', views.api_groups_list, name='api_groups_list'),
+    path('api/groups/create/', views.api_groups_create, name='api_groups_create'),
+    path('api/groups/<int:group_id>/edit/', views.api_groups_edit, name='api_groups_edit'),
+    path('api/groups/<int:group_id>/delete/', views.api_groups_delete, name='api_groups_delete'),
+    path('api/groups/<int:group_id>/join/', views.api_groups_join, name='api_groups_join'),
+    path('api/groups/<int:group_id>/leave/', views.api_groups_leave, name='api_groups_leave'),
+    path('api/groups/<int:group_id>/request-join/', views.api_groups_request_join, name='api_groups_request_join'),
+    path('api/groups/<int:group_id>/pending-posts/', views.api_groups_pending_posts, name='api_groups_pending_posts'),
+    path('api/groups/<int:group_id>/posts/', views.api_groups_posts_list, name='api_groups_posts_list'),
+    path('api/groups/<int:group_id>/posts/create/', views.api_groups_posts_create, name='api_groups_posts_create'),
+    path('api/groups/<int:group_id>/members/', views.api_groups_members, name='api_groups_members'),
+    path('api/groups/posts/<int:post_id>/approve/', views.api_groups_post_approve, name='api_groups_post_approve'),
+    path('api/groups/posts/<int:post_id>/reject/', views.api_groups_post_reject, name='api_groups_post_reject'),
+    path('api/groups/posts/<int:post_id>/delete/', views.api_groups_post_delete, name='api_groups_post_delete'),
+    path('api/groups/posts/<int:post_id>/react/', views.api_groups_post_react, name='api_groups_post_react'),
+    path('api/groups/posts/<int:post_id>/comments/', views.api_groups_post_comments, name='api_groups_post_comments'),
+    path('api/groups/posts/<int:post_id>/comments/add/', views.api_groups_post_comment_add, name='api_groups_post_comment_add'),
+    path('api/groups/posts/comments/<int:comment_id>/delete/', views.api_groups_post_comment_delete, name='api_groups_post_comment_delete'),
+    path('api/groups/posts/<int:post_id>/edit/', views.api_groups_post_edit, name='api_groups_post_edit'),
+
+    # Pages
+    path('pages/', views.pages_view, name='pages'),
+    path('pages/<int:page_id>/', views.page_view_view, name='page_view'),
+    path('api/pages/list/', views.api_pages_list, name='api_pages_list'),
+    path('api/pages/create/', views.api_pages_create, name='api_pages_create'),
+    path('api/pages/<int:page_id>/edit/', views.api_pages_edit, name='api_pages_edit'),
+    path('api/pages/<int:page_id>/delete/', views.api_pages_delete, name='api_pages_delete'),
+    path('api/pages/<int:page_id>/toggle-follow/', views.api_pages_toggle_follow, name='api_pages_toggle_follow'),
+    path('api/pages/<int:page_id>/update/', views.api_page_update, name='api_page_update'),
+    path('api/pages/<int:page_id>/posts/', views.api_page_posts_list, name='api_page_posts_list'),
+    path('api/pages/<int:page_id>/posts/create/', views.api_page_post_create, name='api_page_post_create'),
+    path('api/pages/posts/<int:post_id>/delete/', views.api_page_post_delete, name='api_page_post_delete'),
+    path('api/pages/posts/<int:post_id>/react/', views.api_page_post_react, name='api_page_post_react'),
+    path('api/pages/posts/<int:post_id>/view/', views.api_page_post_view, name='api_page_post_view'),
+    path('api/pages/posts/<int:post_id>/comments/', views.api_page_comments_list, name='api_page_comments_list'),
+    path('api/pages/posts/<int:post_id>/comments/add/', views.api_page_comment_add, name='api_page_comment_add'),
+    path('api/pages/comments/<int:comment_id>/delete/', views.api_page_comment_delete, name='api_page_comment_delete'),
+    path('api/pages/<int:page_id>/followers/', views.api_page_followers_list, name='api_page_followers_list'),
+
+    # Page Inbox (Task 17)
+    path('pages/inbox/', views.page_inbox_view, name='page_inbox'),
+    path('api/pages/conversations/', views.api_page_conversations, name='api_page_conversations'),
+    path('api/pages/messages/', views.api_page_messages, name='api_page_messages'),
+    path('api/pages/messages/start/', views.api_page_start_conversation, name='api_page_start_conversation'),
+    path('api/pages/messages/send/', views.api_page_send_message, name='api_page_send_message'),
+    path('api/pages/messages/read/', views.api_page_mark_read, name='api_page_mark_read'),
+    path('api/page-posts/', views.api_page_posts_feed, name='api_page_posts_feed'),
+
+    # Direct Messages (Task 18 Phase 1 & 2)
+    path('chat/', views.chat_view, name='chat'),
+    path('chat/<int:friend_id>/', views.chat_view, name='chat_with'),
+    path('api/chat/conversations/', views.api_chat_conversations, name='api_chat_conversations'),
+    path('api/chat/messages/', views.api_chat_messages, name='api_chat_messages'),
+    path('api/chat/send/', views.api_chat_send, name='api_chat_send'),
+    path('api/chat/read/', views.api_chat_mark_read, name='api_chat_mark_read'),
+    path('api/chat/upload/', views.api_chat_upload, name='api_chat_upload'),
+    path('api/chat/typing/', views.api_chat_typing, name='api_chat_typing'),
+    path('api/chat/react/', views.api_chat_react, name='api_chat_react'),
+    path('api/chat/edit/', views.api_chat_edit, name='api_chat_edit'),
+    path('api/chat/delete/', views.api_chat_delete, name='api_chat_delete'),
+
+    # Chat Rooms Directory & Management (Task 18 Phase 3)
+    path('chatrooms/', views.chatrooms_view, name='chatrooms'),
+    path('chatrooms/<int:room_id>/', views.chatroom_view, name='chatroom_view'),
+    path('api/chatrooms/list/', views.api_chatrooms_list, name='api_chatrooms_list'),
+    path('api/chatrooms/create/', views.api_chatrooms_create, name='api_chatrooms_create'),
+    path('api/chatrooms/<int:room_id>/edit/', views.api_chatrooms_edit, name='api_chatrooms_edit'),
+    path('api/chatrooms/<int:room_id>/delete/', views.api_chatrooms_delete, name='api_chatrooms_delete'),
+    path('api/chatrooms/<int:room_id>/join/', views.api_chatrooms_join, name='api_chatrooms_join'),
+    path('api/chatrooms/<int:room_id>/join-private/', views.api_chatrooms_join_private, name='api_chatrooms_join_private'),
+    path('api/chatrooms/<int:room_id>/exit/', views.api_chatrooms_exit, name='api_chatrooms_exit'),
+    path('api/chatrooms/check-name/', views.api_chatrooms_check_name, name='api_chatrooms_check_name'),
+
+    # Chat Room Messaging & Moderation (Task 18 Phase 4)
+    path('api/chatrooms/<int:room_id>/messages/', views.api_chatroom_messages, name='api_chatroom_messages'),
+    path('api/chatrooms/<int:room_id>/messages/send/', views.api_chatroom_send, name='api_chatroom_send'),
+    path('api/chatrooms/<int:room_id>/members/', views.api_chatroom_members, name='api_chatroom_members'),
+    path('api/chatrooms/<int:room_id>/members/<int:uid>/remove/', views.api_chatroom_kick, name='api_chatroom_kick'),
+    path('api/chatrooms/<int:room_id>/messages/<int:mid>/edit/', views.api_chatroom_edit_msg, name='api_chatroom_edit_msg'),
+    path('api/chatrooms/<int:room_id>/messages/<int:mid>/delete/', views.api_chatroom_delete_msg, name='api_chatroom_delete_msg'),
+    path('api/chatrooms/<int:room_id>/messages/<int:mid>/report/', views.api_chatroom_report, name='api_chatroom_report'),
+    path('api/chatrooms/<int:room_id>/clear/', views.api_chatroom_clear, name='api_chatroom_clear'),
+
+    # Chat Roulette (Task 19 Phase 1)
+    path('roulette/', views.roulette_view, name='roulette'),
+    path('api/roulette/active/', views.api_roulette_active, name='api_roulette_active'),
+    path('api/roulette/join/', views.api_roulette_join, name='api_roulette_join'),
+    path('api/roulette/poll/', views.api_roulette_poll, name='api_roulette_poll'),
+    path('api/roulette/send/', views.api_roulette_send, name='api_roulette_send'),
+    path('api/roulette/leave/', views.api_roulette_leave, name='api_roulette_leave'),
+    path('api/roulette/next/', views.api_roulette_next, name='api_roulette_next'),
+    path('api/roulette/heartbeat/', views.api_roulette_heartbeat, name='api_roulette_heartbeat'),
+
+    #sw
+    path('sw.js', views.serve_sw, name='serve_sw'),
+
+   
+]

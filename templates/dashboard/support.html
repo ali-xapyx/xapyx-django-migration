@@ -1,0 +1,178 @@
+{% extends "dashboard/base_dashboard.html" %}
+{% load static %}
+
+{% block title %}Support Center | XAPYX{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/support.css' %}?v=7">
+{% endblock %}
+
+{% block content %}
+<div id="dashboardContainer">
+  <div class="dashboard-inner">
+    <div class="dashboard-flex">
+      <div class="dashboard-main support-main">
+        <div class="support-wrapper">
+          <div class="support-container">
+
+            <!-- CHAT AREA -->
+            <div id="chatContainer">
+              <div class="chat-header">
+                <button class="back-to-chats" type="button" onclick="supportApp.showTicketsList()">
+                  <i class="bi bi-arrow-left"></i>
+                </button>
+                <div class="chat-header-info">
+                  <h5 id="ticketSubject" class="ticket-subject">Welcome to Support</h5>
+                  <div class="chat-status">
+                    <span id="ticketStatus" class="ticket-status-text">Select a ticket or create a new one</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="messages-container" id="messagesContainer">
+                <div class="chat-empty-state" id="emptyChatState">
+                  <i class="bi bi-headset"></i>
+                  <h4 class="empty-state-title">Welcome to Support</h4>
+                  <p class="empty-state-text">Select a ticket from the list or create a new one</p>
+                  <button class="btn btn-primary btn-sm mt-2" type="button" onclick="supportApp.openNewTicketModal()">
+                    <i class="bi bi-plus-circle me-1"></i> Create New Ticket
+                  </button>
+                </div>
+              </div>
+
+              <button class="scroll-bottom-btn" id="scrollBottomBtn" type="button" onclick="supportApp.scrollToBottom()">
+                <i class="bi bi-chevron-down"></i>
+              </button>
+
+              <div class="media-preview-container" id="mediaPreviewContainer">
+                <div class="media-preview-header">
+                  <small class="text-muted">
+                    <i class="bi bi-images me-1"></i>
+                    <span id="mediaCount">0 files selected</span>
+                  </small>
+                  <button class="btn btn-link text-danger p-0" type="button" onclick="supportApp.clearMedia()">Clear all</button>
+                </div>
+                <div class="media-preview-grid" id="mediaPreviewGrid"></div>
+              </div>
+
+              <div class="message-input-container">
+                <div class="message-input-wrapper">
+                  <button class="attach-btn" type="button" id="attachBtn" onclick="supportApp.openGallery()" disabled>
+                    <i class="bi bi-paperclip"></i>
+                  </button>
+                  <textarea id="messageInput" class="message-input" placeholder="Type your message..." rows="1" maxlength="2000" disabled></textarea>
+                  <button id="sendMessageBtn" class="send-btn" type="button" onclick="supportApp.sendMessage()" disabled>
+                    <i class="bi bi-send"></i>
+                  </button>
+                </div>
+                <input type="file" id="imageInput" accept="image/*" style="display:none;" multiple>
+                <input type="file" id="videoInput" accept="video/*" style="display:none;" multiple>
+                <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.txt,.zip,.rar,.csv,.xls,.xlsx" style="display:none;" multiple>
+              </div>
+            </div>
+
+            <!-- TICKETS LIST -->
+            <div id="ticketsListContainer">
+              <div class="chats-header">
+                <div class="chats-header-content">
+                  <img src="{{ user_picture }}" class="profile-pic" alt="Profile" onerror="this.src='{% static 'images/avatars/default.png' %}'">
+                  <div class="chats-header-info">
+                    <h5 class="chats-title">Support Center</h5>
+                    <div class="chats-subtitle">How can we help you?</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="chats-search">
+                <input type="text" class="search-input" id="searchTicketsInput" placeholder="Search tickets..." autocomplete="off">
+              </div>
+
+              <div class="chats-list" id="ticketsList">
+                <div class="loading-chats">
+                  <div class="spinner-border text-primary"></div>
+                  <p class="mt-2">Loading tickets...</p>
+                </div>
+              </div>
+
+              <div class="chats-footer">
+                <button class="btn btn-primary w-100" type="button" onclick="supportApp.openNewTicketModal()">
+                  <i class="bi bi-plus-circle me-2"></i> New Support Ticket
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- ^^^ #dashboardContainer ends HERE -->
+
+<!-- ============================================================
+     MODALS — must live OUTSIDE #dashboardContainer
+     so Bootstrap's backdrop works correctly.
+     ============================================================ -->
+
+<!-- New Ticket Modal -->
+<div class="modal fade" id="newTicketModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Create Support Ticket</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group mb-3">
+          <label for="ticketType" class="form-label">Issue Type</label>
+          <select class="form-select" id="ticketType" required>
+            <option value="query">General Query</option>
+            <option value="technical">Technical Support</option>
+            <option value="account">Account Issue</option>
+            <option value="billing">Billing Problem</option>
+            <option value="feature">Feature Request</option>
+            <option value="bug">Bug Report</option>
+          </select>
+        </div>
+        <div class="form-group mb-3">
+          <label for="ticketSubjectInput" class="form-label">Subject</label>
+          <input type="text" class="form-control" id="ticketSubjectInput" placeholder="Brief description" required maxlength="255">
+        </div>
+        <div class="form-group mb-3">
+          <label for="ticketMessage" class="form-label">Message</label>
+          <textarea class="form-control" id="ticketMessage" rows="4" placeholder="Please describe your issue..." required></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="supportApp.createNewTicket()">
+          <i class="bi bi-send me-1"></i> Create Ticket
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Media Viewer Modal -->
+<div class="modal fade" id="mediaViewerModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content" style="background:rgba(0,0,0,0.9);">
+      <div class="modal-header border-0">
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center" id="mediaViewerContent"></div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.SUPPORT_CONFIG = {
+  userId: {{ user.id }},
+  userName: "{{ user.name|default:user.username|escapejs }}",
+  userPicture: "{{ user_picture }}",
+};
+</script>
+<script src="{% static 'js/support.js' %}?v=7"></script>
+{% endblock %}

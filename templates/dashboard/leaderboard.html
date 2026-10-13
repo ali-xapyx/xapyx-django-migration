@@ -1,0 +1,287 @@
+{% extends "dashboard/base_dashboard.html" %}
+{% load static %}
+
+{% block title %}Leaderboard | XAPYX{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/leaderboard.css' %}?v=4">
+{% endblock %}
+
+{% block content %}
+<div id="dashboardContainer">
+  <div class="dashboard-inner">
+    <div class="lb-flex">
+    <div class="lb-main">
+
+      <!-- Page header -->
+      <div class="page-header">
+        <div class="header-content">
+          <div class="header-left">
+            <h1>
+              <span class="header-icon"><i class="bi bi-trophy"></i></span>
+              Leaderboard
+            </h1>
+            <p class="subtitle">Top 10 early adopters</p>
+          </div>
+          <div class="header-right">
+            <span id="lbStatusBadge">
+              {% if status == 'active' %}
+                <span class="status-badge active"><span class="dot"></span> Active</span>
+              {% elif status == 'ended' %}
+                <span class="status-badge ended"><i class="bi bi-flag"></i> Ended</span>
+              {% else %}
+                <span class="status-badge coming"><i class="bi bi-hourglass-split"></i> Coming Soon</span>
+              {% endif %}
+            </span>
+            {% if is_afham %}
+              <button class="btn-create-promotion" onclick="lbOpenModal('lbCreateModal')">
+                <i class="bi bi-plus-circle"></i> Create
+              </button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Promotion list (admin only) -->
+      <div id="lbPromotionListContainer">
+        {% if is_afham and promotions %}
+          <div class="promotion-list">
+            <div class="promotion-list-title"><i class="bi bi-list"></i> All Promotions</div>
+            {% for promo in promotions %}
+              {% with is_ended=promo.end_date|default:"" %}
+              <div class="promotion-card {% if promo.is_active %}active{% endif %}" data-promo-id="{{ promo.id }}">
+                <div class="promotion-info">
+                  <div class="promotion-name">
+                    {{ promo.promotion_name }}
+                    <span class="promotion-status-badge {% if promo.is_active %}active{% endif %}">
+                      {% if promo.is_active %}Active{% else %}Ended/Draft{% endif %}
+                    </span>
+                  </div>
+                  <div class="promotion-meta">
+                    <span><i class="bi bi-calendar"></i> {{ promo.start_date_display }}</span>
+                    <span><i class="bi bi-calendar-check"></i> {{ promo.end_date_display }}</span>
+                    <span><i class="bi bi-people"></i> {{ promo.total_winners }} winners</span>
+                  </div>
+                </div>
+                <div class="promotion-actions">
+                  {% if promo.is_active %}
+                    <button class="btn-sm btn-deactivate" onclick="lbDeactivate({{ promo.id }})">
+                      <i class="bi bi-pause"></i> Deactivate
+                    </button>
+                  {% else %}
+                    <button class="btn-sm btn-activate" onclick="lbActivate({{ promo.id }})">
+                      <i class="bi bi-play"></i> Activate Now
+                    </button>
+                  {% endif %}
+                  {% if promo.total_winners > 0 %}
+                    <button class="btn-sm btn-reset" onclick="lbReset({{ promo.id }})">
+                      <i class="bi bi-arrow-counterclockwise"></i> Reset
+                    </button>
+                  {% endif %}
+                  <button class="btn-sm btn-delete" onclick="lbDelete({{ promo.id }})">
+                    <i class="bi bi-trash"></i> Delete
+                  </button>
+                </div>
+              </div>
+              {% endwith %}
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Content area -->
+      <div id="lbContentArea">
+        {% if not has_promotions %}
+          <div class="empty-state">
+            <div class="empty-icon"><i class="bi bi-hourglass-split"></i></div>
+            <h2>Coming Soon!</h2>
+            <p>A promotion is coming! Be one of the first 10 users to sign up during the promotion period and get featured on the leaderboard.</p>
+            {% if is_afham %}
+              <button class="btn" onclick="lbOpenModal('lbCreateModal')">
+                <i class="bi bi-plus-circle"></i> Create First Promotion
+              </button>
+            {% endif %}
+          </div>
+        {% elif winners %}
+          <div class="winners-container" id="lbWinnersContainer">
+            <div class="winners-header">
+              <h4>
+                <i class="bi bi-crown" style="color:var(--xpy-primary);"></i>
+                <span>{{ active_promotion.promotion_name|default:"Promotion" }}</span> Winners
+                {% if status == 'active' %}
+                  <span class="live-indicator show"><span class="dot"></span> Live</span>
+                {% endif %}
+              </h4>
+              <span class="winners-count">
+                <i class="bi bi-people"></i> {{ winners|length }} users
+              </span>
+            </div>
+            <ul class="winners-list">
+              {% for w in winners %}
+                <li class="winner-item {% if w.id == user.id %}flash{% endif %}" data-user-id="{{ w.id }}">
+                  <div class="winner-rank {% if w.rank == 1 %}rank-1{% elif w.rank == 2 %}rank-2{% elif w.rank == 3 %}rank-3{% endif %}">
+                    {% if w.rank == 1 %}🥇{% elif w.rank == 2 %}🥈{% elif w.rank == 3 %}🥉{% else %}#{{ w.rank }}{% endif %}
+                  </div>
+                  <img src="{{ w.picture }}" alt="{{ w.name }}" class="winner-avatar" width="44" height="44">
+                  <div class="winner-info">
+                    <div class="winner-name">
+                      {{ w.name }}
+                      {% if w.id == user.id %}<span class="badge-you">You</span>{% endif %}
+                    </div>
+                    <div class="winner-username">@{{ w.username }}</div>
+                  </div>
+                  <div class="winner-signup-date">
+                    <i class="bi bi-calendar"></i> {{ w.signup_date }}
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% if status == 'ended' %}
+            <div class="ended-state">
+              <i class="bi bi-flag"></i>
+              <h3>Promotion Ended</h3>
+              <p>This promotion has concluded. Congratulations to all winners!</p>
+            </div>
+          {% endif %}
+        {% elif active_promotion %}
+          <div class="empty-state">
+            <div class="empty-icon" style="color:var(--success-color);"><i class="bi bi-people"></i></div>
+            <h2 style="color:var(--success-color);">Promotion Active!</h2>
+            <p>The promotion is currently running. Be the first to sign up and win!</p>
+          </div>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+</div>
+</div>
+<!-- Custom confirm overlay -->
+<div class="custom-confirm-overlay" id="lbConfirmOverlay"></div>
+<div class="custom-confirm-box" id="lbConfirmBox">
+  <div class="custom-confirm-header">
+    <i class="bi bi-exclamation-triangle custom-confirm-icon"></i>
+    <h5 class="custom-confirm-title" id="lbConfirmTitle">Confirm Action</h5>
+  </div>
+  <p class="custom-confirm-message" id="lbConfirmMessage">Are you sure?</p>
+  <div class="custom-confirm-buttons">
+    <button class="custom-confirm-btn cancel" id="lbConfirmCancel">Cancel</button>
+    <button class="custom-confirm-btn confirm" id="lbConfirmOk">OK</button>
+  </div>
+</div>
+
+<!-- Create modal -->
+<div class="lb-modal-overlay" id="lbCreateModal">
+  <div class="modal-content-custom">
+    <div class="modal-header-custom">
+      <h3><i class="bi bi-plus-circle"></i> Create Promotion</h3>
+      <button class="modal-close" onclick="lbCloseModal('lbCreateModal')">&times;</button>
+    </div>
+    <form id="lbCreateForm" onsubmit="lbSubmitCreate(event)">
+      <div class="form-group">
+        <label>Promotion Name</label>
+        <input type="text" id="lbPromotionName" class="form-control-custom" placeholder="e.g., Summer 2026 Promotion" required>
+      </div>
+      <div class="form-group">
+        <label>Start Date &amp; Time (GMT+5)</label>
+        <input type="datetime-local" id="lbStartDate" class="form-control-custom" required step="60">
+      </div>
+      <div class="form-group">
+        <label>End Date &amp; Time (GMT+5)</label>
+        <input type="datetime-local" id="lbEndDate" class="form-control-custom" required step="60">
+      </div>
+      <div class="checkbox-group">
+        <input type="checkbox" id="lbActivateNow" checked>
+        <label for="lbActivateNow">Activate immediately (if start date has passed)</label>
+      </div>
+      <button type="submit" class="btn-submit" id="lbCreateSubmit">
+        <i class="bi bi-rocket"></i> Create Promotion
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block right_widgets %}
+<aside class="dashboard-widgets" id="rightWidgetsPanel">
+
+  <div class="widget-card">
+    <div class="widget-header">
+      <h6><i class="bi bi-bar-chart me-2"></i> Leaderboard Stats</h6>
+      <div class="widget-icon"><i class="bi bi-trophy"></i></div>
+    </div>
+    <div class="lb-stats-grid">
+      <div class="lb-stat-item">
+        <span class="stat-icon"><i class="bi bi-trophy"></i></span>
+        <div class="stat-number" id="lbStatWinners">{{ winners|length }}</div>
+        <div class="stat-label">Winners</div>
+      </div>
+      <div class="lb-stat-item">
+        <span class="stat-icon"><i class="bi bi-calendar"></i></span>
+        <div class="stat-number">{{ promotions|length }}</div>
+        <div class="stat-label">Promotions</div>
+      </div>
+      <div class="lb-stat-item">
+        <span class="stat-icon"><i class="bi bi-people"></i></span>
+        <div class="stat-number" id="lbStatStatus">
+          {% if status == 'active' %}Live{% elif status == 'ended' %}Ended{% else %}Soon{% endif %}
+        </div>
+        <div class="stat-label">Status</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="widget-card">
+    <div class="widget-header">
+      <h6><i class="bi bi-lightning me-2"></i> Quick Actions</h6>
+      <div class="widget-icon"><i class="bi bi-plus"></i></div>
+    </div>
+    <div class="quick-actions">
+      <a href="/friends/" class="quick-action-btn"><i class="bi bi-people-fill"></i> Friends</a>
+      <a href="/chat/" class="quick-action-btn"><i class="bi bi-chat"></i> Messages</a>
+      <a href="/user/{{ user.username }}/" class="quick-action-btn"><i class="bi bi-person"></i> Profile</a>
+      <a href="/games/" class="quick-action-btn"><i class="bi bi-controller"></i> Games</a>
+    </div>
+  </div>
+
+  <div class="widget-card">
+    <div class="widget-header">
+      <h6><i class="bi bi-id-card me-2"></i> Your Orbit</h6>
+      <div class="widget-icon"><i class="bi bi-person-astronaut"></i></div>
+    </div>
+    <div class="vp-profile-widget">
+      {% if user.picture %}
+        <img src="https://s3.eu-west-1.amazonaws.com/xapyx.com-media/uploads/{{ user.picture }}" alt="{{ user.name }}">
+      {% else %}
+        <img src="{% static 'images/avatars/default.png' %}" alt="{{ user.name }}">
+      {% endif %}
+      <div class="profile-info-col">
+        <div class="profile-name">{{ user.name|default:user.username }}</div>
+        <div class="profile-username">@{{ user.username }}</div>
+        <div class="profile-stats">
+          <i class="bi bi-trophy"></i>
+          {% if user_winner %}Rank #{{ user_winner.rank }}{% else %}Not ranked{% endif %}
+        </div>
+      </div>
+    </div>
+    <div style="display:flex; gap:8px; margin-top:8px;">
+      <a href="/user/{{ user.username }}/" class="quick-action-btn" style="flex:1;">
+        <i class="bi bi-eye"></i> View
+      </a>
+    </div>
+  </div>
+
+</aside>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.LB_CONFIG = {
+  isAdmin: {{ is_afham|yesno:"true,false" }},
+  userId: {{ user.id }},
+  status: "{{ status }}"
+};
+</script>
+<script src="{% static 'js/leaderboard.js' %}?v=1"></script>
+{% endblock %}
