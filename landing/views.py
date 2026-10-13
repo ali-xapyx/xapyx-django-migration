@@ -10462,15 +10462,6 @@ def api_roulette_send(request):
         end_expired_session(session_id)
         return JsonResponse({'success': False, 'error': 'Session ended (30 min limit)'}, status=400)
 
-    # Rate limit check (max 10 msgs per 10s)
-    if not check_rate_limit(user_id):
-        return JsonResponse({'success': False, 'error': 'Slow down'}, status=429)
-
-    # 30 min session cap check
-    if is_session_expired(session_id):
-        end_expired_session(session_id)
-        return JsonResponse({'success': False, 'error': 'Session ended (30 min limit)'}, status=400)
-
     msg = roulette_send_message(user_id, partner_id, text)
     if not msg:
         return JsonResponse({'error': 'Failed to send message'}, status=400)
