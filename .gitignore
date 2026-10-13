@@ -8,3 +8,7 @@ __pycache__/
 .tmp/
 *.log
 *.bak
+.ios-fix-backups/
+test_friends_delete.py
+landing/tmp/
+*$'\r'

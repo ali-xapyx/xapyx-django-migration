@@ -10280,8 +10280,10 @@ from .redis_roulette import (
     join_queue, leave_queue, try_match, get_user_state,
     get_partner, send_message as roulette_send_message,
     fetch_messages as roulette_fetch_messages, leave_session,
-    heartbeat as roulette_heartbeat, get_active_counts, next_partner
+    heartbeat as roulette_heartbeat, get_active_counts, next_partner,
+    check_rate_limit, is_session_expired, end_expired_session, set_cooldown
 )
+from .models import RouletteReport
 
 
 def _roulette_partner_info(user_id):
@@ -10390,6 +10392,21 @@ def api_roulette_poll(request):
         partner_id = user_state.get('partner_id')
         session_id = user_state.get('session_id')
 
+        # Check 30 min duration cap
+        if is_session_expired(session_id):
+            end_expired_session(session_id)
+            try:
+                since_id = int(request.GET.get('since_id', 0))
+            except (ValueError, TypeError):
+                since_id = 0
+            messages, next_since_id = roulette_fetch_messages(session_id, since_id)
+            return JsonResponse({
+                'status': 'left',
+                'session_id': session_id,
+                'messages': messages,
+                'error': 'Session ended (30 min limit)'
+            })
+
         partner_state = get_user_state(partner_id) if partner_id else None
         if not partner_state or partner_state.get('session_id') != session_id or partner_state.get('status') == 'left':
             leave_session(user_id)
@@ -10435,6 +10452,24 @@ def api_roulette_send(request):
 
     if len(text) > 1000:
         text = text[:1000]
+
+    # Rate limit check (max 10 msgs per 10s)
+    if not check_rate_limit(user_id):
+        return JsonResponse({'success': False, 'error': 'Slow down'}, status=429)
+
+    # 30 min session cap check
+    if is_session_expired(session_id):
+        end_expired_session(session_id)
+        return JsonResponse({'success': False, 'error': 'Session ended (30 min limit)'}, status=400)
+
+    # Rate limit check (max 10 msgs per 10s)
+    if not check_rate_limit(user_id):
+        return JsonResponse({'success': False, 'error': 'Slow down'}, status=429)
+
+    # 30 min session cap check
+    if is_session_expired(session_id):
+        end_expired_session(session_id)
+        return JsonResponse({'success': False, 'error': 'Session ended (30 min limit)'}, status=400)
 
     msg = roulette_send_message(user_id, partner_id, text)
     if not msg:
@@ -10497,4 +10532,55 @@ def api_roulette_heartbeat(request):
             return JsonResponse({'status': 'left', 'partner_expired': True})
 
     return JsonResponse({'status': current_status, 'success': True})
+
+@login_required
+def api_roulette_report(request):
+    """POST /api/roulette/report/ -- Report partner and disconnect."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    user_id = request.user.id
+    partner_id, session_id = get_partner(user_id)
+
+    reported_id = request.POST.get('partner_id')
+    if not reported_id and partner_id:
+        reported_id = partner_id
+
+    if not reported_id:
+        return JsonResponse({'error': 'No partner to report'}, status=400)
+
+    try:
+        reported_id = int(reported_id)
+    except (ValueError, TypeError):
+        return JsonResponse({'error': 'Invalid partner ID'}, status=400)
+
+    reason = request.POST.get('reason', '').strip()
+    valid_reasons = [
+        'Harassment / abuse',
+        'Spam / advertising',
+        'Sexual content',
+        'Underage user',
+        'Other'
+    ]
+    if reason not in valid_reasons:
+        return JsonResponse({'error': 'Invalid report reason'}, status=400)
+
+    details = request.POST.get('details', '').strip()
+    if reason == 'Other' and not details:
+        return JsonResponse({'error': "Details are required when selecting 'Other'"}, status=400)
+
+    report = RouletteReport.objects.create(
+        reporter_id=user_id,
+        reported_id=reported_id,
+        reason=reason,
+        details=details if details else None,
+        status='pending'
+    )
+
+    # Set cooldown and immediately un-match
+    set_cooldown(user_id, reported_id)
+    leave_session(user_id)
+    leave_queue(user_id)
+
+    return JsonResponse({'success': True, 'report_id': report.id})
 

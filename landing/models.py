@@ -120,3 +120,21 @@ class Shout(models.Model):
 
     def __str__(self):
         return f"{self.user.username}: {self.message[:40]}"
+
+class RouletteReport(models.Model):
+    """Maps 'roulette_reports' table for chat roulette moderation."""
+    id = models.AutoField(primary_key=True)
+    reporter_id = models.IntegerField()
+    reported_id = models.IntegerField()
+    reason = models.CharField(max_length=64)
+    details = models.TextField(null=True, blank=True)
+    status = models.CharField(max_length=32, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'roulette_reports'
+        managed = False  # CRITICAL: Django will not touch this table
+
+    def __str__(self):
+        return f"Report #{self.id}: {self.reporter_id} -> {self.reported_id} ({self.reason})"
+

@@ -8805,3 +8805,20 @@ button .spinner-border {
 .page-inbox-conv-avatar, .chatroom-member-avatar, .suggested-avatar {
   cursor: zoom-in;
 }
+/* ============================================================
+   ROULETTE PHASE 3 MODERATION & SAFETY
+   ============================================================ */
+.roulette-btn-report {
+    font-size: 0.85rem;
+    padding: 6px 10px;
+    border-radius: 8px;
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.4);
+    background: rgba(245, 158, 11, 0.08);
+    transition: all 0.15s ease;
+}
+.roulette-btn-report:hover {
+    color: #fff;
+    background: #f59e0b;
+    border-color: #f59e0b;
+}

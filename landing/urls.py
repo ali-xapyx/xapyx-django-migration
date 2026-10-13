@@ -215,6 +215,7 @@ urlpatterns = [
     path('api/roulette/leave/', views.api_roulette_leave, name='api_roulette_leave'),
     path('api/roulette/next/', views.api_roulette_next, name='api_roulette_next'),
     path('api/roulette/heartbeat/', views.api_roulette_heartbeat, name='api_roulette_heartbeat'),
+    path('api/roulette/report/', views.api_roulette_report, name='api_roulette_report'),
 
     #sw
     path('sw.js', views.serve_sw, name='serve_sw'),

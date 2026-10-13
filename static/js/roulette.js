@@ -14,6 +14,18 @@
     const stopSearchBtn = document.getElementById('stopSearchBtn');
     const leaveChatBtn = document.getElementById('leaveChatBtn');
     const nextChatBtn = document.getElementById('nextChatBtn');
+    const reportForm = document.getElementById('rouletteReportForm');
+    const reportReason = document.getElementById('rouletteReportReason');
+    const reportDetails = document.getElementById('rouletteReportDetails');
+    const reportDetailsRequired = document.getElementById('rouletteReportDetailsRequired');
+    const reportDetailsError = document.getElementById('rouletteReportDetailsError');
+    const reportSubmitBtn = document.getElementById('rouletteReportSubmitBtn');
+    const reportForm = document.getElementById('rouletteReportForm');
+    const reportReason = document.getElementById('rouletteReportReason');
+    const reportDetails = document.getElementById('rouletteReportDetails');
+    const reportDetailsRequired = document.getElementById('rouletteReportDetailsRequired');
+    const reportDetailsError = document.getElementById('rouletteReportDetailsError');
+    const reportSubmitBtn = document.getElementById('rouletteReportSubmitBtn');
 
     const onlineStatsEl = document.getElementById('rouletteOnlineStats');
     const dotsEl = document.getElementById('rouletteDots');
@@ -353,7 +365,7 @@
                     scrollToBottom(true);
                 }
             } else {
-                notify(data.error || 'Failed to send message', 'error');
+                notify(data.error || 'Failed to send message', res.status === 429 ? 'warning' : 'error');
                 msgInput.value = text;
             }
         } catch (e) {
@@ -367,6 +379,14 @@
 
     function renderMessageRow(msg) {
         if (!messagesContainer) return;
+
+        if (msg.system || Number(msg.sender_id) === 0) {
+            const sysNotice = document.createElement('div');
+            sysNotice.className = 'text-center my-2';
+            sysNotice.innerHTML = `<span class="badge bg-danger-subtle text-danger px-3 py-2">${escapeHtml(msg.text)}</span>`;
+            messagesContainer.appendChild(sysNotice);
+            return;
+        }
 
         const isMe = currentUserId ? (Number(msg.sender_id) === Number(currentUserId)) : false;
         const row = document.createElement('div');
@@ -502,6 +522,74 @@
         } catch (err) {
             showState('idle');
         }
+    }
+
+    // ---- Moderation & Report (Phase 3) ----
+    if (reportReason) {
+        reportReason.addEventListener('change', function () {
+            const isOther = this.value === 'Other';
+            if (reportDetailsRequired) reportDetailsRequired.classList.toggle('d-none', !isOther);
+            if (reportDetails) reportDetails.required = isOther;
+            if (reportDetailsError) reportDetailsError.classList.add('d-none');
+        });
+    }
+
+    if (reportForm) {
+        reportForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const reason = reportReason ? reportReason.value : '';
+            const details = reportDetails ? reportDetails.value.trim() : '';
+
+            if (reason === 'Other' && !details) {
+                if (reportDetailsError) reportDetailsError.classList.remove('d-none');
+                if (reportDetails) reportDetails.focus();
+                return;
+            }
+
+            if (reportSubmitBtn) {
+                reportSubmitBtn.disabled = true;
+                reportSubmitBtn.innerHTML = '<span class="btn-spinner"></span> Submitting...';
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('partner_id', activePartner ? activePartner.id : '');
+                formData.append('reason', reason);
+                formData.append('details', details);
+
+                const res = await fetch('/api/roulette/report/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken(),
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    const modalEl = document.getElementById('rouletteReportModal');
+                    if (modalEl && window.bootstrap) {
+                        const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                        if (modalInstance) modalInstance.hide();
+                    }
+                    reportForm.reset();
+                    if (reportDetailsRequired) reportDetailsRequired.classList.add('d-none');
+                    resetChat();
+                    showState('idle');
+                    notify('User reported. Chat ended.', 'warning');
+                } else {
+                    notify(data.error || 'Failed to submit report', 'error');
+                }
+            } catch (err) {
+                notify('Network error reporting user', 'error');
+            } finally {
+                if (reportSubmitBtn) {
+                    reportSubmitBtn.disabled = false;
+                    reportSubmitBtn.innerHTML = 'Submit Report';
+                }
+            }
+        });
     }
 
     // ---- Event Listeners ----

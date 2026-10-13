@@ -19,7 +19,14 @@ MESSAGES_KEY = 'roulette:messages:{}'  # list of JSON strings
 ACTIVE_SESSIONS_KEY = 'roulette:active_sessions'
 
 TTL = 300  # 5 minutes for session/messages
-PRESENCE_TTL = 30  # 30 seconds presence TTL for user state
+PRESENCE_TTL = 30
+COOLDOWN_KEY = 'roulette:cooldown:{}:{}'
+COOLDOWN_TTL = 1800  # 30 minutes cooldown between same pair
+RATE_LIMIT_KEY = 'roulette:rate:{}'
+RATE_LIMIT_MAX = 10
+RATE_LIMIT_WINDOW = 10  # max 10 messages per 10 seconds
+MAX_SESSION_DURATION = 1800  # 30 minutes maximum session duration
+  # 30 seconds presence TTL for user state
 
 # Atomic matchmaking Lua script
 LUA_MATCH = """
@@ -73,15 +80,138 @@ def leave_queue(user_id):
     return True
 
 
+
+def set_cooldown(uid_a, uid_b):
+    """Sets 30 min cooldown between two users."""
+    if not uid_a or not uid_b or str(uid_a) == str(uid_b):
+        return
+    low = min(int(uid_a), int(uid_b))
+    high = max(int(uid_a), int(uid_b))
+    r.setex(COOLDOWN_KEY.format(low, high), COOLDOWN_TTL, 1)
+
+
+def is_in_cooldown(uid_a, uid_b):
+    """Returns True if pair is in cooldown."""
+    try:
+        low = min(int(uid_a), int(uid_b))
+        high = max(int(uid_a), int(uid_b))
+        return r.exists(COOLDOWN_KEY.format(low, high)) == 1
+    except Exception:
+        return False
+
+
+def is_blocked_pair(uid_a, uid_b):
+    """Checks MariaDB blocks table if either user blocked the other."""
+    try:
+        from django.db import connection
+        with connection.cursor() as cur:
+            cur.execute("""
+                SELECT 1 FROM blocks 
+                WHERE (blocker_id = %s AND blocked_id = %s)
+                   OR (blocker_id = %s AND blocked_id = %s)
+                LIMIT 1
+            """, [uid_a, uid_b, uid_b, uid_a])
+            return cur.fetchone() is not None
+    except Exception:
+        return False
+
+
+def check_rate_limit(user_id):
+    """
+    Rate limit check: allows max 10 messages per 10 seconds.
+    Returns True if allowed, False if exceeded.
+    """
+    key = RATE_LIMIT_KEY.format(user_id)
+    current = r.incr(key)
+    if current == 1:
+        r.expire(key, RATE_LIMIT_WINDOW)
+    return current <= RATE_LIMIT_MAX
+
+
+def is_session_expired(session_id):
+    """Checks if session exceeds 30 minutes."""
+    if not session_id:
+        return False
+    s_data = r.hgetall(SESSION_KEY.format(session_id))
+    if not s_data:
+        return True
+    created_at = s_data.get('created_at')
+    if not created_at:
+        return False
+    try:
+        return (time.time() - float(created_at)) > MAX_SESSION_DURATION
+    except (ValueError, TypeError):
+        return False
+
+
+def end_expired_session(session_id):
+    """Appends system message and terminates expired session."""
+    if not session_id or not r.exists(SESSION_KEY.format(session_id)):
+        return
+    m_key = MESSAGES_KEY.format(session_id)
+    sys_msg = {
+        'id': r.llen(m_key) + 1,
+        'sender_id': 0,
+        'text': 'Session ended (30 min limit)',
+        'created_at': time.time(),
+        'time_str': datetime.now().strftime('%H:%M'),
+        'system': True,
+    }
+    r.rpush(m_key, json.dumps(sys_msg))
+    
+    s_data = r.hgetall(SESSION_KEY.format(session_id))
+    user_a = s_data.get('user_a')
+    user_b = s_data.get('user_b')
+    
+    for uid in [user_a, user_b]:
+        if uid:
+            u_key = USER_KEY.format(uid)
+            r.hset(u_key, mapping={
+                'status': 'left',
+                'partner_id': '',
+                'session_id': '',
+            })
+            r.expire(u_key, 60)
+            
+    r.srem(ACTIVE_SESSIONS_KEY, session_id)
+    r.expire(SESSION_KEY.format(session_id), 60)
+    r.expire(MESSAGES_KEY.format(session_id), 60)
+
 def try_match(user_id):
     """
-    Atomic: uses Redis Lua script to pop a random waiting user and pair them.
+    Atomic matchmaking with cooldown and block-list checks (skips up to 20 candidates).
     Returns (partner_id, session_id) or (None, None).
     """
     uid = str(user_id)
-    candidate = r.eval(LUA_MATCH, 1, QUEUE_KEY, uid)
-    if candidate:
-        partner_id = str(candidate)
+    skipped_candidates = []
+    matched_candidate = None
+
+    for _ in range(20):
+        candidate = r.eval(LUA_MATCH, 1, QUEUE_KEY, uid)
+        if not candidate:
+            break
+
+        cand_str = str(candidate)
+        if is_in_cooldown(uid, cand_str) or is_blocked_pair(uid, cand_str):
+            skipped_candidates.append(cand_str)
+            r.sadd(QUEUE_KEY, uid)
+            continue
+
+        matched_candidate = cand_str
+        break
+
+    for sc in skipped_candidates:
+        if r.exists(USER_KEY.format(sc)):
+            r.sadd(QUEUE_KEY, sc)
+
+    if not matched_candidate:
+        user_state = get_user_state(uid)
+        if user_state and user_state.get('status') == 'waiting':
+            r.sadd(QUEUE_KEY, uid)
+        return None, None
+
+    if matched_candidate:
+        partner_id = matched_candidate
         session_id = uuid.uuid4().hex[:12]
         now = str(time.time())
 
@@ -204,6 +334,8 @@ def leave_session(user_id):
         session_id = user_state.get('session_id')
 
         if partner_id:
+            set_cooldown(uid, partner_id)
+            set_cooldown(uid, partner_id)
             p_key = USER_KEY.format(partner_id)
             p_state = r.hgetall(p_key)
             if p_state and p_state.get('session_id') == session_id:
