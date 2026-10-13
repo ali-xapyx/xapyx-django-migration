@@ -1,0 +1,113 @@
+{% extends "dashboard/base_dashboard.html" %}
+{% load static %}
+
+{% block title %}Space Shooter | XAPYX Games{% endblock %}
+
+{% block content %}
+<div id="dashboardContainer">
+  <div class="dashboard-inner">
+    <div class="dashboard-flex games-play-flex">
+      <div class="dashboard-main games-play-main">
+
+        <!-- Game Header / HUD -->
+        <div class="game-hud-header">
+          <div class="d-flex align-items-center gap-3">
+            <a href="{% url 'games' %}" class="game-back-btn" title="Back to Games Hub">
+              <i class="bi bi-arrow-left"></i>
+            </a>
+            <div class="game-hud-title">
+              <i class="bi bi-rocket-takeoff-fill text-warning"></i>
+              <span>Space Shooter</span>
+            </div>
+          </div>
+
+          <div class="game-hud-stats">
+            <div class="game-hud-stat">
+              <i class="bi bi-trophy-fill text-warning"></i>
+              <span>Score: <strong id="scoreDisplay">0</strong></span>
+            </div>
+            <div class="game-hud-stat">
+              <i class="bi bi-heart-fill text-danger"></i>
+              <span>Lives: <strong id="livesDisplay">3</strong></span>
+            </div>
+            <div class="game-hud-stat">
+              <i class="bi bi-star-fill text-warning"></i>
+              <span>Best: <strong id="highScoreDisplay">0</strong></span>
+            </div>
+            <button type="button" class="game-icon-btn" id="soundToggleBtn" title="Toggle Sound">
+              <i class="bi bi-volume-up-fill" id="soundIcon"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Canvas Game Wrapper -->
+        <div class="space-canvas-wrapper" id="spaceCanvasWrapper">
+          <canvas id="gameCanvas"></canvas>
+
+          <div class="mobile-touch-instruction">
+            <i class="bi bi-fingerprint me-1 text-warning"></i> Touch &amp; Drag to move | Tap to shoot
+          </div>
+
+          <!-- Instructions banner that fades out -->
+          <div class="space-instructions-overlay" id="instructionsOverlay">
+            <p><i class="bi bi-mouse text-warning me-2"></i>Move mouse / Drag touch to steer starfighter</p>
+            <p><i class="bi bi-lightning-fill text-warning me-2"></i>Click, Tap, or Spacebar to fire lasers</p>
+            <p><i class="bi bi-bullseye text-danger me-2"></i>Destroy alien invaders to score points!</p>
+          </div>
+
+          <!-- Game Over Modal Overlay -->
+          <div class="space-game-over-overlay" id="gameOverOverlay" style="display: none;">
+            <div class="space-game-over-content">
+              <div class="space-game-over-icon">💥</div>
+              <h2 class="space-game-over-title">Mission Ended</h2>
+              <p class="space-game-over-score">Your Score: <strong id="finalScore">0</strong></p>
+              <div class="space-game-over-buttons">
+                <button type="button" class="btn btn-primary px-4 py-2" id="restartBtn">
+                  <i class="bi bi-arrow-repeat me-2"></i>Play Again
+                </button>
+                <a href="{% url 'games' %}" class="btn btn-outline-light px-4 py-2">
+                  <i class="bi bi-house me-2"></i>Games Hub
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Controls Guide Card -->
+        <div class="game-controls-guide mt-4">
+          <div class="guide-header">
+            <h6><i class="bi bi-controller me-2 text-primary"></i>Flight Controls</h6>
+          </div>
+          <div class="guide-grid">
+            <div class="guide-item">
+              <span class="guide-key">MOUSE / TOUCH</span>
+              <span>Smooth Starfighter Steering</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-key">CLICK / SPACE</span>
+              <span>Fire Plasma Lasers</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-key">&larr; &rarr;</span>
+              <span>Nudge Left / Right</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-key text-danger">DANGER</span>
+              <span>Collisions cost 1 life (3 total)</span>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /dashboard-main -->
+
+      <!-- Right Widgets Column -->
+      {% include "dashboard/partials/right_widgets.html" %}
+
+    </div><!-- /dashboard-flex -->
+  </div><!-- /dashboard-inner -->
+</div><!-- /dashboardContainer -->
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/games/spaceshooter.js' %}?v=1"></script>
+{% endblock %}

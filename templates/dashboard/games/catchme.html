@@ -1,0 +1,129 @@
+{% extends "dashboard/base_dashboard.html" %}
+{% load static %}
+
+{% block title %}Catch Me If You Can | XAPYX Games{% endblock %}
+
+{% block content %}
+<div id="dashboardContainer">
+  <div class="dashboard-inner">
+    <div class="dashboard-flex games-play-flex">
+      <div class="dashboard-main games-play-main">
+
+        <!-- Game Header / HUD -->
+        <div class="game-hud-header">
+          <div class="d-flex align-items-center gap-3">
+            <a href="{% url 'games' %}" class="game-back-btn" title="Back to Games Hub">
+              <i class="bi bi-arrow-left"></i>
+            </a>
+            <div class="game-hud-title">
+              <i class="bi bi-stopwatch text-warning"></i>
+              <span>Catch Me If You Can</span>
+            </div>
+          </div>
+
+          <div class="game-hud-stats">
+            <div class="game-hud-stat">
+              <i class="bi bi-trophy-fill text-warning"></i>
+              <span>Score: <strong id="cmiycScore">0</strong></span>
+            </div>
+            <div class="game-hud-stat">
+              <i class="bi bi-fire text-danger"></i>
+              <span>Streak: <strong id="cmiycStreak">0</strong></span>
+            </div>
+            <div class="game-hud-stat">
+              <i class="bi bi-star-fill text-warning"></i>
+              <span>Best: <strong id="cmiycBest">0</strong></span>
+            </div>
+            <button type="button" class="game-icon-btn text-muted hover-danger" id="cmiycResetAllBtn" title="Reset All Stats">
+              <i class="bi bi-trash3"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Main Stopwatch Arena -->
+        <div class="catchme-arena-container">
+          <!-- Target Display Card -->
+          <div class="catchme-target-card text-center my-4">
+            <span class="catchme-target-label"><i class="bi bi-bullseye me-1 text-danger"></i>Target Time to Catch</span>
+            <div class="catchme-target-val" id="cmiycTarget">7.00</div>
+            <span class="text-muted small">Seconds</span>
+          </div>
+
+          <!-- Circular SVG Stopwatch -->
+          <div class="catchme-timer-wrapper text-center my-4">
+            <div class="catchme-timer-circle">
+              <svg class="catchme-timer-svg" viewBox="0 0 200 200">
+                <circle class="catchme-timer-bg" cx="100" cy="100" r="90" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="6"/>
+                <circle class="catchme-timer-progress" id="cmiycTimerProgress" cx="100" cy="100" r="90" fill="none"
+                  stroke="#ff8c00" stroke-width="6" stroke-linecap="round"
+                  stroke-dasharray="565.48" stroke-dashoffset="565.48"/>
+              </svg>
+              <div class="catchme-timer-value" id="cmiycTimer">0.00</div>
+            </div>
+          </div>
+
+          <!-- Action Controls -->
+          <div class="catchme-controls-wrap text-center my-3 d-flex justify-content-center gap-3">
+            <button type="button" class="btn btn-success btn-cmiyc px-4 py-2" id="cmiycStart">
+              <i class="bi bi-play-fill me-1"></i>START
+            </button>
+            <button type="button" class="btn btn-danger btn-cmiyc px-4 py-2" id="cmiycStop" disabled>
+              <i class="bi bi-stop-fill me-1"></i>STOP
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-cmiyc px-4 py-2" id="cmiycReset">
+              <i class="bi bi-arrow-repeat me-1"></i>RESET
+            </button>
+          </div>
+
+          <!-- Feedback Status Banner -->
+          <div id="cmiycFeedback" class="catchme-feedback text-center my-3" style="display:none;"></div>
+
+          <!-- Pro Tips Card -->
+          <div class="game-controls-guide mt-4">
+            <div class="guide-header">
+              <h6><i class="bi bi-lightbulb me-2 text-warning"></i>Reflex Rules</h6>
+            </div>
+            <div class="guide-grid">
+              <div class="guide-item">
+                <span class="guide-key text-success">&plusmn; 0.05s</span>
+                <span>Perfect catch window (+100 pts &amp; streak boost)</span>
+              </div>
+              <div class="guide-item">
+                <span class="guide-key text-warning">&plusmn; 0.20s</span>
+                <span>Near miss (+25 pts)</span>
+              </div>
+              <div class="guide-item">
+                <span class="guide-key">7s &ndash; 15s</span>
+                <span>Target randomly generated each round</span>
+              </div>
+              <div class="guide-item">
+                <span class="guide-key text-danger">COLOR RING</span>
+                <span>Turns crimson if you exceed the target time</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- History Panel -->
+          <div class="catchme-history-panel mt-4">
+            <div class="history-panel-header">
+              <h6><i class="bi bi-clock-history me-2 text-warning"></i>Recent Attempts</h6>
+            </div>
+            <div class="history-panel-list" id="cmiycHistoryList">
+              <div class="text-center py-3 text-muted small">No attempts yet. Click START to begin!</div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /dashboard-main -->
+
+      <!-- Right Widgets Column -->
+      {% include "dashboard/partials/right_widgets.html" %}
+
+    </div><!-- /dashboard-flex -->
+  </div><!-- /dashboard-inner -->
+</div><!-- /dashboardContainer -->
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/games/catchme.js' %}?v=1"></script>
+{% endblock %}

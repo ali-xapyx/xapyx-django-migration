@@ -4,8 +4,8 @@
 {% block title %}Games | XAPYX{% endblock %}
 
 {% block content %}
-<div id="dashboardContainer" class="no-right-widgets">
-  <div class="dashboard-inner games-hub-inner">
+<div id="dashboardContainer">
+  <div class="dashboard-inner">
     <div class="dashboard-flex games-hub-flex">
       <div class="dashboard-main games-dashboard-main">
 
@@ -106,6 +106,9 @@
               <button type="button" class="games-tab-btn" data-game-type="checkers">
                 <i class="bi bi-shield me-1"></i> Checkers
               </button>
+              <button type="button" class="games-tab-btn" data-game-type="catchme">
+                <i class="bi bi-stopwatch me-1"></i> Catch Me
+              </button>
             </div>
           </div>
 
@@ -134,12 +137,16 @@
           </div>
         </div>
 
-      </div>
-    </div>
-  </div>
-</div>
+      </div><!-- /dashboard-main -->
+
+      <!-- Right Widgets Column -->
+      {% include "dashboard/partials/right_widgets.html" %}
+
+    </div><!-- /dashboard-flex -->
+  </div><!-- /dashboard-inner -->
+</div><!-- /dashboardContainer -->
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/games.js' %}?v=1"></script>
+<script src="{% static 'js/games.js' %}?v=2"></script>
 {% endblock %}

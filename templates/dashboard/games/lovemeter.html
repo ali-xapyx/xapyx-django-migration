@@ -1,0 +1,98 @@
+{% extends "dashboard/base_dashboard.html" %}
+{% load static %}
+
+{% block title %}Love Meter | XAPYX Games{% endblock %}
+
+{% block content %}
+<div id="dashboardContainer">
+  <div class="dashboard-inner">
+    <div class="dashboard-flex games-play-flex">
+      <div class="dashboard-main games-play-main">
+
+        <!-- Game Header / HUD -->
+        <div class="game-hud-header">
+          <div class="d-flex align-items-center gap-3">
+            <a href="{% url 'games' %}" class="game-back-btn" title="Back to Games Hub">
+              <i class="bi bi-arrow-left"></i>
+            </a>
+            <div class="game-hud-title">
+              <i class="bi bi-heart-fill text-danger"></i>
+              <span>Love Meter</span>
+            </div>
+          </div>
+
+          <div class="game-hud-stats">
+            <div class="game-hud-stat">
+              <i class="bi bi-heart-fill text-danger"></i>
+              <span>Total Checks: <strong id="lmTotalCalc">0</strong></span>
+            </div>
+            <button type="button" class="game-icon-btn text-muted hover-danger" id="lmResetBtn" title="Clear History">
+              <i class="bi bi-trash3"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Love Meter Card Area -->
+        <div class="lovemeter-card-container">
+          <div class="lovemeter-display-wrap text-center my-4">
+            <div class="lovemeter-big-heart" id="lmBigHeart">❤️</div>
+            <div class="lovemeter-percentage-badge" id="lmPercentageDisplay">0%</div>
+          </div>
+
+          <div class="lovemeter-form-card">
+            <div class="row g-3 align-items-end">
+              <div class="col-12 col-md-5">
+                <label class="form-label text-muted small mb-1"><i class="bi bi-person-fill me-1 text-primary"></i>Your Name</label>
+                <input type="text" id="lmName1" class="form-control game-input" placeholder="Your name" value="{{ request.user.name|default:request.user.username }}">
+              </div>
+              <div class="col-12 col-md-5">
+                <label class="form-label text-muted small mb-1"><i class="bi bi-heart-half me-1 text-danger"></i>Partner's Name</label>
+                <input type="text" id="lmName2" class="form-control game-input" placeholder="Partner's name">
+              </div>
+              <div class="col-12 col-md-2">
+                <button type="button" class="btn btn-outline-secondary w-100 game-action-btn" id="lmRandomBtn" title="Pick Random Name">
+                  <i class="bi bi-shuffle me-1"></i>Random
+                </button>
+              </div>
+            </div>
+
+            <div class="mt-4 text-center">
+              <button type="button" class="btn btn-danger btn-love-calc px-4 py-2" id="lmCalcBtn">
+                <i class="bi bi-heart-fill me-2"></i>Calculate Love Compatibility
+              </button>
+            </div>
+          </div>
+
+          <!-- Result Section (Animated) -->
+          <div class="lovemeter-result-section mt-4" id="lmResultSection" style="display: none;">
+            <div class="lovemeter-progress-container mb-3">
+              <div class="lovemeter-progress-fill" id="lmProgressFill" style="width: 0%;">0%</div>
+            </div>
+            <h3 class="lovemeter-result-title text-center" id="lmResultMessage"></h3>
+            <p class="lovemeter-result-desc text-center text-muted mb-0" id="lmResultDesc"></p>
+          </div>
+
+          <!-- History Panel -->
+          <div class="lovemeter-history-panel mt-4">
+            <div class="history-panel-header">
+              <h6><i class="bi bi-clock-history me-2 text-warning"></i>Recent Compatibility Checks</h6>
+            </div>
+            <div class="history-panel-list" id="lmHistoryList">
+              <div class="text-center py-3 text-muted small">No compatibility checks yet. Enter names above!</div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /dashboard-main -->
+
+      <!-- Right Widgets Column -->
+      {% include "dashboard/partials/right_widgets.html" %}
+
+    </div><!-- /dashboard-flex -->
+  </div><!-- /dashboard-inner -->
+</div><!-- /dashboardContainer -->
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/games/lovemeter.js' %}?v=1"></script>
+{% endblock %}

@@ -10664,9 +10664,138 @@ def games_view(request):
         'active_page': 'games',
         'games': games_config,
         'total_plays': total_plays,
-        'recent_scores': recent_scores
+        'recent_scores': recent_scores,
     }
+    context.update(_get_games_right_widgets_context(request))
     return render(request, 'dashboard/games.html', context)
+
+def _get_games_right_widgets_context(request):
+    """Calculates shared right widgets data for Games Hub and game pages (Task 22)."""
+    user = request.user
+    user_games_played = GameScore.objects.filter(user=user).count() if user.is_authenticated else 0
+    user_best_score = GameScore.objects.filter(user=user).aggregate(m=models.Max('score'))['m'] or 0 if user.is_authenticated else 0
+    if user_best_score > 0:
+        higher_scorers = GameScore.objects.values('user').annotate(
+            m=models.Max('score')
+        ).filter(m__gt=user_best_score).count()
+        rank_display = f"#{higher_scorers + 1}"
+    elif user_games_played > 0:
+        higher_scorers = GameScore.objects.values('user').annotate(
+            m=models.Max('score')
+        ).filter(m__gt=0).count()
+        rank_display = f"#{higher_scorers + 1}"
+    else:
+        rank_display = "-"
+
+    your_stats = {
+        'games_played': user_games_played,
+        'best_score': user_best_score,
+        'rank': rank_display,
+        'rank_display': rank_display
+    }
+
+    top_scores = GameScore.objects.select_related('user', 'game').order_by('-score', '-created_at')
+    seen_users = set()
+    top_players = []
+    for s in top_scores:
+        if s.user_id not in seen_users:
+            seen_users.add(s.user_id)
+            u = s.user
+            pic = _media_url(u.picture) if u.picture else '/static/images/avatars/default.png'
+            top_players.append({
+                'user_id': u.id,
+                'username': u.username,
+                'name': u.name or u.username,
+                'picture': pic,
+                'score': s.score,
+                'game_title': s.game.title,
+                'rank': len(top_players) + 1
+            })
+            if len(top_players) >= 5:
+                break
+
+    friend_ids = []
+    if user.is_authenticated:
+        with connection.cursor() as cur:
+            cur.execute("""
+                SELECT CASE WHEN sender_id = %s THEN receiver_id ELSE sender_id END
+                FROM friends
+                WHERE (sender_id = %s OR receiver_id = %s)
+                  AND status = 'accepted'
+            """, [user.id, user.id, user.id])
+            friend_ids = [row[0] for row in cur.fetchall()]
+
+    recent_friend_activity = []
+    if friend_ids:
+        qs = GameScore.objects.filter(user_id__in=friend_ids).select_related('user', 'game').order_by('-created_at')[:5]
+        for s in qs:
+            u = s.user
+            pic = _media_url(u.picture) if u.picture else '/static/images/avatars/default.png'
+            recent_friend_activity.append({
+                'username': u.username,
+                'name': u.name or u.username,
+                'picture': pic,
+                'game_title': s.game.title,
+                'score': s.score,
+                'winner': s.winner or '',
+                'created_at': s.created_at
+            })
+
+    if not recent_friend_activity:
+        platform_qs = GameScore.objects.exclude(user=user).select_related('user', 'game').order_by('-created_at')[:5] if user.is_authenticated else GameScore.objects.none()
+        if not platform_qs.exists():
+            platform_qs = GameScore.objects.select_related('user', 'game').order_by('-created_at')[:5]
+        for s in platform_qs:
+            u = s.user
+            pic = _media_url(u.picture) if u.picture else '/static/images/avatars/default.png'
+            recent_friend_activity.append({
+                'username': u.username,
+                'name': u.name or u.username,
+                'picture': pic,
+                'game_title': s.game.title,
+                'score': s.score,
+                'winner': s.winner or '',
+                'created_at': s.created_at
+            })
+
+    return {
+        'your_stats': your_stats,
+        'top_players': top_players,
+        'recent_friend_activity': recent_friend_activity,
+    }
+
+
+@login_required
+def space_view(request):
+    """Renders Space Shooter 2D canvas game (Task 22 Phase 2)."""
+    ctx = {
+        'active_page': 'games',
+        'game_title': 'Space Shooter',
+    }
+    ctx.update(_get_games_right_widgets_context(request))
+    return render(request, 'dashboard/games/spaceshooter.html', ctx)
+
+
+@login_required
+def love_view(request):
+    """Renders Love Meter compatibility calculator (Task 22 Phase 2)."""
+    ctx = {
+        'active_page': 'games',
+        'game_title': 'Love Meter',
+    }
+    ctx.update(_get_games_right_widgets_context(request))
+    return render(request, 'dashboard/games/lovemeter.html', ctx)
+
+
+@login_required
+def catch_view(request):
+    """Renders Catch Me If You Can reflex stopwatch game (Task 22 Phase 2)."""
+    ctx = {
+        'active_page': 'games',
+        'game_title': 'Catch Me If You Can',
+    }
+    ctx.update(_get_games_right_widgets_context(request))
+    return render(request, 'dashboard/games/catchme.html', ctx)
 
 
 @login_required
@@ -10755,6 +10884,8 @@ def api_games_leaderboard(request):
         q_filter = models.Q(game__game_type='tictactoe') | models.Q(game__title__iexact='Tictactoe')
     elif game_type in ('checkers', 'checker'):
         q_filter = models.Q(game__game_type='checkers') | models.Q(game__title__iexact='Checkers')
+    elif game_type in ('catchme', 'catchmeifyoucan', 'catch_me', 'catch'):
+        q_filter = models.Q(game__title__icontains='Catch Me') | models.Q(game__game_type='catchme')
     else:
         q_filter = models.Q(game__game_type=game_type) | models.Q(game__title__icontains=game_type)
 
@@ -10781,6 +10912,7 @@ def api_games_leaderboard(request):
     })
 
 
+@csrf_exempt
 @login_required
 @require_POST
 def api_games_track_play(request):
@@ -10804,6 +10936,8 @@ def api_games_track_play(request):
         tot = Game.objects.filter(title__iexact='Love Meter').aggregate(t=models.Sum('plays_count'))['t'] or 0
     elif game_type in ('tictactoe', 'ttt'):
         tot = Game.objects.filter(models.Q(game_type='tictactoe') | models.Q(title__iexact='Tictactoe')).aggregate(t=models.Sum('plays_count'))['t'] or 0
+    elif game_type in ('catchme', 'catchmeifyoucan', 'catch_me', 'catch'):
+        tot = Game.objects.filter(title__icontains='Catch Me').aggregate(t=models.Sum('plays_count'))['t'] or 0
     else:
         game.refresh_from_db()
         tot = game.plays_count
@@ -10811,6 +10945,7 @@ def api_games_track_play(request):
     return JsonResponse({'success': True, 'game_type': game_type, 'plays_count': tot})
 
 
+@csrf_exempt
 @login_required
 @require_POST
 def api_games_save_score(request):

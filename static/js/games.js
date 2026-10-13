@@ -167,18 +167,28 @@
                 const gameType = this.dataset.gameType;
                 const gameTitle = this.dataset.gameTitle || 'Game';
 
+                const gameRoutes = {
+                    'spaceshooter': '/games/spaceshooter/',
+                    'lovemeter': '/games/lovemeter/',
+                    'catchme': '/games/catchme/'
+                };
+
                 // Track play asynchronously
                 trackPlay(gameType, (newCount) => {
                     const countEl = document.querySelector(`.plays-count-val[data-game-id="${gameType}"]`);
                     if (countEl) countEl.textContent = newCount.toLocaleString();
                 });
 
-                // Phase 1 Stub Feedback
-                triggerToast(
-                    `${gameTitle} is launching in Phase 2! Play count tracked.`,
-                    'Coming Soon',
-                    '🚀'
-                );
+                if (gameRoutes[gameType]) {
+                    window.location.href = gameRoutes[gameType];
+                } else {
+                    // Multiplayer coming in Phase 3
+                    triggerToast(
+                        `${gameTitle} multiplayer is launching in Phase 3!`,
+                        'Coming Soon',
+                        '🎮'
+                    );
+                }
             });
         });
 

@@ -1,6 +1,7 @@
 # landing/urls.py
 from django.urls import path
 from . import views
+from . import admin_views
 urlpatterns = [
     #Default load page
     path('', views.landing_page, name='landing'),
@@ -219,10 +220,20 @@ urlpatterns = [
 
     # Games Hub (Task 22 Phase 1)
     path('games/', views.games_view, name='games'),
+    path('games/spaceshooter/', views.space_view, name='game_spaceshooter'),
+    path('games/lovemeter/', views.love_view, name='game_lovemeter'),
+    path('games/catchme/', views.catch_view, name='game_catchme'),
     path('api/games/hub/', views.api_games_hub, name='api_games_hub'),
     path('api/games/leaderboard/', views.api_games_leaderboard, name='api_games_leaderboard'),
     path('api/games/track-play/', views.api_games_track_play, name='api_games_track_play'),
     path('api/games/save-score/', views.api_games_save_score, name='api_games_save_score'),
+
+    # Admin Portal (Task 23 Phase 1)
+    path('portal-admin/', admin_views.admin_login_view, name='portal_admin_root'),
+    path('portal-admin/login/', admin_views.admin_login_view, name='portal_admin_login'),
+    path('portal-admin/logout/', admin_views.admin_logout, name='portal_admin_logout'),
+    path('portal-admin/dashboard/', admin_views.admin_dashboard, name='portal_admin_dashboard'),
+    path('portal-admin/api/metrics/', admin_views.api_admin_metrics, name='portal_admin_api_metrics'),
 
     #sw
     path('sw.js', views.serve_sw, name='serve_sw'),

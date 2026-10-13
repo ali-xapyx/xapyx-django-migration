@@ -192,3 +192,128 @@ class GameScore(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.game.title}: {self.score}"
+
+class Admin(models.Model):
+    """Maps existing 'admins' table for admin portal authentication."""
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=100)
+    email = models.EmailField(max_length=100, unique=True)
+    password = models.CharField(max_length=255)
+    role = models.CharField(max_length=50, default='support')
+    status = models.CharField(max_length=20, default='active')
+    last_login = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'admins'
+        managed = False
+
+    def __str__(self):
+        return f"{self.name} ({self.email}) [{self.role}]"
+
+
+class AdminLog(models.Model):
+    """Maps existing 'admin_logs' table for audit trails."""
+    id = models.AutoField(primary_key=True)
+    admin_id = models.IntegerField()
+    admin_name = models.CharField(max_length=100, null=True, blank=True)
+    action = models.CharField(max_length=100, null=True, blank=True)
+    details = models.TextField(null=True, blank=True)
+    ip_address = models.CharField(max_length=45, null=True, blank=True)
+    user_agent = models.TextField(null=True, blank=True)
+    page_url = models.CharField(max_length=500, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'admin_logs'
+        managed = False
+
+    def __str__(self):
+        return f"Log #{self.id}: {self.admin_name} - {self.action}"
+
+
+class SupportTicket(models.Model):
+    """Maps existing 'support_tickets' table."""
+    id = models.AutoField(primary_key=True)
+    mysql_id = models.IntegerField(null=True, blank=True)
+    user = models.ForeignKey(
+        Auth,
+        on_delete=models.CASCADE,
+        db_column='user_id',
+        related_name='support_tickets',
+    )
+    type = models.CharField(max_length=50, default='query')
+    subject = models.CharField(max_length=255)
+    message = models.TextField()
+    urgency = models.CharField(max_length=20, default='medium')
+    status = models.CharField(max_length=20, default='open')
+    rating = models.IntegerField(null=True, blank=True)
+    created_at = models.DateTimeField()
+    updated_at = models.DateTimeField(null=True, blank=True)
+    is_live_chat = models.BooleanField(default=True)
+    last_message_at = models.DateTimeField()
+    assigned_to = models.ForeignKey(
+        Admin,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='assigned_to',
+        related_name='assigned_tickets',
+    )
+    firebase_id = models.CharField(max_length=255, null=True, blank=True)
+    user_name = models.CharField(max_length=255, null=True, blank=True)
+    user_email = models.CharField(max_length=255, null=True, blank=True)
+    unread_count = models.IntegerField(default=0)
+
+    class Meta:
+        db_table = 'support_tickets'
+        managed = False
+
+    def __str__(self):
+        return f"Ticket #{self.id}: {self.subject} [{self.status}]"
+
+
+class SupportMessage(models.Model):
+    """Maps existing 'support_messages' table."""
+    id = models.AutoField(primary_key=True)
+    firebase_id = models.CharField(max_length=255, null=True, blank=True)
+    ticket = models.ForeignKey(
+        SupportTicket,
+        on_delete=models.CASCADE,
+        db_column='ticket_id',
+        related_name='messages',
+    )
+    user = models.ForeignKey(
+        Auth,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='user_id',
+        related_name='support_messages',
+    )
+    admin = models.ForeignKey(
+        Admin,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='admin_id',
+        related_name='admin_support_messages',
+    )
+    message = models.TextField()
+    media_url = models.CharField(max_length=500, null=True, blank=True)
+    s3_key = models.CharField(max_length=255, null=True, blank=True)
+    s3_url = models.CharField(max_length=255, null=True, blank=True)
+    file_name = models.CharField(max_length=255, null=True, blank=True)
+    file_size = models.IntegerField(null=True, blank=True)
+    message_type = models.CharField(max_length=20, default='user')
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField()
+    sender_type = models.CharField(max_length=20, default='user')
+    sender_name = models.CharField(max_length=255, null=True, blank=True)
+
+    class Meta:
+        db_table = 'support_messages'
+        managed = False
+
+    def __str__(self):
+        return f"Msg #{self.id} on Ticket #{self.ticket_id}"
