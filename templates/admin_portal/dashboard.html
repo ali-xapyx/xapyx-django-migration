@@ -8,24 +8,23 @@
 <div class="admsup-page-header">
   <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
     <div>
-      <h4 class="mb-1 fw-bold" style="color: #1a1a2e;"><i class="bi bi-speedometer2 me-2 text-primary"></i>System Overview</h4>
-      <p class="text-muted mb-0 small">Live support metrics, user accounts, and operations</p>
+      <h4 class="mb-1 fw-bold admsup-heading"><i class="bi bi-speedometer2 me-2 text-primary"></i>System Overview</h4>
+      <p class="mb-0 small" style="color: var(--admsup-text-muted);">Live support metrics, user accounts, and operations</p>
     </div>
     <div class="d-flex align-items-center gap-2">
       <button class="btn btn-sm btn-admsup-primary d-flex align-items-center gap-2 px-3 py-2" id="refreshMetricsBtn">
         <i class="fas fa-arrows-rotate" id="refreshIcon"></i>
         <span>Refresh</span>
       </button>
-      <span class="badge py-2 px-3" id="lastUpdatedBadge" style="background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; font-weight: 500;">
+      <span class="badge py-2 px-3" id="lastUpdatedBadge" style="background: var(--admsup-surface-2); color: var(--admsup-text-muted); border: 1px solid var(--admsup-border); font-weight: 500;">
         Updated Just Now
       </span>
     </div>
   </div>
 </div>
 
-<!-- 4 Top Stat Cards: White bg, top-border accent color per type -->
+<!-- 4 Top Stat Cards -->
 <div class="row g-3 mb-4">
-  <!-- 1. Total Tickets: Top-border blue (#3b82f6) -->
   <div class="col-12 col-sm-6 col-xl-3">
     <div class="admin-stat-card stat-total">
       <div>
@@ -38,7 +37,6 @@
     </div>
   </div>
 
-  <!-- 2. Open Tickets: Top-border orange (#f59e0b) -->
   <div class="col-12 col-sm-6 col-xl-3">
     <div class="admin-stat-card stat-open">
       <div>
@@ -51,7 +49,6 @@
     </div>
   </div>
 
-  <!-- 3. In Progress: Top-border blue (#3b82f6) -->
   <div class="col-12 col-sm-6 col-xl-3">
     <div class="admin-stat-card stat-progress">
       <div>
@@ -64,7 +61,6 @@
     </div>
   </div>
 
-  <!-- 4. Resolved: Top-border green (#10b981) -->
   <div class="col-12 col-sm-6 col-xl-3">
     <div class="admin-stat-card stat-resolved">
       <div>
@@ -84,7 +80,7 @@
   <span id="statUsersTotal">{{ metrics.users_total|default:0 }}</span>
 </div>
 
-<!-- Two-Column Layout for Recent Support Tickets and Recent Users (White Panels) -->
+<!-- Two-Column Layout for Recent Support Tickets and Recent Users -->
 <div class="row g-4 mb-4">
   <!-- Recent Support Tickets -->
   <div class="col-12 col-lg-6">
@@ -92,7 +88,7 @@
       <div class="admin-panel-header">
         <div class="d-flex align-items-center gap-2">
           <i class="bi bi-headset text-primary fs-5"></i>
-          <h6 class="fw-bold mb-0" style="color: #1a1a2e;">Recent Support Tickets</h6>
+          <h6 class="fw-bold mb-0 admsup-heading">Recent Support Tickets</h6>
         </div>
         <a href="/portal-admin/dashboard/" class="btn btn-sm btn-admsup-secondary px-3">
           View All
@@ -112,14 +108,17 @@
             {% for ticket in latest_tickets %}
             <tr>
               <td>
-                <div class="fw-semibold text-truncate" style="max-width: 200px; color: #1e293b;" title="{{ ticket.subject }}">
-                  {{ ticket.subject|default:"No Subject" }}
+                <div class="fw-semibold text-truncate" style="max-width: 190px; color: var(--admsup-text);" title="#{{ ticket.id }} - {{ ticket.subject }}">
+                  <span style="color: var(--admsup-text-muted); font-weight: 700; margin-right: 4px;">#{{ ticket.id }}</span>{{ ticket.subject|default:"No Subject" }}
                 </div>
               </td>
               <td>
-                <div class="small fw-semibold" style="color: #334155;">
+                <div class="small fw-semibold" style="color: var(--admsup-text-secondary);">
                   {{ ticket.user.name|default:ticket.user.username|default:ticket.user_name|default:"Unknown" }}
                 </div>
+                {% if ticket.user_email %}
+                <div style="font-size: 0.72rem; color: var(--admsup-text-muted);">{{ ticket.user_email }}</div>
+                {% endif %}
               </td>
               <td>
                 {% if ticket.status == 'open' %}
@@ -134,13 +133,13 @@
                 <span class="admsup-pill pill-default">{{ ticket.status|capfirst }}</span>
                 {% endif %}
               </td>
-              <td class="small text-muted">
-                {{ ticket.created_at|date:"M d" }}
+              <td class="small" style="color: var(--admsup-text-muted); white-space: nowrap;">
+                {{ ticket.created_at|date:"M d"|default:ticket.created_at }}
               </td>
             </tr>
             {% empty %}
             <tr>
-              <td colspan="4" class="text-center py-4 text-muted">
+              <td colspan="4" class="text-center py-4" style="color: var(--admsup-text-muted);">
                 <i class="bi bi-inbox fs-2 mb-2 d-block opacity-50"></i>
                 No tickets found
               </td>
@@ -158,7 +157,7 @@
       <div class="admin-panel-header">
         <div class="d-flex align-items-center gap-2">
           <i class="bi bi-people text-primary fs-5"></i>
-          <h6 class="fw-bold mb-0" style="color: #1a1a2e;">Recent Users</h6>
+          <h6 class="fw-bold mb-0 admsup-heading">Recent Users</h6>
         </div>
         <a href="/portal-admin/dashboard/" class="btn btn-sm btn-admsup-secondary px-3">
           View All
@@ -182,39 +181,39 @@
                   {% if u.picture %}
                   <img src="https://s3.eu-west-1.amazonaws.com/xapyx.com-media/uploads/{{ u.picture }}"
                        alt="{{ u.name|default:u.username }}"
-                       class="rounded-circle object-fit-cover"
+                       class="rounded-circle object-fit-cover flex-shrink-0"
                        width="32" height="32"
-                       style="border: 1px solid #e2e8f0;"
+                       style="border: 1px solid var(--admsup-border);"
                        onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ u.name|default:u.username|urlencode }}&background=3b82f6&color=fff';">
                   {% else %}
                   <img src="https://ui-avatars.com/api/?name={{ u.name|default:u.username|urlencode }}&background=3b82f6&color=fff"
                        alt="{{ u.name|default:u.username }}"
-                       class="rounded-circle"
+                       class="rounded-circle flex-shrink-0"
                        width="32" height="32"
-                       style="border: 1px solid #e2e8f0;">
+                       style="border: 1px solid var(--admsup-border);">
                   {% endif %}
-                  <span class="fw-semibold small text-truncate" style="max-width: 130px; color: #1e293b;">
+                  <span class="fw-semibold small text-truncate" style="max-width: 120px; color: var(--admsup-text);">
                     {{ u.name|default:u.username }}
                   </span>
                 </div>
               </td>
               <td>
-                <span class="small text-truncate d-inline-block text-muted" style="max-width: 140px;" title="{{ u.email|default:'N/A' }}">
+                <span class="small text-truncate d-inline-block" style="max-width: 140px; color: var(--admsup-text-muted);" title="{{ u.email|default:'N/A' }}">
                   {{ u.email|default:"N/A" }}
                 </span>
               </td>
               <td>
-                <span class="badge" style="background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; font-weight: 500;">
+                <span class="admsup-user-pill">
                   @{{ u.username }}
                 </span>
               </td>
-              <td class="small text-muted">
-                {{ u.created_at|date:"M d" }}
+              <td class="small" style="color: var(--admsup-text-muted); white-space: nowrap;">
+                {{ u.created_at|date:"M d"|default:u.created_at }}
               </td>
             </tr>
             {% empty %}
             <tr>
-              <td colspan="4" class="text-center py-4 text-muted">
+              <td colspan="4" class="text-center py-4" style="color: var(--admsup-text-muted);">
                 <i class="bi bi-people-slash fs-2 mb-2 d-block opacity-50"></i>
                 No users found
               </td>
@@ -227,16 +226,16 @@
   </div>
 </div>
 
-<!-- Quick Statistics Bar (Matching PHP bottom strip) -->
+<!-- Quick Statistics Bar -->
 <div class="row">
   <div class="col-12">
     <div class="admin-panel-card mb-0">
       <div class="admin-panel-header">
         <div class="d-flex align-items-center gap-2">
           <i class="bi bi-bar-chart text-primary fs-5"></i>
-          <h6 class="fw-bold mb-0" style="color: #1a1a2e;">Quick Statistics</h6>
+          <h6 class="fw-bold mb-0 admsup-heading">Quick Statistics</h6>
         </div>
-        <span class="badge" style="background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; font-size: 0.72rem;">Live Summary</span>
+        <span class="badge" style="background: rgba(59, 130, 246, 0.12); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); font-size: 0.72rem;">Live Summary</span>
       </div>
       <div class="p-0">
         <div class="row g-0">
@@ -264,5 +263,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/admin_portal.js' %}?v=3"></script>
+<script src="{% static 'js/admin_portal.js' %}?v=4"></script>
 {% endblock %}

@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
   <!-- Core Theme CSS -->
-  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=18">
+  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=19">
 
   <style>
     :root {
@@ -26,29 +26,49 @@
       --admin-header-height: 64px;
       --admsup-bg: #f8f9fb;
       --admsup-card-bg: #ffffff;
+      --admsup-surface-2: #f8fafc;
+      --admsup-surface-3: #f1f5f9;
       --admsup-text: #1a1a2e;
+      --admsup-text-secondary: #334155;
       --admsup-text-muted: #64748b;
       --admsup-border: #e2e8f0;
       --admsup-primary: #3b82f6;
+      --admsup-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     }
+
+    body.admin-body.admin-dark {
+      --admsup-bg: #0b1120;
+      --admsup-card-bg: #111827;
+      --admsup-surface-2: #1e293b;
+      --admsup-surface-3: #334155;
+      --admsup-text: #f1f5f9;
+      --admsup-text-secondary: #cbd5e1;
+      --admsup-text-muted: #94a3b8;
+      --admsup-border: rgba(255, 255, 255, 0.09);
+      --admsup-primary: #3b82f6;
+      --admsup-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+    }
+
     body.admin-body, body.admin-body:not(.loaded) {
       opacity: 1 !important;
       visibility: visible !important;
-      background: var(--admsup-bg, #f8f9fb) !important;
+      background: var(--admsup-bg) !important;
       background-image: none !important;
-      color: var(--admsup-text, #1a1a2e) !important;
+      color: var(--admsup-text) !important;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
       min-height: 100vh;
       overflow-x: hidden;
+      transition: background-color 0.2s ease, color 0.2s ease;
     }
+
     .admin-wrapper {
       display: flex;
       min-height: 100vh;
       position: relative;
-      background: var(--admsup-bg, #f8f9fb);
+      background: var(--admsup-bg);
     }
 
-    /* 1. Sidebar - Dark Navy */
+    /* 1. Sidebar - Always Dark Navy */
     .admin-sidebar {
       width: var(--admin-sidebar-width, 260px);
       background: #0f172a;
@@ -166,7 +186,7 @@
       background: rgba(0, 0, 0, 0.2);
     }
 
-    /* 2. Main Content & Topbar - Light Theme */
+    /* 2. Main Content & Topbar */
     .admin-main-wrap {
       margin-left: 0;
       width: 100%;
@@ -174,14 +194,14 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      background: var(--admsup-bg, #f8f9fb);
+      background: var(--admsup-bg);
     }
     .admin-content {
       margin-left: 0;
       width: 100%;
       padding: 1.5rem 1.25rem;
       flex: 1;
-      background: var(--admsup-bg, #f8f9fb);
+      background: var(--admsup-bg);
     }
     @media (min-width: 992px) {
       .admin-main-wrap {
@@ -195,8 +215,8 @@
 
     .admin-topbar {
       height: var(--admin-header-height, 64px);
-      background: #ffffff;
-      border-bottom: 1px solid var(--admsup-border, #e2e8f0);
+      background: var(--admsup-card-bg);
+      border-bottom: 1px solid var(--admsup-border);
       position: sticky;
       top: 0;
       z-index: 1010;
@@ -205,7 +225,118 @@
       justify-content: space-between;
       padding: 0 1.5rem;
       width: 100%;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+      box-shadow: var(--admsup-shadow);
+    }
+
+    /* Topbar Controls & Dropdown Overrides (fixes invisible white text from dashboard.css) */
+    .admin-topbar-btn {
+      border: 1px solid var(--admsup-border) !important;
+      background: var(--admsup-surface-2) !important;
+      color: var(--admsup-text-secondary) !important;
+      border-radius: 8px;
+      transition: all 0.15s ease;
+    }
+    .admin-topbar-btn:hover {
+      background: var(--admsup-surface-3) !important;
+      color: var(--admsup-text) !important;
+    }
+
+    .admin-topbar .dropdown-menu {
+      background: var(--admsup-card-bg) !important;
+      border: 1px solid var(--admsup-border) !important;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12) !important;
+      border-radius: 10px;
+      padding: 0.4rem;
+    }
+    .admin-topbar .dropdown-header {
+      color: var(--admsup-text-muted) !important;
+      font-size: 0.75rem;
+    }
+    .admin-topbar .dropdown-header strong {
+      color: var(--admsup-text) !important;
+    }
+    .admin-topbar .dropdown-item {
+      color: var(--admsup-text-secondary) !important;
+      border-radius: 6px;
+      font-size: 0.86rem;
+      font-weight: 500;
+    }
+    .admin-topbar .dropdown-item:hover,
+    .admin-topbar .dropdown-item:focus {
+      background: var(--admsup-surface-2) !important;
+      color: var(--admsup-primary) !important;
+    }
+    .admin-topbar .dropdown-item.text-danger {
+      color: #ef4444 !important;
+    }
+    .admin-topbar .dropdown-item.text-danger:hover {
+      background: rgba(239, 68, 68, 0.1) !important;
+      color: #dc2626 !important;
+    }
+    .admin-topbar .dropdown-divider {
+      border-color: var(--admsup-border) !important;
+    }
+
+    /* Theme-aware Cards, Tables & Headers for Light + Dark mode */
+    .admsup-page-header,
+    .admin-stat-card,
+    .admin-panel-card {
+      background: var(--admsup-card-bg) !important;
+      border-color: var(--admsup-border) !important;
+      color: var(--admsup-text) !important;
+      box-shadow: var(--admsup-shadow) !important;
+    }
+    .admin-panel-header {
+      background: var(--admsup-card-bg) !important;
+      border-bottom: 1px solid var(--admsup-border) !important;
+    }
+    .admin-stat-number,
+    .admsup-heading {
+      color: var(--admsup-text) !important;
+    }
+    .admin-stat-label,
+    .admin-quickstat-label {
+      color: var(--admsup-text-muted) !important;
+    }
+    .admin-table th {
+      background: var(--admsup-surface-2) !important;
+      color: var(--admsup-text-muted) !important;
+      border-bottom: 1px solid var(--admsup-border) !important;
+      white-space: nowrap;
+    }
+    .admin-table td {
+      color: var(--admsup-text-secondary) !important;
+      border-bottom: 1px solid var(--admsup-border) !important;
+      vertical-align: middle;
+    }
+    .admin-table tbody tr:hover td {
+      background: var(--admsup-surface-2) !important;
+    }
+    .admin-quickstat-col {
+      border-color: var(--admsup-border) !important;
+    }
+    .btn-admsup-secondary {
+      background: var(--admsup-surface-2) !important;
+      border: 1px solid var(--admsup-border) !important;
+      color: var(--admsup-text-secondary) !important;
+    }
+    .btn-admsup-secondary:hover {
+      background: var(--admsup-surface-3) !important;
+      color: var(--admsup-text) !important;
+    }
+    .admsup-user-pill {
+      background: var(--admsup-surface-3);
+      color: var(--admsup-text-secondary);
+      border: 1px solid var(--admsup-border);
+      font-weight: 500;
+      font-size: 0.75rem;
+      padding: 0.25rem 0.55rem;
+      border-radius: 6px;
+      display: inline-block;
+    }
+
+    body.admin-body.admin-dark .admin-stat-icon {
+      background: rgba(255, 255, 255, 0.05) !important;
     }
 
     #sidebarToggleBtn {
@@ -243,6 +374,15 @@
   {% block extra_css %}{% endblock %}
 </head>
 <body class="admin-body loaded">
+<script>
+  (function() {
+    try {
+      if (localStorage.getItem('xpy_admin_theme') === 'dark') {
+        document.body.classList.add('admin-dark');
+      }
+    } catch (e) {}
+  })();
+</script>
 
 <div class="admin-wrapper">
   <!-- Backdrop for mobile off-canvas -->
@@ -258,15 +398,13 @@
     </a>
 
     <ul class="admin-nav">
-      <!-- 1. Dashboard -->
-      <li class="admin-nav-item active">
+      <li class="admin-nav-item {% if request.path == '/portal-admin/dashboard/' %}active{% endif %}">
         <a href="/portal-admin/dashboard/">
           <i class="bi bi-speedometer2"></i>
           <span>Dashboard</span>
         </a>
       </li>
 
-      <!-- 2. Store -->
       <li class="admin-nav-item">
         <a href="/portal-admin/dashboard/">
           <i class="bi bi-shop"></i>
@@ -274,8 +412,7 @@
         </a>
       </li>
 
-      <!-- 3. Support -->
-      <li class="admin-nav-item">
+      <li class="admin-nav-item {% if '/portal-admin/support' in request.path %}active{% endif %}">
         <a href="/portal-admin/dashboard/">
           <i class="bi bi-headset"></i>
           <span>Support</span>
@@ -285,7 +422,6 @@
         </a>
       </li>
 
-      <!-- 4. Users -->
       <li class="admin-nav-item">
         <a href="/portal-admin/dashboard/">
           <i class="bi bi-people"></i>
@@ -293,7 +429,6 @@
         </a>
       </li>
 
-      <!-- 5. Settings -->
       <li class="admin-nav-item">
         <a href="/portal-admin/dashboard/">
           <i class="bi bi-gear"></i>
@@ -301,10 +436,8 @@
         </a>
       </li>
 
-      <!-- Section Divider: TOOLS -->
       <li class="admin-nav-divider">Tools</li>
 
-      <!-- 6. Reports -->
       <li class="admin-nav-item">
         <a href="/portal-admin/dashboard/">
           <i class="bi bi-graph-up"></i>
@@ -312,7 +445,6 @@
         </a>
       </li>
 
-      <!-- 7. Logs -->
       <li class="admin-nav-item">
         <a href="/portal-admin/dashboard/">
           <i class="bi bi-clipboard-data"></i>
@@ -320,7 +452,6 @@
         </a>
       </li>
 
-      <!-- App Link -->
       <li class="admin-nav-item mt-auto border-top pt-2" style="border-color: rgba(255,255,255,0.08) !important;">
         <a href="/feed/" target="_blank">
           <i class="fas fa-external-link-alt"></i>
@@ -342,7 +473,6 @@
           </div>
         </a>
         <ul class="dropdown-menu dropdown-menu-dark shadow border" style="border-color: rgba(255,255,255,0.1) !important; min-width: 220px;">
-          <!-- 8. Profile -->
           <li>
             <a class="dropdown-item py-2" href="/portal-admin/dashboard/">
               <i class="bi bi-person me-2" style="color: #3b82f6;"></i> Profile
@@ -354,7 +484,6 @@
             </a>
           </li>
           <li><hr class="dropdown-divider" style="border-color: rgba(255,255,255,0.08);"></li>
-          <!-- 9. Logout -->
           <li>
             <a class="dropdown-item text-danger py-2" href="/portal-admin/logout/">
               <i class="fas fa-sign-out-alt me-2"></i> Logout
@@ -370,51 +499,55 @@
     <!-- Topbar -->
     <header class="admin-topbar">
       <div class="d-flex align-items-center gap-3">
-        <!-- Hamburger toggle button visible on mobile (< 992px) -->
-        <button class="btn btn-sm btn-outline-secondary" type="button" id="sidebarToggleBtn" aria-label="Toggle Navigation" style="border-color: #cbd5e1; color: #475569;">
+        <button class="btn btn-sm admin-topbar-btn" type="button" id="sidebarToggleBtn" aria-label="Toggle Navigation">
           <i class="fas fa-bars"></i>
         </button>
         <div>
-          <h5 class="mb-0 fw-bold d-flex align-items-center gap-2" style="color: #1a1a2e; font-size: 1.05rem;">
+          <h5 class="mb-0 fw-bold d-flex align-items-center gap-2 admsup-heading" style="font-size: 1.05rem;">
             <i class="bi bi-speedometer2" style="color: #3b82f6;"></i>
-            <span>Dashboard</span>
+            <span>{% block header_title %}Dashboard{% endblock %}</span>
           </h5>
-          <small class="d-none d-sm-inline" style="color: #64748b; font-size: 0.78rem;">
-            Welcome back, <strong style="color: #1e293b;">{{ admin_name|default:"Admin" }}</strong>!
+          <small class="d-none d-sm-inline" style="color: var(--admsup-text-muted); font-size: 0.78rem;">
+            Welcome back, <strong style="color: var(--admsup-text);">{{ admin_name|default:"Admin" }}</strong>!
           </small>
         </div>
       </div>
 
-      <div class="d-flex align-items-center gap-3">
+      <div class="d-flex align-items-center gap-2 gap-sm-3">
+        <!-- Dark / Light Mode Toggle -->
+        <button class="btn btn-sm admin-topbar-btn d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;" type="button" id="adminThemeToggleBtn" title="Toggle Dark/Light Mode" aria-label="Toggle Theme">
+          <i class="bi bi-moon-stars" id="adminThemeIcon" style="font-size: 1rem;"></i>
+        </button>
+
         <!-- Notification Bell with Badge -->
         <div class="dropdown">
-          <button class="btn btn-sm btn-light position-relative d-flex align-items-center justify-content-center border" style="border-color: #e2e8f0 !important; background: #f8fafc; width: 38px; height: 38px; border-radius: 8px;" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifications">
-            <i class="bi bi-bell" style="font-size: 1.05rem; color: #475569;"></i>
+          <button class="btn btn-sm admin-topbar-btn position-relative d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifications">
+            <i class="bi bi-bell" style="font-size: 1.05rem;"></i>
             {% if metrics.tickets_critical or metrics.tickets_open %}
-            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill" style="background: #f59e0b; color: #fff; font-size: 0.65rem; border: 2px solid #ffffff;">
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill" style="background: #f59e0b; color: #fff; font-size: 0.65rem; border: 2px solid var(--admsup-card-bg);">
               {{ metrics.tickets_critical|default:metrics.tickets_open }}
             </span>
             {% endif %}
           </button>
-          <ul class="dropdown-menu dropdown-menu-end shadow border" style="border-color: #e2e8f0 !important; min-width: 250px;">
-            <li><h6 class="dropdown-header text-uppercase" style="letter-spacing: 0.5px; color: #64748b; font-size: 0.72rem;">Notifications</h6></li>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><h6 class="dropdown-header text-uppercase" style="letter-spacing: 0.5px;">Notifications</h6></li>
             {% if metrics.tickets_critical %}
             <li>
               <a class="dropdown-item py-2 d-flex align-items-center gap-2" href="#">
                 <i class="bi bi-exclamation-triangle text-danger"></i>
-                <span class="small">{{ metrics.tickets_critical }} Critical Tickets</span>
+                <span>{{ metrics.tickets_critical }} Critical Tickets</span>
               </a>
             </li>
             {% endif %}
             <li>
               <a class="dropdown-item py-2 d-flex align-items-center gap-2" href="#">
                 <i class="bi bi-headset text-warning"></i>
-                <span class="small">{{ metrics.tickets_open|default:0 }} Open Tickets</span>
+                <span>{{ metrics.tickets_open|default:0 }} Open Tickets</span>
               </a>
             </li>
             <li><hr class="dropdown-divider"></li>
             <li>
-              <a class="dropdown-item py-2 d-flex align-items-center gap-2 small text-muted" href="#">
+              <a class="dropdown-item py-2 d-flex align-items-center gap-2" href="#">
                 <i class="bi bi-gear"></i>
                 <span>View All Alerts</span>
               </a>
@@ -424,17 +557,17 @@
 
         <!-- Admin User Dropdown -->
         <div class="dropdown">
-          <button class="btn btn-sm btn-light dropdown-toggle d-flex align-items-center gap-2 border" style="border-color: #e2e8f0 !important; background: #ffffff; padding: 0.35rem 0.75rem; border-radius: 8px;" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <button class="btn btn-sm admin-topbar-btn dropdown-toggle d-flex align-items-center gap-2" style="padding: 0.35rem 0.75rem;" type="button" data-bs-toggle="dropdown" aria-expanded="false">
             <span class="avatar-initial rounded-circle d-inline-flex align-items-center justify-content-center" style="width:28px; height:28px; font-size:0.75rem; font-weight:700; background: #3b82f6; color: #fff;">
               {{ admin_name|default:"A"|slice:":1"|upper }}
             </span>
-            <span class="d-none d-md-inline small fw-semibold" style="color: #1e293b;">{{ admin_name|default:"Administrator" }}</span>
-            <span class="badge ms-1" style="background: #eff6ff; color: #2563eb; font-size:0.65rem; border: 1px solid #bfdbfe;">{{ admin_role|default:"admin" }}</span>
+            <span class="d-none d-md-inline small fw-semibold" style="color: var(--admsup-text);">{{ admin_name|default:"Administrator" }}</span>
+            <span class="badge ms-1" style="background: rgba(59, 130, 246, 0.12); color: #3b82f6; font-size:0.65rem; border: 1px solid rgba(59, 130, 246, 0.3);">{{ admin_role|default:"admin" }}</span>
           </button>
-          <ul class="dropdown-menu dropdown-menu-end shadow border" style="border-color: #e2e8f0 !important; min-width: 230px;">
-            <li class="dropdown-header">Logged in as <strong style="color: #1e293b;">{{ admin_email|default:"admin@xapyx.com" }}</strong></li>
+          <ul class="dropdown-menu dropdown-menu-end" style="min-width: 230px;">
+            <li class="dropdown-header">Logged in as <strong>{{ admin_email|default:"admin@xapyx.com" }}</strong></li>
             <li><a class="dropdown-item py-2" href="/portal-admin/dashboard/"><i class="bi bi-person me-2 text-primary"></i>Profile</a></li>
-            <li><a class="dropdown-item py-2" href="/portal-admin/dashboard/"><i class="bi bi-gear me-2 text-muted"></i>Settings</a></li>
+            <li><a class="dropdown-item py-2" href="/portal-admin/dashboard/"><i class="bi bi-gear me-2"></i>Settings</a></li>
             <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item text-danger py-2" href="/portal-admin/logout/"><i class="fas fa-sign-out-alt me-2"></i>Sign Out</a></li>
           </ul>
@@ -456,6 +589,25 @@
     const toggleBtn = document.getElementById('sidebarToggleBtn');
     const sidebar = document.getElementById('adminSidebar');
     const backdrop = document.getElementById('adminBackdrop');
+    const themeBtn = document.getElementById('adminThemeToggleBtn');
+    const themeIcon = document.getElementById('adminThemeIcon');
+
+    function syncThemeIcon() {
+      const isDark = document.body.classList.contains('admin-dark');
+      if (themeIcon) {
+        themeIcon.className = isDark ? 'bi bi-sun-fill text-warning' : 'bi bi-moon-stars';
+      }
+    }
+    syncThemeIcon();
+
+    themeBtn?.addEventListener('click', () => {
+      document.body.classList.toggle('admin-dark');
+      const isDark = document.body.classList.contains('admin-dark');
+      try {
+        localStorage.setItem('xpy_admin_theme', isDark ? 'dark' : 'light');
+      } catch (e) {}
+      syncThemeIcon();
+    });
 
     function openSidebar() {
       sidebar?.classList.add('show');

@@ -1,5 +1,5 @@
 /**
- * XAPYX Admin Portal -- Real-Time Metrics & Dashboard Poller (Phase 1)
+ * XAPYX Admin Portal -- Real-Time Metrics & Dashboard Poller (Phase 1.6 Hybrid + Dark Mode)
  */
 
 (function () {
@@ -20,7 +20,13 @@
     const statTicketsOpen = document.getElementById('statTicketsOpen');
     const statTicketsInProgress = document.getElementById('statTicketsInProgress');
     const statTicketsResolved = document.getElementById('statTicketsResolved');
+    const statTicketsCritical = document.getElementById('statTicketsCritical');
     const statUsersTotal = document.getElementById('statUsersTotal');
+
+    const quickStatTotalTickets = document.getElementById('quickStatTotalTickets');
+    const quickStatResolvedTickets = document.getElementById('quickStatResolvedTickets');
+    const quickStatCriticalTickets = document.getElementById('quickStatCriticalTickets');
+    const quickStatTotalUsers = document.getElementById('quickStatTotalUsers');
 
     const ticketsTbody = document.getElementById('latestTicketsTbody');
     const usersTbody = document.getElementById('latestUsersTbody');
@@ -67,85 +73,94 @@
         if (statTicketsOpen) statTicketsOpen.textContent = m.tickets_open || 0;
         if (statTicketsInProgress) statTicketsInProgress.textContent = m.tickets_in_progress || 0;
         if (statTicketsResolved) statTicketsResolved.textContent = m.tickets_resolved || 0;
+        if (statTicketsCritical) statTicketsCritical.textContent = m.tickets_critical || 0;
         if (statUsersTotal) statUsersTotal.textContent = m.users_total || 0;
 
-        // Render latest tickets
+        if (quickStatTotalTickets) quickStatTotalTickets.textContent = m.tickets_total || 0;
+        if (quickStatResolvedTickets) quickStatResolvedTickets.textContent = m.tickets_resolved || 0;
+        if (quickStatCriticalTickets) quickStatCriticalTickets.textContent = m.tickets_critical || 0;
+        if (quickStatTotalUsers) quickStatTotalUsers.textContent = m.users_total || 0;
+
+        // Render latest tickets (4 columns: Subject | User | Status | Date)
         if (ticketsTbody && Array.isArray(data.latest_5_tickets)) {
             if (data.latest_5_tickets.length === 0) {
                 ticketsTbody.innerHTML = `
                     <tr>
-                        <td colspan="6" class="text-center py-4 text-muted">
-                            <i class="fas fa-inbox fa-2x mb-2 d-block opacity-50"></i>
-                            No support tickets found
+                        <td colspan="4" class="text-center py-4" style="color: var(--admsup-text-muted);">
+                            <i class="bi bi-inbox fs-2 mb-2 d-block opacity-50"></i>
+                            No tickets found
                         </td>
                     </tr>
                 `;
             } else {
                 ticketsTbody.innerHTML = data.latest_5_tickets.map(t => {
-                    let urgencyBadge = '<span class="badge bg-primary">Medium</span>';
-                    if (t.urgency === 'critical') urgencyBadge = '<span class="badge bg-danger">Critical</span>';
-                    else if (t.urgency === 'high') urgencyBadge = '<span class="badge bg-warning text-dark">High</span>';
-                    else if (t.urgency === 'low') urgencyBadge = '<span class="badge bg-secondary">Low</span>';
+                    let statusPill = `<span class="admsup-pill pill-default">${escapeHtml(t.status || 'Open')}</span>`;
+                    if (t.status === 'open') statusPill = '<span class="admsup-pill pill-open">Open</span>';
+                    else if (t.status === 'in_progress') statusPill = '<span class="admsup-pill pill-in-progress">In Progress</span>';
+                    else if (t.status === 'resolved') statusPill = '<span class="admsup-pill pill-resolved">Resolved</span>';
+                    else if (t.urgency === 'critical' || t.status === 'critical') statusPill = '<span class="admsup-pill pill-critical">Critical</span>';
 
-                    let statusBadge = `<span class="badge bg-secondary-subtle text-secondary">${escapeHtml(t.status)}</span>`;
-                    if (t.status === 'open') statusBadge = '<span class="badge bg-warning-subtle text-warning">Open</span>';
-                    else if (t.status === 'in_progress') statusBadge = '<span class="badge bg-info-subtle text-info">In Progress</span>';
-                    else if (t.status === 'resolved') statusBadge = '<span class="badge bg-success-subtle text-success">Resolved</span>';
+                    const shortDate = escapeHtml((t.created_at || '').split(' ')[0] || t.created_at || '');
 
                     return `
                         <tr>
-                            <td class="fw-bold text-muted">#${escapeHtml(String(t.id))}</td>
                             <td>
-                                <div class="fw-semibold text-truncate" style="max-width: 180px;" title="${escapeHtml(t.subject)}">
-                                    ${escapeHtml(t.subject)}
+                                <div class="fw-semibold text-truncate" style="max-width: 190px; color: var(--admsup-text);" title="#${escapeHtml(String(t.id))} - ${escapeHtml(t.subject)}">
+                                    <span style="color: var(--admsup-text-muted); font-weight: 700; margin-right: 4px;">#${escapeHtml(String(t.id))}</span>${escapeHtml(t.subject || 'No Subject')}
                                 </div>
                             </td>
                             <td>
-                                <div class="small fw-semibold">${escapeHtml(t.user_name)}</div>
-                                <div class="text-muted" style="font-size: 0.75rem;">${escapeHtml(t.user_email)}</div>
+                                <div class="small fw-semibold" style="color: var(--admsup-text-secondary);">${escapeHtml(t.user_name || 'Unknown')}</div>
+                                ${t.user_email ? `<div style="font-size: 0.72rem; color: var(--admsup-text-muted);">${escapeHtml(t.user_email)}</div>` : ''}
                             </td>
-                            <td>${urgencyBadge}</td>
-                            <td>${statusBadge}</td>
-                            <td class="text-muted small">${escapeHtml(t.created_at)}</td>
+                            <td>${statusPill}</td>
+                            <td class="small" style="color: var(--admsup-text-muted); white-space: nowrap;">${shortDate}</td>
                         </tr>
                     `;
                 }).join('');
             }
         }
 
-        // Render latest users
+        // Render latest users (4 columns: Name | Email | Username | Joined)
         if (usersTbody && Array.isArray(data.latest_5_users)) {
             if (data.latest_5_users.length === 0) {
                 usersTbody.innerHTML = `
                     <tr>
-                        <td colspan="3" class="text-center py-4 text-muted">
-                            <i class="fas fa-users-slash fa-2x mb-2 d-block opacity-50"></i>
+                        <td colspan="4" class="text-center py-4" style="color: var(--admsup-text-muted);">
+                            <i class="bi bi-people-slash fs-2 mb-2 d-block opacity-50"></i>
                             No users found
                         </td>
                     </tr>
                 `;
             } else {
                 usersTbody.innerHTML = data.latest_5_users.map(u => {
-                    const initial = (u.name || u.username || 'U').charAt(0).toUpperCase();
+                    const displayName = u.name || u.username || 'User';
+                    const initial = displayName.charAt(0).toUpperCase();
+                    const shortDate = escapeHtml((u.created_at || '').split(' ')[0] || u.created_at || '');
+
                     return `
                         <tr>
                             <td>
                                 <div class="d-flex align-items-center gap-2">
-                                    <span class="avatar-initial rounded-circle bg-secondary text-white d-inline-flex align-items-center justify-content-center" style="width:32px; height:32px; font-size:0.8rem; font-weight:700;">
+                                    <span class="avatar-initial rounded-circle d-inline-flex align-items-center justify-content-center flex-shrink-0" style="width:32px; height:32px; font-size:0.8rem; font-weight:700; background: #3b82f6; color: #fff;">
                                         ${escapeHtml(initial)}
                                     </span>
-                                    <div>
-                                        <div class="fw-semibold small">${escapeHtml(u.name || u.username)}</div>
-                                        <div class="text-muted" style="font-size: 0.72rem;">${escapeHtml(u.email || 'No email')}</div>
-                                    </div>
+                                    <span class="fw-semibold small text-truncate" style="max-width: 120px; color: var(--admsup-text);">
+                                        ${escapeHtml(displayName)}
+                                    </span>
                                 </div>
                             </td>
                             <td>
-                                <span class="badge bg-dark border text-muted" style="border-color: rgba(255,255,255,0.08) !important;">
-                                    @${escapeHtml(u.username)}
+                                <span class="small text-truncate d-inline-block" style="max-width: 140px; color: var(--admsup-text-muted);" title="${escapeHtml(u.email || 'N/A')}">
+                                    ${escapeHtml(u.email || 'N/A')}
                                 </span>
                             </td>
-                            <td class="text-muted small">${escapeHtml(u.created_at)}</td>
+                            <td>
+                                <span class="admsup-user-pill">
+                                    @${escapeHtml(u.username || '')}
+                                </span>
+                            </td>
+                            <td class="small" style="color: var(--admsup-text-muted); white-space: nowrap;">${shortDate}</td>
                         </tr>
                     `;
                 }).join('');
