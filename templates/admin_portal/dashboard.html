@@ -1,0 +1,268 @@
+{% extends "admin_portal/base_admin.html" %}
+{% load static %}
+
+{% block title %}Dashboard | XAPYX Admin Portal{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="admsup-page-header">
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div>
+      <h4 class="mb-1 fw-bold" style="color: #1a1a2e;"><i class="bi bi-speedometer2 me-2 text-primary"></i>System Overview</h4>
+      <p class="text-muted mb-0 small">Live support metrics, user accounts, and operations</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <button class="btn btn-sm btn-admsup-primary d-flex align-items-center gap-2 px-3 py-2" id="refreshMetricsBtn">
+        <i class="fas fa-arrows-rotate" id="refreshIcon"></i>
+        <span>Refresh</span>
+      </button>
+      <span class="badge py-2 px-3" id="lastUpdatedBadge" style="background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; font-weight: 500;">
+        Updated Just Now
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- 4 Top Stat Cards: White bg, top-border accent color per type -->
+<div class="row g-3 mb-4">
+  <!-- 1. Total Tickets: Top-border blue (#3b82f6) -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="admin-stat-card stat-total">
+      <div>
+        <div class="admin-stat-label">Total Tickets</div>
+        <div class="admin-stat-number mt-1" id="statTicketsTotal">{{ metrics.tickets_total|default:0 }}</div>
+      </div>
+      <div class="admin-stat-icon">
+        <i class="bi bi-ticket-detailed"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Open Tickets: Top-border orange (#f59e0b) -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="admin-stat-card stat-open">
+      <div>
+        <div class="admin-stat-label">Open Tickets</div>
+        <div class="admin-stat-number mt-1 text-warning" id="statTicketsOpen">{{ metrics.tickets_open|default:0 }}</div>
+      </div>
+      <div class="admin-stat-icon">
+        <i class="bi bi-clock"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. In Progress: Top-border blue (#3b82f6) -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="admin-stat-card stat-progress">
+      <div>
+        <div class="admin-stat-label">In Progress</div>
+        <div class="admin-stat-number mt-1 text-primary" id="statTicketsInProgress">{{ metrics.tickets_in_progress|default:0 }}</div>
+      </div>
+      <div class="admin-stat-icon">
+        <i class="bi bi-arrow-repeat"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Resolved: Top-border green (#10b981) -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="admin-stat-card stat-resolved">
+      <div>
+        <div class="admin-stat-label">Resolved</div>
+        <div class="admin-stat-number mt-1 text-success" id="statTicketsResolved">{{ metrics.tickets_resolved|default:0 }}</div>
+      </div>
+      <div class="admin-stat-icon">
+        <i class="bi bi-check-circle"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden holder for critical / users counters used by admin_portal.js polling -->
+<div class="d-none">
+  <span id="statTicketsCritical">{{ metrics.tickets_critical|default:0 }}</span>
+  <span id="statUsersTotal">{{ metrics.users_total|default:0 }}</span>
+</div>
+
+<!-- Two-Column Layout for Recent Support Tickets and Recent Users (White Panels) -->
+<div class="row g-4 mb-4">
+  <!-- Recent Support Tickets -->
+  <div class="col-12 col-lg-6">
+    <div class="admin-panel-card h-100">
+      <div class="admin-panel-header">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-headset text-primary fs-5"></i>
+          <h6 class="fw-bold mb-0" style="color: #1a1a2e;">Recent Support Tickets</h6>
+        </div>
+        <a href="/portal-admin/dashboard/" class="btn btn-sm btn-admsup-secondary px-3">
+          View All
+        </a>
+      </div>
+      <div class="table-responsive">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Subject</th>
+              <th>User</th>
+              <th>Status</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody id="latestTicketsTbody">
+            {% for ticket in latest_tickets %}
+            <tr>
+              <td>
+                <div class="fw-semibold text-truncate" style="max-width: 200px; color: #1e293b;" title="{{ ticket.subject }}">
+                  {{ ticket.subject|default:"No Subject" }}
+                </div>
+              </td>
+              <td>
+                <div class="small fw-semibold" style="color: #334155;">
+                  {{ ticket.user.name|default:ticket.user.username|default:ticket.user_name|default:"Unknown" }}
+                </div>
+              </td>
+              <td>
+                {% if ticket.status == 'open' %}
+                <span class="admsup-pill pill-open">Open</span>
+                {% elif ticket.status == 'in_progress' %}
+                <span class="admsup-pill pill-in-progress">In Progress</span>
+                {% elif ticket.status == 'resolved' %}
+                <span class="admsup-pill pill-resolved">Resolved</span>
+                {% elif ticket.urgency == 'critical' or ticket.status == 'critical' %}
+                <span class="admsup-pill pill-critical">Critical</span>
+                {% else %}
+                <span class="admsup-pill pill-default">{{ ticket.status|capfirst }}</span>
+                {% endif %}
+              </td>
+              <td class="small text-muted">
+                {{ ticket.created_at|date:"M d" }}
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="4" class="text-center py-4 text-muted">
+                <i class="bi bi-inbox fs-2 mb-2 d-block opacity-50"></i>
+                No tickets found
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Users -->
+  <div class="col-12 col-lg-6">
+    <div class="admin-panel-card h-100">
+      <div class="admin-panel-header">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-people text-primary fs-5"></i>
+          <h6 class="fw-bold mb-0" style="color: #1a1a2e;">Recent Users</h6>
+        </div>
+        <a href="/portal-admin/dashboard/" class="btn btn-sm btn-admsup-secondary px-3">
+          View All
+        </a>
+      </div>
+      <div class="table-responsive">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Username</th>
+              <th>Joined</th>
+            </tr>
+          </thead>
+          <tbody id="latestUsersTbody">
+            {% for u in latest_users %}
+            <tr>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  {% if u.picture %}
+                  <img src="https://s3.eu-west-1.amazonaws.com/xapyx.com-media/uploads/{{ u.picture }}"
+                       alt="{{ u.name|default:u.username }}"
+                       class="rounded-circle object-fit-cover"
+                       width="32" height="32"
+                       style="border: 1px solid #e2e8f0;"
+                       onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ u.name|default:u.username|urlencode }}&background=3b82f6&color=fff';">
+                  {% else %}
+                  <img src="https://ui-avatars.com/api/?name={{ u.name|default:u.username|urlencode }}&background=3b82f6&color=fff"
+                       alt="{{ u.name|default:u.username }}"
+                       class="rounded-circle"
+                       width="32" height="32"
+                       style="border: 1px solid #e2e8f0;">
+                  {% endif %}
+                  <span class="fw-semibold small text-truncate" style="max-width: 130px; color: #1e293b;">
+                    {{ u.name|default:u.username }}
+                  </span>
+                </div>
+              </td>
+              <td>
+                <span class="small text-truncate d-inline-block text-muted" style="max-width: 140px;" title="{{ u.email|default:'N/A' }}">
+                  {{ u.email|default:"N/A" }}
+                </span>
+              </td>
+              <td>
+                <span class="badge" style="background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; font-weight: 500;">
+                  @{{ u.username }}
+                </span>
+              </td>
+              <td class="small text-muted">
+                {{ u.created_at|date:"M d" }}
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="4" class="text-center py-4 text-muted">
+                <i class="bi bi-people-slash fs-2 mb-2 d-block opacity-50"></i>
+                No users found
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Statistics Bar (Matching PHP bottom strip) -->
+<div class="row">
+  <div class="col-12">
+    <div class="admin-panel-card mb-0">
+      <div class="admin-panel-header">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-bar-chart text-primary fs-5"></i>
+          <h6 class="fw-bold mb-0" style="color: #1a1a2e;">Quick Statistics</h6>
+        </div>
+        <span class="badge" style="background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; font-size: 0.72rem;">Live Summary</span>
+      </div>
+      <div class="p-0">
+        <div class="row g-0">
+          <div class="col-12 col-sm-6 col-md-3 admin-quickstat-col">
+            <div class="admin-quickstat-num text-primary" id="quickStatTotalTickets">{{ metrics.tickets_total|default:0 }}</div>
+            <div class="admin-quickstat-label">Total Tickets</div>
+          </div>
+          <div class="col-12 col-sm-6 col-md-3 admin-quickstat-col">
+            <div class="admin-quickstat-num text-success" id="quickStatResolvedTickets">{{ metrics.tickets_resolved|default:0 }}</div>
+            <div class="admin-quickstat-label">Resolved</div>
+          </div>
+          <div class="col-12 col-sm-6 col-md-3 admin-quickstat-col">
+            <div class="admin-quickstat-num text-danger" id="quickStatCriticalTickets">{{ metrics.tickets_critical|default:0 }}</div>
+            <div class="admin-quickstat-label">Critical</div>
+          </div>
+          <div class="col-12 col-sm-6 col-md-3 admin-quickstat-col">
+            <div class="admin-quickstat-num text-info" id="quickStatTotalUsers">{{ metrics.users_total|default:0 }}</div>
+            <div class="admin-quickstat-label">Users Registered</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/admin_portal.js' %}?v=3"></script>
+{% endblock %}

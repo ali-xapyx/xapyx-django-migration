@@ -169,7 +169,7 @@ def end_expired_session(session_id):
             r.hset(u_key, mapping={
                 'status': 'left',
                 'partner_id': '',
-                'session_id': '',
+                'session_id': session_id,
             })
             r.expire(u_key, 60)
             
@@ -334,7 +334,6 @@ def leave_session(user_id):
         session_id = user_state.get('session_id')
 
         if partner_id:
-            set_cooldown(uid, partner_id)
             set_cooldown(uid, partner_id)
             p_key = USER_KEY.format(partner_id)
             p_state = r.hgetall(p_key)

@@ -9151,32 +9151,585 @@ button .spinner-border {
   color: var(--xpy-muted, #8e8ea0);
 }
 /* ============================================================
-   ADMIN PORTAL (Task 23 Phase 1)
+   ADMIN PORTAL (Task 23 Hybrid Theme: Dark Sidebar + Light Content)
    ============================================================ */
-.admin-portal-badge {
+:root {
+    --admin-sidebar-width: 260px;
+    --admin-header-height: 64px;
+    --admsup-bg: #f8f9fb;
+    --admsup-card-bg: #ffffff;
+    --admsup-text: #1a1a2e;
+    --admsup-text-muted: #64748b;
+    --admsup-border: #e2e8f0;
+    --admsup-primary: #3b82f6;
+    --admsup-primary-hover: #2563eb;
+    --admsup-warning: #f59e0b;
+    --admsup-success: #10b981;
+    --admsup-danger: #ef4444;
+}
+
+body.admin-body,
+body.admin-body:not(.loaded) {
+    opacity: 1 !important;
+    visibility: visible !important;
+    background: var(--admsup-bg, #f8f9fb) !important;
+    background-image: none !important;
+    color: var(--admsup-text, #1a1a2e) !important;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    min-height: 100vh;
+}
+
+.admin-wrapper {
+    display: flex;
+    min-height: 100vh;
+    position: relative;
+    background: var(--admsup-bg, #f8f9fb);
+}
+
+/* 1. Sidebar - Dark Navy (Kept dark like PHP admin sidebar) */
+.admin-sidebar {
+    width: var(--admin-sidebar-width, 260px);
+    background: #0f172a; /* Dark navy */
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1050;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+}
+
+.admin-sidebar.show {
+    transform: translateX(0);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+}
+
+@media (min-width: 992px) {
+    .admin-sidebar {
+        transform: translateX(0);
+        box-shadow: none;
+    }
+}
+
+.admin-sidebar-brand {
+    height: var(--admin-header-height, 64px);
+    display: flex;
+    align-items: center;
+    padding: 0 1.25rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    text-decoration: none;
+    color: #ffffff;
+    font-size: 1.15rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+}
+
+.admin-sidebar-brand:hover {
+    color: #ffffff;
+}
+
+.admin-sidebar-logo-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 0.75rem;
+    color: #3b82f6;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.admin-nav {
+    list-style: none;
+    padding: 1rem 0.75rem;
+    margin: 0;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    overflow-y: auto;
+}
+
+.admin-nav-item a {
+    display: flex;
+    align-items: center;
+    padding: 0.65rem 0.85rem;
+    border-radius: 8px;
+    color: #94a3b8;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.15s ease;
+    border-left: 3px solid transparent;
+}
+
+.admin-nav-item a i {
+    width: 22px;
+    margin-right: 0.75rem;
+    font-size: 1rem;
+    color: #64748b;
+    transition: color 0.15s ease;
+    text-align: center;
+}
+
+.admin-nav-item a:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.admin-nav-item a:hover i {
+    color: #3b82f6;
+}
+
+.admin-nav-item.active a {
+    color: #ffffff;
+    background: rgba(59, 130, 246, 0.15);
+    border-left: 3px solid #3b82f6;
+    font-weight: 600;
+}
+
+.admin-nav-item.active a i {
+    color: #3b82f6;
+}
+
+.admin-nav-divider {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #64748b;
+    padding: 1rem 0.85rem 0.35rem;
+    opacity: 0.8;
+}
+
+.admin-sidebar-footer {
+    padding: 0.85rem 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+/* 2. Main Content & Topbar - Light Theme */
+.admin-main-wrap {
+    margin-left: 0;
+    width: 100%;
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--admsup-bg, #f8f9fb);
+}
+
+.admin-content {
+    margin-left: 0;
+    width: 100%;
+    padding: 1.5rem 1.25rem;
+    flex: 1;
+    background: var(--admsup-bg, #f8f9fb);
+}
+
+@media (min-width: 992px) {
+    .admin-main-wrap {
+        margin-left: var(--admin-sidebar-width, 260px);
+        width: calc(100% - var(--admin-sidebar-width, 260px));
+    }
+    .admin-content {
+        padding: 1.75rem 2rem;
+    }
+}
+
+.admin-topbar {
+    height: var(--admin-header-height, 64px);
+    background: #ffffff;
+    border-bottom: 1px solid var(--admsup-border, #e2e8f0);
+    position: sticky;
+    top: 0;
+    z-index: 1010;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.5rem;
+    width: 100%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+#sidebarToggleBtn {
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
+    justify-content: center;
+}
+
+@media (min-width: 992px) {
+    #sidebarToggleBtn {
+        display: none !important;
+    }
+}
+
+.admin-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    z-index: 1040;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.admin-backdrop.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+@media (min-width: 992px) {
+    .admin-backdrop {
+        display: none !important;
+    }
+}
+
+/* Page Header in Light Theme */
+.admsup-page-header {
+    background: #ffffff;
+    padding: 1.25rem 1.5rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--admsup-border, #e2e8f0);
+}
+
+/* 3. Stat Cards - White bg, top-border accent color per type */
+.admin-stat-card {
+    background: #ffffff;
+    border: 1px solid var(--admsup-border, #e2e8f0);
+    border-top: 4px solid #3b82f6; /* default top accent */
+    border-radius: 10px;
+    padding: 1.25rem 1.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    height: 100%;
+}
+
+.admin-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px -2px rgba(0, 0, 0, 0.08);
+}
+
+/* Top-border accent colors */
+.admin-stat-card.stat-total {
+    border-top-color: #3b82f6; /* Total -> blue */
+}
+.admin-stat-card.stat-open {
+    border-top-color: #f59e0b; /* Open -> orange */
+}
+.admin-stat-card.stat-progress {
+    border-top-color: #3b82f6; /* In Progress -> blue */
+}
+.admin-stat-card.stat-resolved {
+    border-top-color: #10b981; /* Resolved -> green */
+}
+.admin-stat-card.stat-critical {
+    border-top-color: #ef4444; /* Critical -> red */
+}
+
+.admin-stat-number {
+    font-size: 2.1rem;
+    font-weight: 800;
+    line-height: 1.1;
+    color: #1a1a2e;
+    letter-spacing: -0.5px;
+}
+
+.admin-stat-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: #64748b;
+    margin-bottom: 0.25rem;
+}
+
+.admin-stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+}
+
+.admin-stat-card.stat-total .admin-stat-icon {
+    background: #eff6ff;
+    color: #3b82f6;
+}
+.admin-stat-card.stat-open .admin-stat-icon {
+    background: #fffbeb;
+    color: #f59e0b;
+}
+.admin-stat-card.stat-progress .admin-stat-icon {
+    background: #eff6ff;
+    color: #3b82f6;
+}
+.admin-stat-card.stat-resolved .admin-stat-icon {
+    background: #ecfdf5;
+    color: #10b981;
+}
+.admin-stat-card.stat-critical .admin-stat-icon {
+    background: #fef2f2;
+    color: #ef4444;
+}
+
+/* 4. White Panel Cards and Tables */
+.admin-panel-card {
+    background: #ffffff;
+    border: 1px solid var(--admsup-border, #e2e8f0);
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+}
+
+.admin-panel-header {
+    padding: 1.1rem 1.4rem;
+    border-bottom: 1px solid var(--admsup-border, #e2e8f0);
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.admin-table {
+    width: 100%;
+    margin-bottom: 0;
+    color: #1a1a2e;
+}
+
+.admin-table th {
+    background: #f8fafc;
+    border-bottom: 1px solid var(--admsup-border, #e2e8f0);
+    color: #64748b;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    padding: 0.9rem 1.25rem;
+}
+
+.admin-table td {
+    border-bottom: 1px solid #f1f5f9;
+    padding: 0.95rem 1.25rem;
+    vertical-align: middle;
+    font-size: 0.88rem;
+    color: #1e293b;
+}
+
+.admin-table tr:hover td {
+    background: #f8fafc;
+}
+
+/* 5. Buttons: solid blue primary, outline secondary */
+.btn-admsup-primary {
+    background-color: #3b82f6;
+    border-color: #3b82f6;
+    color: #ffffff;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+.btn-admsup-primary:hover {
+    background-color: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.35);
+}
+
+.btn-admsup-secondary {
+    background-color: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+.btn-admsup-secondary:hover {
+    background-color: #f8fafc;
+    border-color: #94a3b8;
+    color: #1e293b;
+}
+
+/* 6. Form Inputs & Filters */
+.admin-input,
+.admin-select {
+    background-color: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: #1e293b;
+    border-radius: 8px;
+    font-size: 0.875rem;
+}
+.admin-input:focus,
+.admin-select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    outline: none;
+}
+
+/* 7. Status & Urgency Pills: colored bg tint + matching text */
+.admsup-pill {
+    padding: 0.25rem 0.65rem;
+    border-radius: 9999px;
     font-size: 0.75rem;
     font-weight: 600;
-    padding: 0.25rem 0.6rem;
-    border-radius: 9999px;
+    display: inline-block;
+    white-space: nowrap;
 }
-.admin-portal-stat-number {
-    font-size: 1.85rem;
+
+/* Status variants */
+.admsup-pill.pill-open {
+    background: #fef3c7;
+    color: #92400e;
+}
+.admsup-pill.pill-in-progress {
+    background: #dbeafe;
+    color: #1e40af;
+}
+.admsup-pill.pill-resolved {
+    background: #d1fae5;
+    color: #065f46;
+}
+.admsup-pill.pill-closed {
+    background: #f1f5f9;
+    color: #475569;
+}
+.admsup-pill.pill-pending {
+    background: #f3e8ff;
+    color: #6b21a8;
+}
+.admsup-pill.pill-critical {
+    background: #fee2e2;
+    color: #991b1b;
+}
+.admsup-pill.pill-high {
+    background: #ffedd5;
+    color: #9a3412;
+}
+.admsup-pill.pill-low {
+    background: #f1f5f9;
+    color: #475569;
+}
+.admsup-pill.pill-default {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+/* Legacy alias classes so existing JS or templates don't break */
+.pill-status-open { background: #fef3c7; color: #92400e; padding: 0.25rem 0.65rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+.pill-status-in-progress { background: #dbeafe; color: #1e40af; padding: 0.25rem 0.65rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+.pill-status-resolved { background: #d1fae5; color: #065f46; padding: 0.25rem 0.65rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+.pill-status-critical { background: #fee2e2; color: #991b1b; padding: 0.25rem 0.65rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+.pill-status-default { background: #f1f5f9; color: #475569; padding: 0.25rem 0.65rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+
+.btn-outline-xpy {
+    background-color: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #3b82f6 !important;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+.btn-outline-xpy:hover {
+    background-color: #eff6ff !important;
+    border-color: #3b82f6 !important;
+    color: #2563eb !important;
+}
+
+/* 8. Quick Statistics Horizontal Strip */
+.admin-quickstats-card {
+    background: #ffffff;
+    border: 1px solid var(--admsup-border, #e2e8f0);
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+}
+
+.admin-quickstat-col {
+    padding: 1.5rem 1rem;
+    text-align: center;
+    border-right: 1px solid var(--admsup-border, #e2e8f0);
+}
+
+@media (max-width: 767px) {
+    .admin-quickstat-col {
+        border-right: none;
+        border-bottom: 1px solid var(--admsup-border, #e2e8f0);
+    }
+    .admin-quickstat-col:last-child {
+        border-bottom: none;
+    }
+}
+
+.admin-quickstat-col:last-child {
+    border-right: none;
+}
+
+.admin-quickstat-num {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #1a1a2e;
+    line-height: 1;
+    margin-bottom: 0.35rem;
+}
+
+.admin-quickstat-label {
+    font-size: 0.75rem;
     font-weight: 700;
-    line-height: 1.2;
-    color: var(--xpy-text, #f8fafc);
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: #64748b;
 }
-.admin-portal-subtext {
-    font-size: 0.8rem;
-    color: var(--xpy-text-muted, #94a3b8);
+
+/* Mobile Off-canvas & Main Content Layout (< 992px) */
+@media (max-width: 991px) {
+    .admin-sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+    }
+    .admin-sidebar.show {
+        transform: translateX(0);
+        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.6);
+    }
+    .admin-content {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+    .admin-main-wrap {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+    #sidebarToggleBtn {
+        display: inline-flex !important;
+    }
 }
-.admin-portal-card-glass {
-    background: var(--xpy-card-bg, #121826);
-    border: 1px solid var(--xpy-border, rgba(255, 255, 255, 0.08));
-    border-radius: var(--xpy-radius, 12px);
+@media (min-width: 992px) {
+    .admin-sidebar {
+        transform: translateX(0);
+    }
+    #sidebarToggleBtn {
+        display: none !important;
+    }
 }
+
 
 /* ============================================================
    SINGLE-PLAYER ARCADE GAMES (Task 22 Phase 2)

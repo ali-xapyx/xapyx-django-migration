@@ -1,0 +1,494 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Dashboard | XAPYX Admin Portal{% endblock %}</title>
+  <link rel="icon" type="image/png" href="{% static 'images/favicon.png' %}">
+
+  <!-- Inter Google Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap 5.3 & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+  <!-- Core Theme CSS -->
+  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=18">
+
+  <style>
+    :root {
+      --admin-sidebar-width: 260px;
+      --admin-header-height: 64px;
+      --admsup-bg: #f8f9fb;
+      --admsup-card-bg: #ffffff;
+      --admsup-text: #1a1a2e;
+      --admsup-text-muted: #64748b;
+      --admsup-border: #e2e8f0;
+      --admsup-primary: #3b82f6;
+    }
+    body.admin-body, body.admin-body:not(.loaded) {
+      opacity: 1 !important;
+      visibility: visible !important;
+      background: var(--admsup-bg, #f8f9fb) !important;
+      background-image: none !important;
+      color: var(--admsup-text, #1a1a2e) !important;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    .admin-wrapper {
+      display: flex;
+      min-height: 100vh;
+      position: relative;
+      background: var(--admsup-bg, #f8f9fb);
+    }
+
+    /* 1. Sidebar - Dark Navy */
+    .admin-sidebar {
+      width: var(--admin-sidebar-width, 260px);
+      background: #0f172a;
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 1050;
+      display: flex;
+      flex-direction: column;
+      transform: translateX(-100%);
+      transition: transform 0.25s ease;
+    }
+    .admin-sidebar.show {
+      transform: translateX(0);
+      box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+    }
+    @media (min-width: 992px) {
+      .admin-sidebar {
+        transform: translateX(0);
+        box-shadow: none;
+      }
+    }
+
+    .admin-sidebar-brand {
+      height: var(--admin-header-height, 64px);
+      display: flex;
+      align-items: center;
+      padding: 0 1.25rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      text-decoration: none;
+      color: #ffffff;
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+    .admin-sidebar-brand:hover {
+      color: #ffffff;
+    }
+    .admin-sidebar-logo-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 0.75rem;
+      color: #3b82f6;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+    .admin-nav {
+      list-style: none;
+      padding: 1rem 0.75rem;
+      margin: 0;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      overflow-y: auto;
+    }
+    .admin-nav-item a {
+      display: flex;
+      align-items: center;
+      padding: 0.65rem 0.85rem;
+      border-radius: 8px;
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.15s ease;
+      border-left: 3px solid transparent;
+    }
+    .admin-nav-item a i {
+      width: 22px;
+      margin-right: 0.75rem;
+      font-size: 1rem;
+      color: #64748b;
+      transition: color 0.15s ease;
+      text-align: center;
+    }
+    .admin-nav-item a:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .admin-nav-item a:hover i {
+      color: #3b82f6;
+    }
+    .admin-nav-item.active a {
+      color: #ffffff;
+      background: rgba(59, 130, 246, 0.15);
+      border-left: 3px solid #3b82f6;
+      font-weight: 600;
+    }
+    .admin-nav-item.active a i {
+      color: #3b82f6;
+    }
+    .admin-nav-divider {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #64748b;
+      padding: 1rem 0.85rem 0.35rem;
+      opacity: 0.8;
+    }
+
+    .admin-sidebar-footer {
+      padding: 0.85rem 1rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    /* 2. Main Content & Topbar - Light Theme */
+    .admin-main-wrap {
+      margin-left: 0;
+      width: 100%;
+      min-width: 0;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--admsup-bg, #f8f9fb);
+    }
+    .admin-content {
+      margin-left: 0;
+      width: 100%;
+      padding: 1.5rem 1.25rem;
+      flex: 1;
+      background: var(--admsup-bg, #f8f9fb);
+    }
+    @media (min-width: 992px) {
+      .admin-main-wrap {
+        margin-left: var(--admin-sidebar-width, 260px);
+        width: calc(100% - var(--admin-sidebar-width, 260px));
+      }
+      .admin-content {
+        padding: 1.75rem 2rem;
+      }
+    }
+
+    .admin-topbar {
+      height: var(--admin-header-height, 64px);
+      background: #ffffff;
+      border-bottom: 1px solid var(--admsup-border, #e2e8f0);
+      position: sticky;
+      top: 0;
+      z-index: 1010;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.5rem;
+      width: 100%;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    }
+
+    #sidebarToggleBtn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    @media (min-width: 992px) {
+      #sidebarToggleBtn {
+        display: none !important;
+      }
+    }
+
+    .admin-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      z-index: 1040;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.25s ease, visibility 0.25s ease;
+    }
+    .admin-backdrop.show {
+      opacity: 1;
+      visibility: visible;
+    }
+    @media (min-width: 992px) {
+      .admin-backdrop {
+        display: none !important;
+      }
+    }
+  </style>
+  {% block extra_css %}{% endblock %}
+</head>
+<body class="admin-body loaded">
+
+<div class="admin-wrapper">
+  <!-- Backdrop for mobile off-canvas -->
+  <div class="admin-backdrop" id="adminBackdrop"></div>
+
+  <!-- Sidebar (off-canvas on mobile, fixed on desktop) -->
+  <aside class="admin-sidebar" id="adminSidebar">
+    <a href="/portal-admin/dashboard/" class="admin-sidebar-brand">
+      <div class="admin-sidebar-logo-icon">
+        <i class="fas fa-shield-alt"></i>
+      </div>
+      <span>XAPYX <span class="badge" style="background: rgba(59,130,246,0.2); color: #60a5fa; border: 1px solid rgba(59,130,246,0.35); font-size:0.68rem; font-weight:700; padding: 0.2rem 0.5rem; letter-spacing:0.5px;">ADMIN</span></span>
+    </a>
+
+    <ul class="admin-nav">
+      <!-- 1. Dashboard -->
+      <li class="admin-nav-item active">
+        <a href="/portal-admin/dashboard/">
+          <i class="bi bi-speedometer2"></i>
+          <span>Dashboard</span>
+        </a>
+      </li>
+
+      <!-- 2. Store -->
+      <li class="admin-nav-item">
+        <a href="/portal-admin/dashboard/">
+          <i class="bi bi-shop"></i>
+          <span>Store</span>
+        </a>
+      </li>
+
+      <!-- 3. Support -->
+      <li class="admin-nav-item">
+        <a href="/portal-admin/dashboard/">
+          <i class="bi bi-headset"></i>
+          <span>Support</span>
+          {% if metrics.tickets_open %}
+          <span class="badge ms-auto" style="background: rgba(245,158,11,0.2); color: #fbbf24; border: 1px solid rgba(245,158,11,0.35); font-size:0.7rem; font-weight:700;">{{ metrics.tickets_open }}</span>
+          {% endif %}
+        </a>
+      </li>
+
+      <!-- 4. Users -->
+      <li class="admin-nav-item">
+        <a href="/portal-admin/dashboard/">
+          <i class="bi bi-people"></i>
+          <span>Users</span>
+        </a>
+      </li>
+
+      <!-- 5. Settings -->
+      <li class="admin-nav-item">
+        <a href="/portal-admin/dashboard/">
+          <i class="bi bi-gear"></i>
+          <span>Settings</span>
+        </a>
+      </li>
+
+      <!-- Section Divider: TOOLS -->
+      <li class="admin-nav-divider">Tools</li>
+
+      <!-- 6. Reports -->
+      <li class="admin-nav-item">
+        <a href="/portal-admin/dashboard/">
+          <i class="bi bi-graph-up"></i>
+          <span>Reports</span>
+        </a>
+      </li>
+
+      <!-- 7. Logs -->
+      <li class="admin-nav-item">
+        <a href="/portal-admin/dashboard/">
+          <i class="bi bi-clipboard-data"></i>
+          <span>Logs</span>
+        </a>
+      </li>
+
+      <!-- App Link -->
+      <li class="admin-nav-item mt-auto border-top pt-2" style="border-color: rgba(255,255,255,0.08) !important;">
+        <a href="/feed/" target="_blank">
+          <i class="fas fa-external-link-alt"></i>
+          <span>Open Xapyx Feed</span>
+        </a>
+      </li>
+    </ul>
+
+    <!-- Sidebar Footer / Profile -->
+    <div class="admin-sidebar-footer">
+      <div class="dropdown dropup">
+        <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle w-100" data-bs-toggle="dropdown" aria-expanded="false" style="color: #ffffff;">
+          <span class="avatar-initial rounded-circle d-inline-flex align-items-center justify-content-center me-2 flex-shrink-0" style="width:36px; height:36px; font-size:0.85rem; font-weight:700; background: #3b82f6; color: #fff;">
+            {{ admin_name|default:"A"|slice:":1"|upper }}
+          </span>
+          <div class="flex-grow-1 text-truncate" style="line-height: 1.2;">
+            <div class="fw-bold small text-truncate" style="color: #f1f5f9;">{{ admin_name|default:"Administrator" }}</div>
+            <div class="text-truncate" style="font-size: 0.72rem; color: #94a3b8;">{{ admin_email|default:"admin@xapyx.com" }}</div>
+          </div>
+        </a>
+        <ul class="dropdown-menu dropdown-menu-dark shadow border" style="border-color: rgba(255,255,255,0.1) !important; min-width: 220px;">
+          <!-- 8. Profile -->
+          <li>
+            <a class="dropdown-item py-2" href="/portal-admin/dashboard/">
+              <i class="bi bi-person me-2" style="color: #3b82f6;"></i> Profile
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item py-2" href="/portal-admin/dashboard/">
+              <i class="bi bi-gear me-2"></i> Settings
+            </a>
+          </li>
+          <li><hr class="dropdown-divider" style="border-color: rgba(255,255,255,0.08);"></li>
+          <!-- 9. Logout -->
+          <li>
+            <a class="dropdown-item text-danger py-2" href="/portal-admin/logout/">
+              <i class="fas fa-sign-out-alt me-2"></i> Logout
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content Wrap -->
+  <div class="admin-main-wrap">
+    <!-- Topbar -->
+    <header class="admin-topbar">
+      <div class="d-flex align-items-center gap-3">
+        <!-- Hamburger toggle button visible on mobile (< 992px) -->
+        <button class="btn btn-sm btn-outline-secondary" type="button" id="sidebarToggleBtn" aria-label="Toggle Navigation" style="border-color: #cbd5e1; color: #475569;">
+          <i class="fas fa-bars"></i>
+        </button>
+        <div>
+          <h5 class="mb-0 fw-bold d-flex align-items-center gap-2" style="color: #1a1a2e; font-size: 1.05rem;">
+            <i class="bi bi-speedometer2" style="color: #3b82f6;"></i>
+            <span>Dashboard</span>
+          </h5>
+          <small class="d-none d-sm-inline" style="color: #64748b; font-size: 0.78rem;">
+            Welcome back, <strong style="color: #1e293b;">{{ admin_name|default:"Admin" }}</strong>!
+          </small>
+        </div>
+      </div>
+
+      <div class="d-flex align-items-center gap-3">
+        <!-- Notification Bell with Badge -->
+        <div class="dropdown">
+          <button class="btn btn-sm btn-light position-relative d-flex align-items-center justify-content-center border" style="border-color: #e2e8f0 !important; background: #f8fafc; width: 38px; height: 38px; border-radius: 8px;" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifications">
+            <i class="bi bi-bell" style="font-size: 1.05rem; color: #475569;"></i>
+            {% if metrics.tickets_critical or metrics.tickets_open %}
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill" style="background: #f59e0b; color: #fff; font-size: 0.65rem; border: 2px solid #ffffff;">
+              {{ metrics.tickets_critical|default:metrics.tickets_open }}
+            </span>
+            {% endif %}
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow border" style="border-color: #e2e8f0 !important; min-width: 250px;">
+            <li><h6 class="dropdown-header text-uppercase" style="letter-spacing: 0.5px; color: #64748b; font-size: 0.72rem;">Notifications</h6></li>
+            {% if metrics.tickets_critical %}
+            <li>
+              <a class="dropdown-item py-2 d-flex align-items-center gap-2" href="#">
+                <i class="bi bi-exclamation-triangle text-danger"></i>
+                <span class="small">{{ metrics.tickets_critical }} Critical Tickets</span>
+              </a>
+            </li>
+            {% endif %}
+            <li>
+              <a class="dropdown-item py-2 d-flex align-items-center gap-2" href="#">
+                <i class="bi bi-headset text-warning"></i>
+                <span class="small">{{ metrics.tickets_open|default:0 }} Open Tickets</span>
+              </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <a class="dropdown-item py-2 d-flex align-items-center gap-2 small text-muted" href="#">
+                <i class="bi bi-gear"></i>
+                <span>View All Alerts</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Admin User Dropdown -->
+        <div class="dropdown">
+          <button class="btn btn-sm btn-light dropdown-toggle d-flex align-items-center gap-2 border" style="border-color: #e2e8f0 !important; background: #ffffff; padding: 0.35rem 0.75rem; border-radius: 8px;" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <span class="avatar-initial rounded-circle d-inline-flex align-items-center justify-content-center" style="width:28px; height:28px; font-size:0.75rem; font-weight:700; background: #3b82f6; color: #fff;">
+              {{ admin_name|default:"A"|slice:":1"|upper }}
+            </span>
+            <span class="d-none d-md-inline small fw-semibold" style="color: #1e293b;">{{ admin_name|default:"Administrator" }}</span>
+            <span class="badge ms-1" style="background: #eff6ff; color: #2563eb; font-size:0.65rem; border: 1px solid #bfdbfe;">{{ admin_role|default:"admin" }}</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow border" style="border-color: #e2e8f0 !important; min-width: 230px;">
+            <li class="dropdown-header">Logged in as <strong style="color: #1e293b;">{{ admin_email|default:"admin@xapyx.com" }}</strong></li>
+            <li><a class="dropdown-item py-2" href="/portal-admin/dashboard/"><i class="bi bi-person me-2 text-primary"></i>Profile</a></li>
+            <li><a class="dropdown-item py-2" href="/portal-admin/dashboard/"><i class="bi bi-gear me-2 text-muted"></i>Settings</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item text-danger py-2" href="/portal-admin/logout/"><i class="fas fa-sign-out-alt me-2"></i>Sign Out</a></li>
+          </ul>
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Content -->
+    <main class="admin-content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  (function () {
+    const toggleBtn = document.getElementById('sidebarToggleBtn');
+    const sidebar = document.getElementById('adminSidebar');
+    const backdrop = document.getElementById('adminBackdrop');
+
+    function openSidebar() {
+      sidebar?.classList.add('show');
+      backdrop?.classList.add('show');
+    }
+
+    function closeSidebar() {
+      sidebar?.classList.remove('show');
+      backdrop?.classList.remove('show');
+    }
+
+    toggleBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (sidebar?.classList.contains('show')) {
+        closeSidebar();
+      } else {
+        openSidebar();
+      }
+    });
+
+    backdrop?.addEventListener('click', (e) => {
+      e.preventDefault();
+      closeSidebar();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && sidebar?.classList.contains('show')) {
+        closeSidebar();
+      }
+    });
+  })();
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,128 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Sign In | XAPYX Portal</title>
+  <link rel="icon" type="image/png" href="{% static 'images/favicon.png' %}">
+
+  <!-- Bootstrap 5.3 & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <style>
+    body {
+      background-color: var(--xpy-bg, #0b0f19);
+      color: var(--xpy-text, #f8fafc);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .admin-login-card {
+      width: 100%;
+      max-width: 420px;
+      background: var(--xpy-card-bg, #121826);
+      border: 1px solid var(--xpy-border, rgba(255, 255, 255, 0.08));
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      padding: 2.25rem 2rem;
+    }
+    .brand-icon {
+      width: 56px;
+      height: 56px;
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.65rem;
+      color: var(--xpy-primary, #6366f1);
+      margin: 0 auto 1.25rem;
+    }
+    .form-control {
+      background-color: rgba(255, 255, 255, 0.03);
+      border-color: rgba(255, 255, 255, 0.12);
+      color: #fff;
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+    }
+    .form-control:focus {
+      background-color: rgba(255, 255, 255, 0.06);
+      border-color: var(--xpy-primary, #6366f1);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+      color: #fff;
+    }
+    .btn-primary {
+      background-color: var(--xpy-primary, #6366f1);
+      border-color: var(--xpy-primary, #6366f1);
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+    .btn-primary:hover {
+      background-color: #4f46e5;
+      border-color: #4f46e5;
+    }
+  </style>
+</head>
+<body>
+
+<div class="admin-login-card">
+  <div class="text-center mb-4">
+    <div class="brand-icon">
+      <i class="fas fa-shield-alt"></i>
+    </div>
+    <h4 class="fw-bold mb-1">XAPYX Admin</h4>
+    <p class="text-muted small mb-0">Sign in to administrative workspace</p>
+  </div>
+
+  {% if error %}
+  <div class="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 small rounded-3" role="alert">
+    <i class="fas fa-exclamation-circle"></i>
+    <div>{{ error }}</div>
+  </div>
+  {% endif %}
+
+  <form method="POST" action="/portal-admin/login/" id="adminLoginForm">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="adminEmail" class="form-label small text-muted fw-semibold">Email Address</label>
+      <div class="input-group">
+        <span class="input-group-text bg-transparent border-end-0 text-muted" style="border-color: rgba(255,255,255,0.12); border-radius: 10px 0 0 10px;">
+          <i class="fas fa-envelope"></i>
+        </span>
+        <input type="email" class="form-control border-start-0" id="adminEmail" name="email" value="{{ email|default:'' }}" placeholder="admin@xapyx.com" required autofocus style="border-radius: 0 10px 10px 0;">
+      </div>
+    </div>
+
+    <div class="mb-4">
+      <label for="adminPassword" class="form-label small text-muted fw-semibold">Password</label>
+      <div class="input-group">
+        <span class="input-group-text bg-transparent border-end-0 text-muted" style="border-color: rgba(255,255,255,0.12); border-radius: 10px 0 0 10px;">
+          <i class="fas fa-key"></i>
+        </span>
+        <input type="password" class="form-control border-start-0" id="adminPassword" name="password" placeholder="••••••••" required style="border-radius: 0 10px 10px 0;">
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary w-100" id="adminSubmitBtn">
+      <span>Sign In</span>
+      <i class="fas fa-arrow-right ms-2"></i>
+    </button>
+  </form>
+
+  <div class="text-center mt-4 pt-2 border-top border-secondary-subtle">
+    <a href="/feed/" class="text-muted text-decoration-none small">
+      <i class="fas fa-arrow-left me-1"></i> Return to Xapyx
+    </a>
+  </div>
+</div>
+
+</body>
+</html>

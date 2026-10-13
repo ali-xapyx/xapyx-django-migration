@@ -20,12 +20,6 @@
     const reportDetailsRequired = document.getElementById('rouletteReportDetailsRequired');
     const reportDetailsError = document.getElementById('rouletteReportDetailsError');
     const reportSubmitBtn = document.getElementById('rouletteReportSubmitBtn');
-    const reportForm = document.getElementById('rouletteReportForm');
-    const reportReason = document.getElementById('rouletteReportReason');
-    const reportDetails = document.getElementById('rouletteReportDetails');
-    const reportDetailsRequired = document.getElementById('rouletteReportDetailsRequired');
-    const reportDetailsError = document.getElementById('rouletteReportDetailsError');
-    const reportSubmitBtn = document.getElementById('rouletteReportSubmitBtn');
 
     const onlineStatsEl = document.getElementById('rouletteOnlineStats');
     const dotsEl = document.getElementById('rouletteDots');
