@@ -1,0 +1,87 @@
+{% extends "admin_portal/base_admin.html" %}
+{% load static %}
+
+{% block title %}Audit Logs | XAPYX Admin Portal{% endblock %}
+{% block header_title %}Security & Audit Logs{% endblock %}
+
+{% block content %}
+<div class="admsup-page-header">
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div>
+      <h4 class="mb-1 fw-bold admsup-heading"><i class="bi bi-clipboard-data me-2 text-primary"></i>Admin Audit Logs</h4>
+      <p class="mb-0 small" style="color: var(--admsup-text-muted);">Real-time security trail of administrator logins, ticket actions, and role changes</p>
+    </div>
+  </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="admin-panel-card mb-4 p-3">
+  <form method="get" action="/portal-admin/logs/" class="row g-2 align-items-center">
+    <div class="col-12 col-md-6">
+      <div class="input-group">
+        <span class="input-group-text" style="background: var(--admsup-surface-2); border-color: var(--admsup-border); color: var(--admsup-text-muted);">
+          <i class="bi bi-search"></i>
+        </span>
+        <input type="text" name="q" value="{{ search_q }}" class="form-control"
+               style="background: var(--admsup-surface-2); border-color: var(--admsup-border); color: var(--admsup-text);"
+               placeholder="Search by admin name, IP address, or action details...">
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <select name="action_type" class="form-select" style="background: var(--admsup-surface-2); border-color: var(--admsup-border); color: var(--admsup-text);">
+        <option value="all">All Actions</option>
+        {% for act in distinct_actions %}
+        <option value="{{ act }}" {% if action_filter == act %}selected{% endif %}>{{ act }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-3 d-flex gap-2">
+      <button type="submit" class="btn btn-primary w-100">Filter</button>
+      {% if search_q or action_filter != 'all' %}
+      <a href="/portal-admin/logs/" class="btn btn-admsup-secondary">Reset</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
+
+<!-- Audit Logs Table -->
+<div class="admin-panel-card">
+  <div class="table-responsive">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Admin</th>
+          <th>Action</th>
+          <th>Details</th>
+          <th>IP Address</th>
+          <th>Date & Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs_list %}
+        <tr>
+          <td class="fw-bold" style="color: var(--admsup-text-muted);">#{{ log.id }}</td>
+          <td class="fw-semibold" style="color: var(--admsup-text);">{{ log.admin_name|default:"Admin" }}</td>
+          <td>
+            <span class="admsup-user-pill">{{ log.action|default:"event" }}</span>
+          </td>
+          <td class="small">{{ log.details|default:"—" }}</td>
+          <td class="small font-monospace" style="color: var(--admsup-text-muted);">{{ log.ip_address|default:"—" }}</td>
+          <td class="small" style="color: var(--admsup-text-muted); white-space: nowrap;">
+            {{ log.created_at|date:"M d, Y H:i:s" }}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="text-center py-5" style="color: var(--admsup-text-muted);">
+            <i class="bi bi-journal-x fs-1 d-block mb-2 opacity-50"></i>
+            No audit log entries found.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

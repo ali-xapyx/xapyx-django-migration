@@ -520,6 +520,8 @@ document.addEventListener('DOMContentLoaded', function() {
   {
     "isLoggedIn": true,
     "userId": {{ request.user.id }},
+    "userRole": "{{ request.user.role|default:'user' }}",
+    "isStaff": {% if request.user.is_staff %}true{% else %}false{% endif %},
     "themeColor": "{{ request.user.theme_color|default:'#ff8c00' }}",
     "themeMode": "{{ request.user.theme_mode|default:'light' }}",
     "friends": {{ friends_json|default:"[]"|safe }},

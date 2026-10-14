@@ -9,7 +9,8 @@ class RawBCryptPasswordHasher(BCryptPasswordHasher):
     def encode(self, password, salt):
         pw = password.encode() if isinstance(password, str) else password
         s = salt.encode() if isinstance(salt, str) else salt
-        return bcrypt.hashpw(pw, s).decode()
+        h = bcrypt.hashpw(pw, s).decode()
+        return ('$2y$' + h[4:]) if h.startswith('$2b$') else h
 
     def verify(self, password, encoded):
         if isinstance(encoded, bytes):

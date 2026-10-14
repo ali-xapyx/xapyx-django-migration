@@ -35,22 +35,22 @@ def admin_required(view_func):
 
 def _verify_admin_password(plain_password, password_hash):
     """
-    Verifies plain password against bcrypt hash from MariaDB 'admins' table.
-    Handles standard bcrypt and legacy PHP $2y$ prefix.
+    Verifies plain password against bcrypt or Django hash in 'admins' or 'auth' table.
+    Handles $2y$, $2b$, bcrypt$$2b$, and bcrypt_sha256$ seamlessly.
     """
     if not plain_password or not password_hash:
         return False
     try:
-        p_bytes = plain_password.encode('utf-8')
-        h_bytes = password_hash.encode('utf-8')
-
-        try:
-            return bcrypt.checkpw(p_bytes, h_bytes)
-        except ValueError:
-            if h_bytes.startswith(b'$2y$'):
-                h_bytes = b'$2b$' + h_bytes[4:]
-                return bcrypt.checkpw(p_bytes, h_bytes)
-            return False
+        norm = password_hash
+        if norm.startswith('bcrypt$'):
+            norm = norm[len('bcrypt$'):]
+        if norm.startswith('$2y$'):
+            norm = '$2b$' + norm[4:]
+        if norm.startswith(('$2a$', '$2b$')):
+            if bcrypt.checkpw(plain_password.encode('utf-8'), norm.encode('utf-8')):
+                return True
+        from django.contrib.auth.hashers import check_password as django_check_password
+        return django_check_password(plain_password, password_hash)
     except Exception:
         return False
 
@@ -676,3 +676,378 @@ def api_admin_support(request):
 
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+def _log_admin_action(request, action, details):
+    """Helper to record an audit entry in admin_logs."""
+    try:
+        admin_id = request.session.get('admin_id') or 0
+        admin_name = request.session.get('admin_name') or 'Admin'
+        ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', ''))
+        if ip and ',' in ip:
+            ip = ip.split(',')[0].strip()
+        AdminLog.objects.create(
+            admin_id=admin_id,
+            admin_name=admin_name,
+            action=action[:100],
+            details=details,
+            ip_address=(ip or '')[:45],
+            user_agent=request.META.get('HTTP_USER_AGENT', '')[:500],
+            page_url=request.build_absolute_uri()[:500],
+        )
+    except Exception:
+        pass
+
+
+@admin_required
+def admin_users_view(request):
+    """
+    GET/POST /portal-admin/users/ -- Searchable User Directory & Role Management.
+    """
+    msg = None
+    err = None
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+        target_id = int(request.POST.get('user_id') or 0)
+        if action == 'update_role' and target_id:
+            new_role = request.POST.get('role', 'user').strip()
+            if new_role in ('user', 'moderator', 'admin'):
+                Auth.objects.filter(id=target_id).update(role=new_role)
+                target_u = Auth.objects.filter(id=target_id).first()
+                if target_u and target_u.email and new_role == 'admin':
+                    # Also sync to 'admins' table so they can log into /portal-admin/login/ with their password
+                    raw_pw = target_u.pass_org or ''
+                    if raw_pw:
+                        pw_hash = bcrypt.hashpw(raw_pw.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                    else:
+                        pw_hash = target_u.password
+                    with connection.cursor() as cur:
+                        cur.execute("SELECT id FROM admins WHERE email = %s", [target_u.email])
+                        adm_row = cur.fetchone()
+                        if adm_row:
+                            cur.execute("UPDATE admins SET status = 'active', role = 'admin', password = %s WHERE id = %s", [pw_hash, adm_row[0]])
+                        elif pw_hash:
+                            cur.execute(
+                                "INSERT INTO admins (name, email, password, role, status, created_at) VALUES (%s, %s, %s, 'admin', 'active', NOW())",
+                                [target_u.name or target_u.username, target_u.email, pw_hash]
+                            )
+                _log_admin_action(request, 'user_role_update', f'Updated user #{target_id} role to {new_role}')
+                msg = f'User #{target_id} role updated to {new_role}.'
+            else:
+                err = 'Invalid role selected.'
+
+    search_q = (request.GET.get('q') or '').strip()
+    role_filter = (request.GET.get('role') or 'all').strip()
+    try:
+        page = max(1, int(request.GET.get('page') or 1))
+    except (TypeError, ValueError):
+        page = 1
+    per_page = 25
+    offset = (page - 1) * per_page
+
+    where_clauses = ["1=1"]
+    params = []
+    if search_q:
+        where_clauses.append("(u.name LIKE %s OR u.username LIKE %s OR u.email LIKE %s OR CAST(u.id AS CHAR) LIKE %s)")
+        like_q = f"%{search_q}%"
+        params.extend([like_q, like_q, like_q, like_q])
+    if role_filter and role_filter != 'all':
+        where_clauses.append("u.role = %s")
+        params.append(role_filter)
+
+    where_sql = " AND ".join(where_clauses)
+
+    with connection.cursor() as cur:
+        cur.execute(f"SELECT COUNT(*) FROM auth u WHERE {where_sql}", params)
+        total_filtered = cur.fetchone()[0] or 0
+
+        cur.execute(f"""
+            SELECT
+                u.id, u.name, u.username, u.email, u.picture, u.role,
+                u.location, u.created_at, u.last_seen, u.auth_method,
+                (SELECT COUNT(*) FROM support_tickets st WHERE st.user_id = u.id) AS ticket_count
+            FROM auth u
+            WHERE {where_sql}
+            ORDER BY u.created_at DESC
+            LIMIT %s OFFSET %s
+        """, params + [per_page, offset])
+        rows = cur.fetchall()
+
+    users_list = []
+    for r in rows:
+        users_list.append({
+            'id': r[0],
+            'name': r[1] or r[2],
+            'username': r[2],
+            'email': r[3] or 'N/A',
+            'picture': r[4] or '',
+            'role': r[5] or 'user',
+            'location': r[6] or '—',
+            'created_at': r[7],
+            'last_seen': r[8],
+            'auth_method': r[9] or 'email',
+            'ticket_count': r[10] or 0,
+        })
+
+    total_pages = max(1, (total_filtered + per_page - 1) // per_page)
+
+    context = {
+        'admin_name': request.session.get('admin_name', 'Admin'),
+        'admin_role': request.session.get('admin_role', 'admin'),
+        'admin_email': request.session.get('admin_email', ''),
+        'metrics': _get_base_metrics(),
+        'users_list': users_list,
+        'search_q': search_q,
+        'role_filter': role_filter,
+        'page': page,
+        'total_pages': total_pages,
+        'total_filtered': total_filtered,
+        'msg': msg,
+        'err': err,
+    }
+    return render(request, 'admin_portal/users.html', context)
+
+
+@admin_required
+def admin_profile_settings_view(request):
+    """
+    GET/POST /portal-admin/profile/ and /portal-admin/settings/
+    Matches /opt/bitnami/apache/htdocs/admin/model/profile.php + Admin Settings & Team Management.
+    """
+    admin_id = request.session.get('admin_id')
+    admin_obj = Admin.objects.filter(id=admin_id).first()
+    msg = None
+    err = None
+
+    if request.method == 'POST' and admin_obj:
+        form_type = request.POST.get('form_type', '')
+
+        if form_type == 'update_profile':
+            new_name = (request.POST.get('name') or '').strip()
+            new_email = (request.POST.get('email') or '').strip()
+            if not new_name or not new_email:
+                err = 'Name and email are required.'
+            elif Admin.objects.filter(email=new_email).exclude(id=admin_obj.id).exists():
+                err = 'That email address is already in use by another admin.'
+            else:
+                admin_obj.name = new_name
+                admin_obj.email = new_email
+                admin_obj.save(update_fields=['name', 'email'])
+                request.session['admin_name'] = new_name
+                request.session['admin_email'] = new_email
+                request.session.modified = True
+                _log_admin_action(request, 'profile_update', f'Admin updated profile ({new_name}, {new_email})')
+                msg = 'Profile updated successfully.'
+
+        elif form_type == 'change_password':
+            curr_pw = request.POST.get('current_password') or ''
+            new_pw = request.POST.get('new_password') or ''
+            conf_pw = request.POST.get('confirm_password') or ''
+
+            if not _verify_admin_password(curr_pw, admin_obj.password):
+                err = 'Current password is incorrect.'
+            elif len(new_pw) < 6:
+                err = 'New password must be at least 6 characters.'
+            elif new_pw != conf_pw:
+                err = 'New password and confirmation do not match.'
+            else:
+                hashed = bcrypt.hashpw(new_pw.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                admin_obj.password = hashed
+                admin_obj.save(update_fields=['password'])
+                _log_admin_action(request, 'password_change', 'Admin changed their account password')
+                msg = 'Password updated successfully.'
+
+        elif form_type == 'create_admin':
+            c_name = (request.POST.get('new_admin_name') or '').strip()
+            c_email = (request.POST.get('new_admin_email') or '').strip()
+            c_role = (request.POST.get('new_admin_role') or 'support').strip()
+            c_pass = request.POST.get('new_admin_password') or ''
+
+            if not c_name or not c_email or len(c_pass) < 6:
+                err = 'Please provide name, email, and a password (min 6 chars).'
+            elif Admin.objects.filter(email=c_email).exists():
+                err = 'An admin with that email already exists.'
+            else:
+                hashed = bcrypt.hashpw(c_pass.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                with connection.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO admins (name, email, password, role, status, created_at)
+                        VALUES (%s, %s, %s, %s, 'active', NOW())
+                    """, [c_name, c_email, hashed, c_role])
+                _log_admin_action(request, 'admin_create', f'Created new admin {c_name} ({c_email}) [{c_role}]')
+                msg = f'Admin account for {c_name} created successfully.'
+
+        elif form_type == 'toggle_admin_status':
+            target_admin_id = int(request.POST.get('target_admin_id') or 0)
+            if target_admin_id and target_admin_id != admin_obj.id:
+                target_adm = Admin.objects.filter(id=target_admin_id).first()
+                if target_adm:
+                    new_st = 'inactive' if target_adm.status == 'active' else 'active'
+                    target_adm.status = new_st
+                    target_adm.save(update_fields=['status'])
+                    _log_admin_action(request, 'admin_status_toggle', f'Set admin #{target_admin_id} ({target_adm.email}) to {new_st}')
+                    msg = f'Admin {target_adm.name} status changed to {new_st}.'
+
+    all_admins = Admin.objects.all().order_by('id')
+
+    context = {
+        'admin_obj': admin_obj,
+        'admin_name': request.session.get('admin_name', 'Admin'),
+        'admin_role': request.session.get('admin_role', 'admin'),
+        'admin_email': request.session.get('admin_email', ''),
+        'metrics': _get_base_metrics(),
+        'all_admins': all_admins,
+        'is_settings_tab': 'settings' in request.path,
+        'msg': msg,
+        'err': err,
+    }
+    return render(request, 'admin_portal/profile_settings.html', context)
+
+
+@admin_required
+def admin_reports_view(request):
+    """
+    GET /portal-admin/reports/ -- Platform & Support Reports + CSV Export.
+    """
+    import csv
+    from django.http import HttpResponse
+
+    export_type = request.GET.get('export', '').strip()
+    if export_type == 'tickets_csv':
+        _log_admin_action(request, 'export_csv', 'Exported Support Tickets CSV report')
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="xapyx_support_tickets.csv"'
+        writer = csv.writer(response)
+        writer.writerow(['Ticket ID', 'Subject', 'User Name', 'User Email', 'Type', 'Urgency', 'Status', 'Created At'])
+        for t in SupportTicket.objects.select_related('user').order_by('-created_at')[:1000]:
+            u_name = t.user.name if t.user else (t.user_name or 'Unknown')
+            u_email = t.user.email if t.user else (t.user_email or '')
+            writer.writerow([t.id, t.subject, u_name, u_email, t.type, t.urgency, t.status, t.created_at])
+        return response
+
+    elif export_type == 'users_csv':
+        _log_admin_action(request, 'export_csv', 'Exported Users Directory CSV report')
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="xapyx_users.csv"'
+        writer = csv.writer(response)
+        writer.writerow(['User ID', 'Name', 'Username', 'Email', 'Role', 'Location', 'Joined At'])
+        for u in Auth.objects.order_by('-created_at')[:2000]:
+            writer.writerow([u.id, u.name, u.username, u.email, u.role, u.location, u.created_at])
+        return response
+
+    metrics = _get_base_metrics()
+    report_stats = {
+        'users_7d': 0,
+        'users_30d': 0,
+        'posts_total': 0,
+        'groups_total': 0,
+        'pages_total': 0,
+        'messages_total': 0,
+        'urgency_critical': metrics['tickets_critical'],
+        'urgency_high': 0,
+        'urgency_medium': 0,
+        'urgency_low': 0,
+    }
+
+    with connection.cursor() as cur:
+        try:
+            cur.execute("SELECT COUNT(*) FROM auth WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)")
+            report_stats['users_7d'] = cur.fetchone()[0] or 0
+            cur.execute("SELECT COUNT(*) FROM auth WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)")
+            report_stats['users_30d'] = cur.fetchone()[0] or 0
+        except Exception:
+            pass
+
+        for tbl, key in [('space_posts', 'posts_total'), ('groups', 'groups_total'), ('pages', 'pages_total'), ('support_messages', 'messages_total')]:
+            try:
+                cur.execute(f"SELECT COUNT(*) FROM {tbl}")
+                report_stats[key] = cur.fetchone()[0] or 0
+            except Exception:
+                pass
+
+        try:
+            cur.execute("SELECT urgency, COUNT(*) FROM support_tickets GROUP BY urgency")
+            for urg, cnt in cur.fetchall():
+                u_key = f"urgency_{(urg or 'medium').lower()}"
+                if u_key in report_stats:
+                    report_stats[u_key] = cnt
+        except Exception:
+            pass
+
+    context = {
+        'admin_name': request.session.get('admin_name', 'Admin'),
+        'admin_role': request.session.get('admin_role', 'admin'),
+        'admin_email': request.session.get('admin_email', ''),
+        'metrics': metrics,
+        'report': report_stats,
+    }
+    return render(request, 'admin_portal/reports.html', context)
+
+
+@admin_required
+def admin_logs_view(request):
+    """
+    GET /portal-admin/logs/ -- Audit Trail from 'admin_logs' table.
+    """
+    search_q = (request.GET.get('q') or '').strip()
+    action_filter = (request.GET.get('action_type') or 'all').strip()
+
+    logs_qs = AdminLog.objects.all()
+    if action_filter and action_filter != 'all':
+        logs_qs = logs_qs.filter(action=action_filter)
+    if search_q:
+        from django.db.models import Q
+        logs_qs = logs_qs.filter(
+            Q(admin_name__icontains=search_q) |
+            Q(details__icontains=search_q) |
+            Q(ip_address__icontains=search_q) |
+            Q(action__icontains=search_q)
+        )
+
+    logs_list = logs_qs.order_by('-created_at', '-id')[:150]
+
+    with connection.cursor() as cur:
+        cur.execute("SELECT DISTINCT action FROM admin_logs WHERE action IS NOT NULL ORDER BY action")
+        distinct_actions = [r[0] for r in cur.fetchall() if r[0]]
+
+    context = {
+        'admin_name': request.session.get('admin_name', 'Admin'),
+        'admin_role': request.session.get('admin_role', 'admin'),
+        'admin_email': request.session.get('admin_email', ''),
+        'metrics': _get_base_metrics(),
+        'logs_list': logs_list,
+        'distinct_actions': distinct_actions,
+        'search_q': search_q,
+        'action_filter': action_filter,
+    }
+    return render(request, 'admin_portal/logs.html', context)
+
+
+@admin_required
+def admin_store_placeholder_view(request):
+    """
+    GET /portal-admin/store/ -- Clean Store overview page showing live product/category counts.
+    """
+    products_count = 0
+    categories_count = 0
+    with connection.cursor() as cur:
+        for tbl, attr in [('store_products', 'p'), ('store_categories', 'c')]:
+            try:
+                cur.execute(f"SELECT COUNT(*) FROM {tbl}")
+                if attr == 'p':
+                    products_count = cur.fetchone()[0] or 0
+                else:
+                    categories_count = cur.fetchone()[0] or 0
+            except Exception:
+                pass
+
+    context = {
+        'admin_name': request.session.get('admin_name', 'Admin'),
+        'admin_role': request.session.get('admin_role', 'admin'),
+        'admin_email': request.session.get('admin_email', ''),
+        'metrics': _get_base_metrics(),
+        'products_count': products_count,
+        'categories_count': categories_count,
+    }
+    return render(request, 'admin_portal/store.html', context)

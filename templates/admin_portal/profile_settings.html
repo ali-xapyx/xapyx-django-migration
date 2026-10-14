@@ -1,0 +1,243 @@
+{% extends "admin_portal/base_admin.html" %}
+{% load static %}
+
+{% block title %}Profile & Settings | XAPYX Admin Portal{% endblock %}
+{% block header_title %}{% if is_settings_tab %}Portal Settings{% else %}Admin Profile{% endif %}{% endblock %}
+
+{% block content %}
+<div class="admsup-page-header">
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div>
+      <h4 class="mb-1 fw-bold admsup-heading">
+        <i class="bi {% if is_settings_tab %}bi-gear{% else %}bi-person-badge{% endif %} me-2 text-primary"></i>
+        {% if is_settings_tab %}Settings & Admin Team{% else %}Admin Profile{% endif %}
+      </h4>
+      <p class="mb-0 small" style="color: var(--admsup-text-muted);">Manage your administrator credentials, security password, and team access</p>
+    </div>
+  </div>
+</div>
+
+{% if msg %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+  <i class="bi bi-check-circle-fill me-2"></i>{{ msg }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+{% if err %}
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+  <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ err }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<div class="row g-4">
+  <!-- Left Column: Admin Profile Card (Matches PHP profile.php) -->
+  <div class="col-12 col-lg-4">
+    <div class="admin-panel-card p-4 text-center h-100">
+      <img src="https://ui-avatars.com/api/?name={{ admin_obj.name|default:admin_name|urlencode }}&background=3b82f6&color=fff&size=150"
+           alt="{{ admin_obj.name }}" class="rounded-circle mb-3 shadow-sm" width="110" height="110"
+           style="border: 3px solid rgba(59, 130, 246, 0.3);">
+      <h5 class="fw-bold mb-1 admsup-heading">{{ admin_obj.name|default:admin_name }}</h5>
+      <p class="small mb-3" style="color: var(--admsup-text-muted);">{{ admin_obj.email|default:admin_email }}</p>
+
+      <div class="d-flex justify-content-center gap-2 mb-3">
+        <span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); padding: 0.35rem 0.75rem;">
+          <i class="bi bi-shield-check me-1"></i>{{ admin_obj.role|default:admin_role|capfirst }} Role
+        </span>
+        <span class="admsup-pill pill-resolved">
+          {{ admin_obj.status|default:"active"|capfirst }}
+        </span>
+      </div>
+
+      <hr style="border-color: var(--admsup-border);">
+
+      <div class="text-start small" style="color: var(--admsup-text-secondary);">
+        <div class="d-flex justify-content-between py-2 border-bottom" style="border-color: var(--admsup-border) !important;">
+          <span style="color: var(--admsup-text-muted);"><i class="bi bi-calendar3 me-2"></i>Member Since</span>
+          <span class="fw-semibold">{{ admin_obj.created_at|date:"M d, Y"|default:"2025" }}</span>
+        </div>
+        <div class="d-flex justify-content-between py-2">
+          <span style="color: var(--admsup-text-muted);"><i class="bi bi-clock-history me-2"></i>Last Login</span>
+          <span class="fw-semibold">{{ admin_obj.last_login|date:"M d, Y H:i"|default:"Just now" }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Column: Account Info + Change Password -->
+  <div class="col-12 col-lg-8">
+    <!-- Account Information Form -->
+    <div class="admin-panel-card mb-4">
+      <div class="admin-panel-header">
+        <h6 class="fw-bold mb-0 admsup-heading"><i class="bi bi-person-lines-fill me-2 text-primary"></i>Account Information</h6>
+      </div>
+      <div class="p-4">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="form_type" value="update_profile">
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Full Name</label>
+              <input type="text" name="name" class="form-control"
+                     style="background: var(--admsup-surface-2); border-color: var(--admsup-border); color: var(--admsup-text);"
+                     value="{{ admin_obj.name|default:admin_name }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Email Address</label>
+              <input type="email" name="email" class="form-control"
+                     style="background: var(--admsup-surface-2); border-color: var(--admsup-border); color: var(--admsup-text);"
+                     value="{{ admin_obj.email|default:admin_email }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Role</label>
+              <input type="text" class="form-control"
+                     style="background: var(--admsup-surface-3); border-color: var(--admsup-border); color: var(--admsup-text-muted);"
+                     value="{{ admin_obj.role|default:admin_role|capfirst }}" disabled>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Status</label>
+              <input type="text" class="form-control"
+                     style="background: var(--admsup-surface-3); border-color: var(--admsup-border); color: var(--admsup-text-muted);"
+                     value="{{ admin_obj.status|default:'Active'|capfirst }}" disabled>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="bi bi-check2 me-1"></i>Save Changes
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Change Password Form -->
+    <div class="admin-panel-card">
+      <div class="admin-panel-header">
+        <h6 class="fw-bold mb-0 admsup-heading"><i class="bi bi-key me-2 text-primary"></i>Change Password</h6>
+      </div>
+      <div class="p-4">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="form_type" value="change_password">
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Current Password</label>
+              <input type="password" name="current_password" class="form-control"
+                     style="background: var(--admsup-surface-2); border-color: var(--admsup-border); color: var(--admsup-text);" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">New Password</label>
+              <input type="password" name="new_password" class="form-control"
+                     style="background: var(--admsup-surface-2); border-color: var(--admsup-border); color: var(--admsup-text);" minlength="6" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Confirm New Password</label>
+              <input type="password" name="confirm_password" class="form-control"
+                     style="background: var(--admsup-surface-2); border-color: var(--admsup-border); color: var(--admsup-text);" minlength="6" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-admsup-secondary px-4">
+            <i class="bi bi-shield-lock me-1"></i>Update Password
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Admin Team Management Section -->
+<div class="row g-4 mt-1">
+  <div class="col-12 col-lg-8">
+    <div class="admin-panel-card h-100">
+      <div class="admin-panel-header">
+        <h6 class="fw-bold mb-0 admsup-heading"><i class="bi bi-shield-shaded me-2 text-primary"></i>Admin & Support Team ({{ all_admins|length }})</h6>
+      </div>
+      <div class="table-responsive">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Last Login</th>
+              <th class="text-end">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for adm in all_admins %}
+            <tr>
+              <td class="fw-semibold" style="color: var(--admsup-text);">{{ adm.name }}</td>
+              <td class="small">{{ adm.email }}</td>
+              <td><span class="admsup-user-pill">{{ adm.role|capfirst }}</span></td>
+              <td>
+                {% if adm.status == 'active' %}
+                <span class="admsup-pill pill-resolved">Active</span>
+                {% else %}
+                <span class="admsup-pill pill-critical">Inactive</span>
+                {% endif %}
+              </td>
+              <td class="small" style="color: var(--admsup-text-muted);">{{ adm.last_login|date:"M d, H:i"|default:"Never" }}</td>
+              <td class="text-end">
+                {% if adm.id != admin_obj.id %}
+                <form method="post" class="d-inline">
+                  {% csrf_token %}
+                  <input type="hidden" name="form_type" value="toggle_admin_status">
+                  <input type="hidden" name="target_admin_id" value="{{ adm.id }}">
+                  <button type="submit" class="btn btn-sm btn-admsup-secondary">
+                    {% if adm.status == 'active' %}Disable{% else %}Enable{% endif %}
+                  </button>
+                </form>
+                {% else %}
+                <span class="badge bg-primary">You</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add New Admin Account -->
+  <div class="col-12 col-lg-4">
+    <div class="admin-panel-card h-100">
+      <div class="admin-panel-header">
+        <h6 class="fw-bold mb-0 admsup-heading"><i class="bi bi-person-plus me-2 text-primary"></i>Add Team Member</h6>
+      </div>
+      <div class="p-4">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="form_type" value="create_admin">
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Full Name</label>
+            <input type="text" name="new_admin_name" class="form-control"
+                   style="background: var(--admsup-surface-2); border-color: var(--admsup-border); color: var(--admsup-text);" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Email</label>
+            <input type="email" name="new_admin_email" class="form-control"
+                   style="background: var(--admsup-surface-2); border-color: var(--admsup-border); color: var(--admsup-text);" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Role</label>
+            <select name="new_admin_role" class="form-select"
+                    style="background: var(--admsup-surface-2); border-color: var(--admsup-border); color: var(--admsup-text);">
+              <option value="support">Support Agent</option>
+              <option value="admin">Administrator</option>
+              <option value="super_admin">Super Admin</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Temporary Password</label>
+            <input type="password" name="new_admin_password" class="form-control"
+                   style="background: var(--admsup-surface-2); border-color: var(--admsup-border); color: var(--admsup-text);" minlength="6" required>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-plus-circle me-1"></i>Create Admin Account
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

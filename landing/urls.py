@@ -223,6 +223,8 @@ urlpatterns = [
     path('games/spaceshooter/', views.space_view, name='game_spaceshooter'),
     path('games/lovemeter/', views.love_view, name='game_lovemeter'),
     path('games/catchme/', views.catch_view, name='game_catchme'),
+    path('games/tictactoe/', views.tictactoe_view, name='game_tictactoe'),
+    path('api/games/tictactoe/room/', views.api_tictactoe_room, name='api_tictactoe_room'),
     path('api/games/hub/', views.api_games_hub, name='api_games_hub'),
     path('api/games/leaderboard/', views.api_games_leaderboard, name='api_games_leaderboard'),
     path('api/games/track-play/', views.api_games_track_play, name='api_games_track_play'),
@@ -236,6 +238,12 @@ urlpatterns = [
     path('portal-admin/api/metrics/', admin_views.api_admin_metrics, name='portal_admin_api_metrics'),
     path('portal-admin/support/', admin_views.admin_support_view, name='portal_admin_support'),
     path('portal-admin/api/support/', admin_views.api_admin_support, name='portal_admin_api_support'),
+    path('portal-admin/users/', admin_views.admin_users_view, name='portal_admin_users'),
+    path('portal-admin/profile/', admin_views.admin_profile_settings_view, name='portal_admin_profile'),
+    path('portal-admin/settings/', admin_views.admin_profile_settings_view, name='portal_admin_settings'),
+    path('portal-admin/reports/', admin_views.admin_reports_view, name='portal_admin_reports'),
+    path('portal-admin/logs/', admin_views.admin_logs_view, name='portal_admin_logs'),
+    path('portal-admin/store/', admin_views.admin_store_placeholder_view, name='portal_admin_store'),
 
     #sw
     path('sw.js', views.serve_sw, name='serve_sw'),

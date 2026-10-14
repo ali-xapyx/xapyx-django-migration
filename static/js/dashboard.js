@@ -949,7 +949,7 @@ function createPostElement(post) {
             +   '<ul class="dropdown-menu">'
             +     '<li><a class="dropdown-item" href="#" onclick="copyToClipboard(window.location.origin + \'/post/' + post.id + '/\'); return false;"><i class="bi bi-link-45deg"></i> Copy Link</a></li>'
             +     '<li><a class="dropdown-item" href="#" onclick="toggleSave(' + post.id + '); return false;"><i class="bi ' + (post.is_saved ? 'bi-bookmark-fill' : 'bi-bookmark') + '"></i> ' + (post.is_saved ? 'Saved' : 'Save Post') + '</a></li>'
-            +     (post.author && post.author.id === userId ? '<li><a class="dropdown-item" href="#" onclick="editPostModal(' + post.id + '); return false;"><i class="bi bi-pencil"></i> Edit Post</a></li><li><a class="dropdown-item text-danger" href="#" onclick="confirmDeletePost(' + post.id + '); return false;"><i class="bi bi-trash"></i> Delete Post</a></li>' : '')
+            +     (post.author && post.author.id === userId ? '<li><a class="dropdown-item" href="#" onclick="editPostModal(' + post.id + '); return false;"><i class="bi bi-pencil"></i> Edit Post</a></li>' : '') + ((post.author && post.author.id === userId) || (window.XPY_CONFIG && window.XPY_CONFIG.isStaff) ? '<li><a class="dropdown-item text-danger" href="#" onclick="confirmDeletePost(' + post.id + '); return false;"><i class="bi bi-trash"></i> Delete Post</a></li>' : '')
             +   '</ul>'
             + '</div>'
             + '</div>';
@@ -1260,7 +1260,7 @@ function createCommentElement(comment, type) {
     el.className = 'comment-item';
     el.dataset.commentId = comment.id;
     var userId = window.XPY_CONFIG.userId;
-    var isOwner = comment.author.id === userId;
+    var isOwner = (comment.author.id === userId) || Boolean(window.XPY_CONFIG && window.XPY_CONFIG.isStaff);
     var av = (comment.author && comment.author.picture) ? comment.author.picture : '/static/images/avatars/default.png';
     var avThumb = av;
     if (av && /\.(jpg|jpeg|png|gif|webp)$/i.test(av) && !av.includes('_avatar.webp') && !av.includes('default.png') && !av.includes('avatar.png')) {

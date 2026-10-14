@@ -1,0 +1,47 @@
+{% extends "admin_portal/base_admin.html" %}
+{% load static %}
+
+{% block title %}Store Management | XAPYX Admin Portal{% endblock %}
+{% block header_title %}Store & Marketplace{% endblock %}
+
+{% block content %}
+<div class="admsup-page-header">
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div>
+      <h4 class="mb-1 fw-bold admsup-heading"><i class="bi bi-shop me-2 text-primary"></i>XAPYX Store Management</h4>
+      <p class="mb-0 small" style="color: var(--admsup-text-muted);">Product catalog, categories, and marketplace inventory</p>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-12 col-sm-6">
+    <div class="admin-stat-card stat-total">
+      <div>
+        <div class="admin-stat-label">Total Products</div>
+        <div class="admin-stat-number mt-1">{{ products_count }}</div>
+      </div>
+      <div class="admin-stat-icon"><i class="bi bi-box-seam"></i></div>
+    </div>
+  </div>
+  <div class="col-12 col-sm-6">
+    <div class="admin-stat-card stat-progress">
+      <div>
+        <div class="admin-stat-label">Store Categories</div>
+        <div class="admin-stat-number mt-1 text-primary">{{ categories_count }}</div>
+      </div>
+      <div class="admin-stat-icon"><i class="bi bi-tags"></i></div>
+    </div>
+  </div>
+</div>
+
+<div class="admin-panel-card p-5 text-center">
+  <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 68px; height: 68px; background: rgba(59, 130, 246, 0.12); color: #3b82f6;">
+    <i class="bi bi-shop fs-2"></i>
+  </div>
+  <h5 class="fw-bold admsup-heading">Store Catalog ({{ products_count }} Products, {{ categories_count }} Categories)</h5>
+  <p class="small mx-auto mb-0" style="max-width: 520px; color: var(--admsup-text-muted);">
+    The Store & Marketplace module is scheduled for the final phase of the rollout once initial product categories and inventory items are ready to be populated.
+  </p>
+</div>
+{% endblock %}

@@ -130,7 +130,7 @@
 
   function renderPost(post) {
     const isMine = post.author.id === USER_ID;
-    const canDelete = isMine || IS_ADMIN;
+    const canDelete = isMine || IS_ADMIN || Boolean(window.XPY_CONFIG && window.XPY_CONFIG.isStaff);
     const hasLiked = post.user_reaction === 'like';
     const hasDisliked = post.user_reaction === 'dislike';
 
@@ -423,7 +423,7 @@
 
   function renderComment(cm, postId) {
     const isMine = cm.author.id === USER_ID;
-    const canDelete = isMine || IS_ADMIN;
+    const canDelete = isMine || IS_ADMIN || Boolean(window.XPY_CONFIG && window.XPY_CONFIG.isStaff);
     var av = (cm.author && cm.author.picture) ? cm.author.picture : '/static/images/avatars/default.png';
     var avThumb = av;
     if (av && /\.(jpg|jpeg|png|gif|webp)$/i.test(av) && !av.includes('_avatar.webp') && !av.includes('default.png') && !av.includes('avatar.png')) {

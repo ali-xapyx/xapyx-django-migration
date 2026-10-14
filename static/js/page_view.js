@@ -32,7 +32,7 @@
     const CONFIG = {
         pageId:             _injected.pageId      || null,
         userId:             _injected.userId      || null,
-        isAdmin:            _injected.isAdmin     || false,
+        isAdmin:            Boolean(_injected.isAdmin || (window.XPY_CONFIG && window.XPY_CONFIG.isStaff)),
         creatorId:          _injected.creatorId   || null,
         isFollower:         _injected.isFollower  || false,
         pageTitle:          _injected.pageTitle   || '',

@@ -277,7 +277,7 @@
     });
 
     // Own-message trash button (mobile-first, always visible)
-    if (isMyMessage) {
+    if (isMyMessage || Boolean(window.XPY_CONFIG && window.XPY_CONFIG.isStaff)) {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'message-delete-btn';

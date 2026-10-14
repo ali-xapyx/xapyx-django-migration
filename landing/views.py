@@ -2014,7 +2014,7 @@ def api_posts_delete_comment(request):
         if owner_id != user_id:
             cur.execute("SELECT role FROM auth WHERE id = %s", [user_id])
             role_row = cur.fetchone()
-            if not role_row or role_row[0] != 'admin':
+            if not role_row or role_row[0] not in ('admin', 'moderator'):
                 return JsonResponse({'success': False, 'error': 'Not authorized'})
 
         _cascade_delete_notifications([f'%comment_id={comment_id}%', f'%comment={comment_id}%'])
@@ -4669,7 +4669,7 @@ def api_shouts_delete(request):
         if owner_id != user_id:
             cur.execute("SELECT role FROM auth WHERE id = %s", [user_id])
             role_row = cur.fetchone()
-            if not role_row or role_row[0] != 'admin':
+            if not role_row or role_row[0] not in ('admin', 'moderator'):
                 return JsonResponse({'success': False, 'error': 'Not authorized'})
 
         _cascade_delete_notifications([f'%shout_id={shout_id}%', f'/shoutbox/%'])
@@ -6336,7 +6336,8 @@ def api_groups_post_delete(request, post_id):
 
     is_owner = row[0] == user.id
     is_admin = _grp_is_admin(row[1], user.id)
-    if not is_owner and not is_admin:
+    is_site_staff = request.user.is_authenticated and request.user.is_staff
+    if not is_owner and not is_admin and not is_site_staff:
         return JsonResponse({'success': False, 'error': 'Not authorized'})
 
     s3_keys = []
@@ -6371,7 +6372,7 @@ def api_groups_post_edit(request, post_id):
         row = cur.fetchone()
     if not row:
         return JsonResponse({'success': False, 'error': 'Post not found'})
-    if row[0] != user.id:
+    if row[0] != user.id and not (user.is_authenticated and user.is_staff):
         return JsonResponse({'success': False, 'error': 'Not authorized'})
     group_id = row[1]
 
@@ -7675,7 +7676,8 @@ def api_page_post_delete(request, post_id):
     if not row:
         return JsonResponse({'success': False, 'error': 'Post not found'})
 
-    if row[0] != user.id and row[1] != user.id:
+    is_site_staff = request.user.is_authenticated and request.user.is_staff
+    if row[0] != user.id and row[1] != user.id and not is_site_staff:
         return JsonResponse({'success': False, 'error': 'Not authorized'})
 
     with connection.cursor() as cur:
@@ -8066,7 +8068,7 @@ def api_page_comment_delete(request, comment_id):
     if not row:
         return JsonResponse({'success': False, 'error': 'Comment not found'})
 
-    if row[0] != user.id and row[2] != user.id:
+    if row[0] != user.id and row[2] != user.id and not (user.is_authenticated and user.is_staff):
         return JsonResponse({'success': False, 'error': 'Not authorized'})
 
     from django.db import transaction
@@ -11000,3 +11002,18 @@ def api_games_save_score(request):
         'score_id': score_obj.id,
         'message': 'Score saved successfully'
     })
+
+@login_required
+def tictactoe_view(request):
+    ctx = {
+        'active_page': 'games',
+        'game_title': 'Online Tic Tac Toe',
+    }
+    ctx.update(_get_games_right_widgets_context(request))
+    return render(request, 'dashboard/games/tictactoe.html', ctx)
+
+
+@csrf_exempt
+@login_required
+def api_tictactoe_room(request):
+    return JsonResponse({'success': True, 'message': 'TicTacToe API ready'})

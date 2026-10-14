@@ -1,0 +1,160 @@
+{% extends "admin_portal/base_admin.html" %}
+{% load static %}
+
+{% block title %}Reports & Analytics | XAPYX Admin Portal{% endblock %}
+{% block header_title %}Reports & Analytics{% endblock %}
+
+{% block content %}
+<div class="admsup-page-header">
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div>
+      <h4 class="mb-1 fw-bold admsup-heading"><i class="bi bi-graph-up-arrow me-2 text-primary"></i>Platform Reports</h4>
+      <p class="mb-0 small" style="color: var(--admsup-text-muted);">Live community growth, support resolution metrics, and CSV data exports</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="/portal-admin/reports/?export=tickets_csv" class="btn btn-sm btn-primary d-flex align-items-center gap-2 px-3 py-2">
+        <i class="bi bi-filetype-csv"></i>
+        <span>Export Tickets CSV</span>
+      </a>
+      <a href="/portal-admin/reports/?export=users_csv" class="btn btn-sm btn-admsup-secondary d-flex align-items-center gap-2 px-3 py-2">
+        <i class="bi bi-people"></i>
+        <span>Export Users CSV</span>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Top Platform Growth Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="admin-stat-card stat-total">
+      <div>
+        <div class="admin-stat-label">Total Registered Users</div>
+        <div class="admin-stat-number mt-1">{{ metrics.users_total|default:0 }}</div>
+        <small class="text-success fw-semibold">+{{ report.users_30d }} last 30 days</small>
+      </div>
+      <div class="admin-stat-icon"><i class="bi bi-people"></i></div>
+    </div>
+  </div>
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="admin-stat-card stat-progress">
+      <div>
+        <div class="admin-stat-label">Feed Posts Published</div>
+        <div class="admin-stat-number mt-1 text-primary">{{ report.posts_total|default:0 }}</div>
+        <small style="color: var(--admsup-text-muted);">Across main feed</small>
+      </div>
+      <div class="admin-stat-icon"><i class="bi bi-card-text"></i></div>
+    </div>
+  </div>
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="admin-stat-card stat-open">
+      <div>
+        <div class="admin-stat-label">Groups & Pages</div>
+        <div class="admin-stat-number mt-1 text-warning">{{ report.groups_total|add:report.pages_total }}</div>
+        <small style="color: var(--admsup-text-muted);">{{ report.groups_total }} Groups · {{ report.pages_total }} Pages</small>
+      </div>
+      <div class="admin-stat-icon"><i class="bi bi-collection"></i></div>
+    </div>
+  </div>
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="admin-stat-card stat-resolved">
+      <div>
+        <div class="admin-stat-label">Support Messages</div>
+        <div class="admin-stat-number mt-1 text-success">{{ report.messages_total|default:0 }}</div>
+        <small style="color: var(--admsup-text-muted);">Across {{ metrics.tickets_total }} tickets</small>
+      </div>
+      <div class="admin-stat-icon"><i class="bi bi-chat-left-Text"></i></div>
+    </div>
+  </div>
+</div>
+
+<!-- Breakdown Panels -->
+<div class="row g-4">
+  <div class="col-12 col-lg-6">
+    <div class="admin-panel-card h-100">
+      <div class="admin-panel-header">
+        <h6 class="fw-bold mb-0 admsup-heading"><i class="bi bi-pie-chart me-2 text-primary"></i>Support Tickets by Status</h6>
+      </div>
+      <div class="table-responsive">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Count</th>
+              <th class="text-end">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="admsup-pill pill-open">Open</span></td>
+              <td class="fw-bold">{{ metrics.tickets_open }}</td>
+              <td class="text-end"><a href="/portal-admin/support/" class="btn btn-sm btn-admsup-secondary">View</a></td>
+            </tr>
+            <tr>
+              <td><span class="admsup-pill pill-in-progress">In Progress</span></td>
+              <td class="fw-bold">{{ metrics.tickets_in_progress }}</td>
+              <td class="text-end"><a href="/portal-admin/support/" class="btn btn-sm btn-admsup-secondary">View</a></td>
+            </tr>
+            <tr>
+              <td><span class="admsup-pill pill-default">Pending</span></td>
+              <td class="fw-bold">{{ metrics.tickets_pending }}</td>
+              <td class="text-end"><a href="/portal-admin/support/" class="btn btn-sm btn-admsup-secondary">View</a></td>
+            </tr>
+            <tr>
+              <td><span class="admsup-pill pill-resolved">Resolved</span></td>
+              <td class="fw-bold">{{ metrics.tickets_resolved }}</td>
+              <td class="text-end"><a href="/portal-admin/support/" class="btn btn-sm btn-admsup-secondary">View</a></td>
+            </tr>
+            <tr>
+              <td><span class="admsup-pill pill-default">Closed</span></td>
+              <td class="fw-bold">{{ metrics.tickets_closed }}</td>
+              <td class="text-end"><a href="/portal-admin/support/" class="btn btn-sm btn-admsup-secondary">View</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-6">
+    <div class="admin-panel-card h-100">
+      <div class="admin-panel-header">
+        <h6 class="fw-bold mb-0 admsup-heading"><i class="bi bi-exclamation-diamond me-2 text-danger"></i>Support Tickets by Priority / Urgency</h6>
+      </div>
+      <div class="table-responsive">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Urgency Level</th>
+              <th>Tickets</th>
+              <th>Response Target</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="admsup-pill pill-critical">Critical</span></td>
+              <td class="fw-bold">{{ report.urgency_critical }}</td>
+              <td class="small" style="color: var(--admsup-text-muted);">Immediate (&lt; 1 hr)</td>
+            </tr>
+            <tr>
+              <td><span class="admsup-pill pill-open">High</span></td>
+              <td class="fw-bold">{{ report.urgency_high }}</td>
+              <td class="small" style="color: var(--admsup-text-muted);">&lt; 4 hours</td>
+            </tr>
+            <tr>
+              <td><span class="admsup-pill pill-in-progress">Medium</span></td>
+              <td class="fw-bold">{{ report.urgency_medium }}</td>
+              <td class="small" style="color: var(--admsup-text-muted);">&lt; 24 hours</td>
+            </tr>
+            <tr>
+              <td><span class="admsup-pill pill-default">Low</span></td>
+              <td class="fw-bold">{{ report.urgency_low }}</td>
+              <td class="small" style="color: var(--admsup-text-muted);">&lt; 48 hours</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

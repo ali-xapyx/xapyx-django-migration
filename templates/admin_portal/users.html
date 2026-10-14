@@ -1,0 +1,165 @@
+{% extends "admin_portal/base_admin.html" %}
+{% load static %}
+
+{% block title %}Users Directory | XAPYX Admin Portal{% endblock %}
+{% block header_title %}Users Directory{% endblock %}
+
+{% block content %}
+<div class="admsup-page-header">
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div>
+      <h4 class="mb-1 fw-bold admsup-heading"><i class="bi bi-people me-2 text-primary"></i>Registered Users</h4>
+      <p class="mb-0 small" style="color: var(--admsup-text-muted);">Search, inspect, and manage user accounts ({{ total_filtered }} users matched)</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="/portal-admin/reports/?export=users_csv" class="btn btn-sm btn-admsup-secondary d-flex align-items-center gap-2 px-3 py-2">
+        <i class="bi bi-download"></i>
+        <span>Export CSV</span>
+      </a>
+    </div>
+  </div>
+</div>
+
+{% if msg %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+  <i class="bi bi-check-circle-fill me-2"></i>{{ msg }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+{% if err %}
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+  <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ err }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<!-- Filter & Search Bar -->
+<div class="admin-panel-card mb-4 p-3">
+  <form method="get" action="/portal-admin/users/" class="row g-2 align-items-center">
+    <div class="col-12 col-md-6">
+      <div class="input-group">
+        <span class="input-group-text" style="background: var(--admsup-surface-2); border-color: var(--admsup-border); color: var(--admsup-text-muted);">
+          <i class="bi bi-search"></i>
+        </span>
+        <input type="text" name="q" value="{{ search_q }}" class="form-control"
+               style="background: var(--admsup-surface-2); border-color: var(--admsup-border); color: var(--admsup-text);"
+               placeholder="Search by name, @username, email, or user ID...">
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <select name="role" class="form-select" style="background: var(--admsup-surface-2); border-color: var(--admsup-border); color: var(--admsup-text);">
+        <option value="all" {% if role_filter == 'all' %}selected{% endif %}>All Roles</option>
+        <option value="user" {% if role_filter == 'user' %}selected{% endif %}>User</option>
+        <option value="moderator" {% if role_filter == 'moderator' %}selected{% endif %}>Moderator</option>
+        <option value="admin" {% if role_filter == 'admin' %}selected{% endif %}>Admin</option>
+      </select>
+    </div>
+    <div class="col-6 col-md-3 d-flex gap-2">
+      <button type="submit" class="btn btn-primary w-100">Filter</button>
+      {% if search_q or role_filter != 'all' %}
+      <a href="/portal-admin/users/" class="btn btn-admsup-secondary">Reset</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
+
+<!-- Users Table -->
+<div class="admin-panel-card">
+  <div class="table-responsive">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>User</th>
+          <th>Username</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Tickets</th>
+          <th>Joined</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users_list %}
+        <tr>
+          <td class="fw-bold" style="color: var(--admsup-text-muted);">#{{ u.id }}</td>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              {% if u.picture %}
+              <img src="https://s3.eu-west-1.amazonaws.com/xapyx.com-media/uploads/{{ u.picture }}"
+                   alt="{{ u.name }}" class="rounded-circle object-fit-cover flex-shrink-0" width="34" height="34"
+                   style="border: 1px solid var(--admsup-border);"
+                   onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ u.name|urlencode }}&background=3b82f6&color=fff';">
+              {% else %}
+              <img src="https://ui-avatars.com/api/?name={{ u.name|urlencode }}&background=3b82f6&color=fff"
+                   alt="{{ u.name }}" class="rounded-circle flex-shrink-0" width="34" height="34"
+                   style="border: 1px solid var(--admsup-border);">
+              {% endif %}
+              <div>
+                <div class="fw-semibold small" style="color: var(--admsup-text);">{{ u.name }}</div>
+                <div style="font-size: 0.72rem; color: var(--admsup-text-muted);">{{ u.location }}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <span class="admsup-user-pill">@{{ u.username }}</span>
+          </td>
+          <td class="small">{{ u.email }}</td>
+          <td>
+            <form method="post" action="/portal-admin/users/" class="d-inline-flex align-items-center gap-1">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="update_role">
+              <input type="hidden" name="user_id" value="{{ u.id }}">
+              <select name="role" onchange="this.form.submit()" class="form-select form-select-sm py-1"
+                      style="width: 115px; font-size: 0.76rem; background: var(--admsup-surface-2); border-color: var(--admsup-border); color: var(--admsup-text);">
+                <option value="user" {% if u.role == 'user' %}selected{% endif %}>User</option>
+                <option value="moderator" {% if u.role == 'moderator' %}selected{% endif %}>Moderator</option>
+                <option value="admin" {% if u.role == 'admin' %}selected{% endif %}>Admin</option>
+              </select>
+            </form>
+          </td>
+          <td>
+            {% if u.ticket_count > 0 %}
+            <a href="/portal-admin/support/" class="badge text-decoration-none" style="background: rgba(59,130,246,0.15); color: #3b82f6;">
+              {{ u.ticket_count }} ticket(s)
+            </a>
+            {% else %}
+            <span class="small" style="color: var(--admsup-text-muted);">0</span>
+            {% endif %}
+          </td>
+          <td class="small" style="color: var(--admsup-text-muted); white-space: nowrap;">
+            {{ u.created_at|date:"M d, Y" }}
+          </td>
+          <td class="text-end">
+            <a href="/profile/{{ u.username }}/" target="_blank" class="btn btn-sm btn-admsup-secondary" title="View User Profile">
+              <i class="bi bi-box-arrow-up-right"></i>
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8" class="text-center py-5" style="color: var(--admsup-text-muted);">
+            <i class="bi bi-people fs-1 d-block mb-2 opacity-50"></i>
+            No users found matching your search.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if total_pages > 1 %}
+  <div class="p-3 border-top d-flex justify-content-between align-items-center" style="border-color: var(--admsup-border) !important;">
+    <small style="color: var(--admsup-text-muted);">Page {{ page }} of {{ total_pages }}</small>
+    <div class="d-flex gap-2">
+      {% if page > 1 %}
+      <a href="?q={{ search_q|urlencode }}&role={{ role_filter }}&page={{ page|add:'-1' }}" class="btn btn-sm btn-admsup-secondary">Previous</a>
+      {% endif %}
+      {% if page < total_pages %}
+      <a href="?q={{ search_q|urlencode }}&role={{ role_filter }}&page={{ page|add:'1' }}" class="btn btn-sm btn-primary">Next</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

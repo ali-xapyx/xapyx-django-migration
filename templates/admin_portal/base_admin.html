@@ -405,8 +405,8 @@
         </a>
       </li>
 
-      <li class="admin-nav-item">
-        <a href="/portal-admin/dashboard/">
+      <li class="admin-nav-item {% if '/portal-admin/store' in request.path %}active{% endif %}">
+        <a href="/portal-admin/store/">
           <i class="bi bi-shop"></i>
           <span>Store</span>
         </a>
@@ -422,15 +422,15 @@
         </a>
       </li>
 
-      <li class="admin-nav-item">
-        <a href="/portal-admin/dashboard/">
+      <li class="admin-nav-item {% if '/portal-admin/users' in request.path %}active{% endif %}">
+        <a href="/portal-admin/users/">
           <i class="bi bi-people"></i>
           <span>Users</span>
         </a>
       </li>
 
-      <li class="admin-nav-item">
-        <a href="/portal-admin/dashboard/">
+      <li class="admin-nav-item {% if '/portal-admin/settings' in request.path or '/portal-admin/profile' in request.path %}active{% endif %}">
+        <a href="/portal-admin/settings/">
           <i class="bi bi-gear"></i>
           <span>Settings</span>
         </a>
@@ -438,15 +438,15 @@
 
       <li class="admin-nav-divider">Tools</li>
 
-      <li class="admin-nav-item">
-        <a href="/portal-admin/dashboard/">
+      <li class="admin-nav-item {% if '/portal-admin/reports' in request.path %}active{% endif %}">
+        <a href="/portal-admin/reports/">
           <i class="bi bi-graph-up"></i>
           <span>Reports</span>
         </a>
       </li>
 
-      <li class="admin-nav-item">
-        <a href="/portal-admin/dashboard/">
+      <li class="admin-nav-item {% if '/portal-admin/logs' in request.path %}active{% endif %}">
+        <a href="/portal-admin/logs/">
           <i class="bi bi-clipboard-data"></i>
           <span>Logs</span>
         </a>
@@ -474,12 +474,12 @@
         </a>
         <ul class="dropdown-menu dropdown-menu-dark shadow border" style="border-color: rgba(255,255,255,0.1) !important; min-width: 220px;">
           <li>
-            <a class="dropdown-item py-2" href="/portal-admin/dashboard/">
+            <a class="dropdown-item py-2" href="/portal-admin/profile/">
               <i class="bi bi-person me-2" style="color: #3b82f6;"></i> Profile
             </a>
           </li>
           <li>
-            <a class="dropdown-item py-2" href="/portal-admin/dashboard/">
+            <a class="dropdown-item py-2" href="/portal-admin/settings/">
               <i class="bi bi-gear me-2"></i> Settings
             </a>
           </li>
@@ -533,21 +533,21 @@
             <li><h6 class="dropdown-header text-uppercase" style="letter-spacing: 0.5px;">Notifications</h6></li>
             {% if metrics.tickets_critical %}
             <li>
-              <a class="dropdown-item py-2 d-flex align-items-center gap-2" href="#">
+              <a class="dropdown-item py-2 d-flex align-items-center gap-2" href="/portal-admin/support/">
                 <i class="bi bi-exclamation-triangle text-danger"></i>
                 <span>{{ metrics.tickets_critical }} Critical Tickets</span>
               </a>
             </li>
             {% endif %}
             <li>
-              <a class="dropdown-item py-2 d-flex align-items-center gap-2" href="#">
+              <a class="dropdown-item py-2 d-flex align-items-center gap-2" href="/portal-admin/support/">
                 <i class="bi bi-headset text-warning"></i>
                 <span>{{ metrics.tickets_open|default:0 }} Open Tickets</span>
               </a>
             </li>
             <li><hr class="dropdown-divider"></li>
             <li>
-              <a class="dropdown-item py-2 d-flex align-items-center gap-2" href="#">
+              <a class="dropdown-item py-2 d-flex align-items-center gap-2" href="/portal-admin/support/">
                 <i class="bi bi-gear"></i>
                 <span>View All Alerts</span>
               </a>
@@ -566,8 +566,8 @@
           </button>
           <ul class="dropdown-menu dropdown-menu-end" style="min-width: 230px;">
             <li class="dropdown-header">Logged in as <strong>{{ admin_email|default:"admin@xapyx.com" }}</strong></li>
-            <li><a class="dropdown-item py-2" href="/portal-admin/dashboard/"><i class="bi bi-person me-2 text-primary"></i>Profile</a></li>
-            <li><a class="dropdown-item py-2" href="/portal-admin/dashboard/"><i class="bi bi-gear me-2"></i>Settings</a></li>
+            <li><a class="dropdown-item py-2" href="/portal-admin/profile/"><i class="bi bi-person me-2 text-primary"></i>Profile</a></li>
+            <li><a class="dropdown-item py-2" href="/portal-admin/settings/"><i class="bi bi-gear me-2"></i>Settings</a></li>
             <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item text-danger py-2" href="/portal-admin/logout/"><i class="fas fa-sign-out-alt me-2"></i>Sign Out</a></li>
           </ul>

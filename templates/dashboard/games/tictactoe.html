@@ -1,0 +1,95 @@
+{% extends "dashboard/base_dashboard.html" %}
+{% load static %}
+
+{% block title %}Grid Masters: Tic Tac Toe | XAPYX Games{% endblock %}
+
+{% block content %}
+<div id="dashboardContainer">
+  <div class="dashboard-inner">
+    <div class="dashboard-flex games-play-flex">
+      <div class="dashboard-main games-play-main">
+
+        <!-- Game Header / HUD -->
+        <div class="game-hud-header">
+          <div class="d-flex align-items-center gap-3">
+            <a href="{% url 'games' %}" class="game-back-btn" title="Back to Games Hub">
+              <i class="bi bi-arrow-left"></i>
+            </a>
+            <div class="game-hud-title">
+              <i class="bi bi-grid-3x3 text-purple"></i>
+              <span>Grid Masters: Tic Tac Toe</span>
+            </div>
+          </div>
+
+          <div class="game-hud-stats">
+            <div class="game-hud-stat">
+              <i class="bi bi-trophy-fill text-warning"></i>
+              <span>Wins: <strong id="tttWins">0</strong></span>
+            </div>
+            <div class="game-hud-stat">
+              <i class="bi bi-controller text-primary"></i>
+              <span>Mode: <strong id="tttModeDisplay">AI Bot</strong></span>
+            </div>
+            <button type="button" class="game-icon-btn" id="tttFullscreenBtn" title="Toggle Fullscreen">
+              <i class="bi bi-fullscreen" id="tttFullscreenIcon"></i>
+            </button>
+            <button type="button" class="game-icon-btn" id="tttSoundToggleBtn" title="Toggle Sound">
+              <i class="bi bi-volume-up-fill" id="tttSoundIcon"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- TicTacToe Arena Container -->
+        <div class="ttt-arena-container" id="tttArenaContainer">
+          
+          <!-- Mode Selector / Room Bar -->
+          <div class="ttt-mode-bar text-center my-3">
+            <div class="btn-group" role="group">
+              <button type="button" class="btn btn-outline-primary active" id="btnModeAI">Play vs AI</button>
+              <button type="button" class="btn btn-outline-primary" id="btnModeLocal">Pass & Play</button>
+              <button type="button" class="btn btn-outline-primary" id="btnModeOnline">Online Room</button>
+            </div>
+          </div>
+
+          <!-- Status Banner -->
+          <div class="ttt-status-banner text-center my-3" id="tttStatus">
+            Your turn! You are <span class="text-warning fw-bold">X</span>
+          </div>
+
+          <!-- 3x3 Grid Board -->
+          <div class="ttt-board-wrap d-flex justify-content-center my-4">
+            <div class="ttt-grid-board" id="tttGrid">
+              <div class="ttt-cell" data-index="0"></div>
+              <div class="ttt-cell" data-index="1"></div>
+              <div class="ttt-cell" data-index="2"></div>
+              <div class="ttt-cell" data-index="3"></div>
+              <div class="ttt-cell" data-index="4"></div>
+              <div class="ttt-cell" data-index="5"></div>
+              <div class="ttt-cell" data-index="6"></div>
+              <div class="ttt-cell" data-index="7"></div>
+              <div class="ttt-cell" data-index="8"></div>
+            </div>
+          </div>
+
+          <!-- Game Controls -->
+          <div class="ttt-controls text-center my-3">
+            <button type="button" class="btn btn-primary px-4 py-2" id="tttRestartBtn">
+              <i class="bi bi-arrow-repeat me-2"></i>New Match
+            </button>
+          </div>
+
+        </div><!-- /ttt-arena-container -->
+
+      </div><!-- /dashboard-main -->
+
+      <!-- Right Widgets Column -->
+      {% include "dashboard/partials/right_widgets.html" %}
+
+    </div><!-- /dashboard-flex -->
+  </div><!-- /dashboard-inner -->
+</div><!-- /dashboardContainer -->
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/games/tictactoe.js' %}?v=1"></script>
+{% endblock %}

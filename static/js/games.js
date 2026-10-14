@@ -165,12 +165,18 @@
             btn.addEventListener('click', function (e) {
                 e.preventDefault();
                 const gameType = this.dataset.gameType;
+                let routeKey = gameType;
+                if (gameType === '1' || gameType.includes('tic')) routeKey = 'tictactoe';
+                else if (gameType.includes('space') || gameType === '7') routeKey = 'spaceshooter';
+                else if (gameType.includes('love') || gameType === '14') routeKey = 'lovemeter';
+                else if (gameType.includes('catch') || gameType === '15') routeKey = 'catchme';
                 const gameTitle = this.dataset.gameTitle || 'Game';
 
                 const gameRoutes = {
                     'spaceshooter': '/games/spaceshooter/',
                     'lovemeter': '/games/lovemeter/',
-                    'catchme': '/games/catchme/'
+                    'catchme': '/games/catchme/',
+                    'tictactoe': '/games/tictactoe/'
                 };
 
                 // Track play asynchronously
@@ -179,8 +185,8 @@
                     if (countEl) countEl.textContent = newCount.toLocaleString();
                 });
 
-                if (gameRoutes[gameType]) {
-                    window.location.href = gameRoutes[gameType];
+                if (gameRoutes[routeKey]) {
+                    window.location.href = gameRoutes[routeKey];
                 } else {
                     // Multiplayer coming in Phase 3
                     triggerToast(
@@ -199,6 +205,11 @@
                 tabBtns.forEach(b => b.classList.remove('active'));
                 this.classList.add('active');
                 const gameType = this.dataset.gameType;
+                let routeKey = gameType;
+                if (gameType === '1' || gameType.includes('tic')) routeKey = 'tictactoe';
+                else if (gameType.includes('space') || gameType === '7') routeKey = 'spaceshooter';
+                else if (gameType.includes('love') || gameType === '14') routeKey = 'lovemeter';
+                else if (gameType.includes('catch') || gameType === '15') routeKey = 'catchme';
                 loadLeaderboard(gameType);
             });
         });

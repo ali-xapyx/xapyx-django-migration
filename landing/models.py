@@ -98,6 +98,17 @@ class Auth(AbstractBaseUser):
     def get_short_name(self):
         return self.username
 
+    def set_password(self, raw_password):
+        import bcrypt as _bcrypt
+        if raw_password is None:
+            self.set_unusable_password()
+        else:
+            hashed = _bcrypt.hashpw(raw_password.encode('utf-8'), _bcrypt.gensalt(rounds=12)).decode('utf-8')
+            if hashed.startswith('$2b$'):
+                hashed = '$2y$' + hashed[4:]
+            self.password = hashed
+            self._password = raw_password
+
 
 class Shout(models.Model):
     """Maps the existing 'shouts' table 1:1."""
