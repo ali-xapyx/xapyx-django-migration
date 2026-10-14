@@ -892,9 +892,9 @@ function createPostElement(post) {
     if (post.media && post.media.length > 0) {
         mediaHtml = '<div class="post-media-slider" id="slider-' + post.id + '" data-media=\'' + JSON.stringify(post.media) + '\'><div class="slider-container">' +
             post.media.map(function(m, idx) {
-                return '<div class="slider-item ' + (idx === 0 ? 'active' : '') + '" data-index="' + idx + '">' +
+                return '<div class="slider-item ' + (m.type === 'video' ? 'has-video ' : '') + (idx === 0 ? 'active' : '') + '" data-index="' + idx + '">' +
                     (m.type === 'image'
-                        ? '<img src="' + (m.thumbnail_url || m.url) + '" width="800" height="600" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=\'' + m.url + '\'" onclick="openMediaViewerFromPost(' + post.id + ', ' + idx + ')">'
+                        ? '<img src="' + (m.thumbnail_url || m.url) + '" width="800" height="600" loading="lazy" decoding="async" onload="if(this.naturalWidth>=this.naturalHeight)this.classList.add(\'landscape\')" onerror="this.onerror=null;this.src=\'' + m.url + '\'" onclick="openMediaLightbox(\'' + (m.url || '').replace(/'/g, "\\'") + '\')">'
                         : '<video controls preload="metadata" muted playsinline loop autoplay onclick="toggleVideoSound(this, event)"><source src="' + m.url + '" type="' + (m.mime_type || 'video/mp4') + '"></video>') +
                     '</div>';
             }).join('') +
@@ -1562,6 +1562,9 @@ function applyAmbientBackground(media) {
     if (!sliderItem) return;
     var src = '';
     if (media.tagName === 'IMG') {
+        if (media.naturalWidth && media.naturalWidth >= media.naturalHeight) {
+            media.classList.add('landscape');
+        }
         src = media.currentSrc || media.src;
     } else if (media.tagName === 'VIDEO') {
         if (media.poster) {
@@ -1611,3 +1614,39 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, true);
 });
+
+// ============================================================
+// TASK 24 — MEDIA LIGHTBOX
+// ============================================================
+window.openMediaLightbox = function(url) {
+    if (!url) return;
+    var lb = document.getElementById('mediaLightbox');
+    if (!lb) {
+        document.body.insertAdjacentHTML('beforeend',
+            '<div id="mediaLightbox" class="media-lightbox" hidden>'
+            + '<div class="media-lightbox-backdrop"></div>'
+            + '<img id="mediaLightboxImg" src="" alt="">'
+            + '<button type="button" class="media-lightbox-close" aria-label="Close"><i class="fas fa-times"></i></button>'
+            + '</div>');
+        lb = document.getElementById('mediaLightbox');
+        lb.querySelector('.media-lightbox-backdrop').addEventListener('click', closeMediaLightbox);
+        lb.querySelector('.media-lightbox-close').addEventListener('click', closeMediaLightbox);
+        lb.addEventListener('click', function(e) {
+            if (e.target.tagName === 'IMG') closeMediaLightbox();
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && !lb.hidden) closeMediaLightbox();
+        });
+    }
+    document.getElementById('mediaLightboxImg').src = url;
+    lb.hidden = false;
+    document.body.style.overflow = 'hidden';
+};
+
+window.closeMediaLightbox = function() {
+    var lb = document.getElementById('mediaLightbox');
+    if (!lb) return;
+    lb.hidden = true;
+    document.body.style.overflow = '';
+    document.getElementById('mediaLightboxImg').src = '';
+};

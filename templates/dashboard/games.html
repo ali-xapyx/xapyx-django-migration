@@ -3,6 +3,27 @@
 
 {% block title %}Games | XAPYX{% endblock %}
 
+{% block extra_css %}
+<style>
+.game-card-banner {
+  height: 140px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px 12px 0 0;
+}
+.game-card-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.3s ease;
+}
+.game-card:hover .game-card-thumb {
+  transform: scale(1.06);
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div id="dashboardContainer">
   <div class="dashboard-inner">
@@ -61,11 +82,9 @@
 
         <div class="games-grid" id="gamesGrid">
           {% for game in games %}
-          <div class="game-card" data-game-type="{{ game.id }}" data-game-title="{{ game.title }}">
+          <div class="game-card" data-game-type="{{ game.id }}" data-game-title="{{ game.title }}" data-game-url="{{ game.url }}">
             <div class="game-card-banner" style="background: {{ game.gradient }};">
-              <div class="game-card-icon-wrap">
-                <i class="bi {{ game.icon }}"></i>
-              </div>
+              <img src="{{ game.thumbnail }}" alt="{{ game.title }}" class="game-card-thumb" loading="lazy">
               <span class="game-card-badge {{ game.badge_class }}">{{ game.badge }}</span>
             </div>
             <div class="game-card-body">
@@ -77,7 +96,7 @@
                   <span class="plays-count-val" data-game-id="{{ game.id }}">{{ game.plays_count }}</span> plays
                 </span>
               </div>
-              <button type="button" class="btn btn-primary game-play-btn w-100" data-game-type="{{ game.id }}" data-game-title="{{ game.title }}">
+              <button type="button" class="btn btn-primary game-play-btn w-100" data-game-type="{{ game.id }}" data-game-title="{{ game.title }}" data-game-url="{{ game.url }}">
                 <i class="fas fa-play me-2"></i>Play Now
               </button>
             </div>
@@ -97,17 +116,26 @@
               <button type="button" class="games-tab-btn active" data-game-type="spaceshooter">
                 <i class="bi bi-rocket-takeoff me-1"></i> Space Shooter
               </button>
-              <button type="button" class="games-tab-btn" data-game-type="lovemeter">
-                <i class="bi bi-heart me-1"></i> Love Meter
-              </button>
               <button type="button" class="games-tab-btn" data-game-type="tictactoe">
                 <i class="bi bi-grid-3x3 me-1"></i> Tic Tac Toe
               </button>
               <button type="button" class="games-tab-btn" data-game-type="checkers">
-                <i class="bi bi-shield me-1"></i> Checkers
+                <i class="bi bi-dice-5-fill me-1"></i> Checkers
+              </button>
+              <button type="button" class="games-tab-btn" data-game-type="ludo">
+                <i class="bi bi-grid-fill me-1"></i> Ludo
+              </button>
+              <button type="button" class="games-tab-btn" data-game-type="snake">
+                <i class="bi bi-bezier2 me-1"></i> Snake
+              </button>
+              <button type="button" class="games-tab-btn" data-game-type="airhockey">
+                <i class="bi bi-circle-half me-1"></i> Air Hockey
+              </button>
+              <button type="button" class="games-tab-btn" data-game-type="lovemeter">
+                <i class="bi bi-heart me-1"></i> Love Meter
               </button>
               <button type="button" class="games-tab-btn" data-game-type="catchme">
-                <i class="bi bi-stopwatch me-1"></i> Catch Me
+                <i class="bi bi-stopwatch me-1"></i> Catch Me If You Can
               </button>
             </div>
           </div>
@@ -148,5 +176,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/games.js' %}?v=2"></script>
+<script src="{% static 'js/games.js' %}?v=4"></script>
 {% endblock %}

@@ -10326,10 +10326,14 @@ def _roulette_partner_info(user_id):
 @login_required
 def roulette_view(request):
     """GET /roulette/ -- Chat Roulette main page."""
-    return render(request, 'dashboard/roulette.html', {
+    ctx = {
         'active_page': 'roulette',
         'svg_logo': _load_svg_logo(),
-    })
+    }
+    ctx.update(_get_games_right_widgets_context(request))
+    return render(request, 'dashboard/roulette.html', ctx)
+
+chat_roulette_view = roulette_view
 
 
 @login_required
@@ -10597,22 +10601,40 @@ from .models import Game, GameScore
 def _get_game_by_type(game_type):
     gt = str(game_type or '').strip().lower()
     if gt in ('spaceshooter', 'space_shooter', 'space'):
-        return Game.objects.filter(title__iexact='Space Shooter').first()
+        return Game.objects.filter(id=7).first() or Game.objects.filter(title__iexact='Space Shooter').order_by('id').first()
     elif gt in ('lovemeter', 'love_meter', 'love'):
-        return Game.objects.filter(title__iexact='Love Meter').first()
+        return Game.objects.filter(id=14).first() or Game.objects.filter(title__iexact='Love Meter').order_by('id').first()
     elif gt in ('tictactoe', 'ttt'):
-        return Game.objects.filter(models.Q(game_type='tictactoe') | models.Q(title__iexact='Tictactoe')).first()
+        return Game.objects.filter(id=1).first() or Game.objects.filter(models.Q(game_type='tictactoe') | models.Q(title__iexact='Tictactoe') | models.Q(title__iexact='Tic Tac Toe')).order_by('id').first()
     elif gt in ('checkers', 'checker'):
-        return Game.objects.filter(models.Q(game_type='checkers') | models.Q(title__iexact='Checkers')).first()
-    elif gt in ('catchme', 'catchmeifyoucan', 'catch_me'):
-        return Game.objects.filter(title__icontains='Catch Me').first()
+        return Game.objects.filter(id=3).first() or Game.objects.filter(models.Q(game_type='checkers') | models.Q(title__iexact='Checkers')).order_by('id').first()
+    elif gt in ('ludo',):
+        return Game.objects.filter(id=11).first() or Game.objects.filter(title__iexact='Ludo').order_by('id').first()
+    elif gt in ('catchme', 'catchmeifyoucan', 'catch_me', 'catch'):
+        return Game.objects.filter(id=15).first() or Game.objects.filter(title__icontains='Catch Me').order_by('id').first()
+    elif gt in ('snake',):
+        g = Game.objects.filter(title__iexact='Snake').order_by('id').first()
+        if not g:
+            creator = Auth.objects.filter(id=334).first() or Auth.objects.first()
+            try:
+                g = Game.objects.create(title='Snake', game_type='tictactoe', creator=creator, plays_count=0)
+            except Exception:
+                g = Game.objects.create(title='Snake', game_type='tictactoe', creator_id=334, plays_count=0)
+        return g
+    elif gt in ('airhockey', 'air_hockey', 'hockey'):
+        g = Game.objects.filter(title__iexact='Air Hockey').order_by('id').first()
+        if not g:
+            creator = Auth.objects.filter(id=334).first() or Auth.objects.first()
+            try:
+                g = Game.objects.create(title='Air Hockey', game_type='tictactoe', creator=creator, plays_count=0)
+            except Exception:
+                g = Game.objects.create(title='Air Hockey', game_type='tictactoe', creator_id=334, plays_count=0)
+        return g
     return None
 
 
-@login_required
-def games_view(request):
-    """Renders the main Games Hub page."""
-    games_config = [
+def _get_games_catalog():
+    return [
         {
             'id': 'spaceshooter',
             'title': 'Space Shooter',
@@ -10622,7 +10644,68 @@ def games_view(request):
             'gradient': 'linear-gradient(135deg, #1e3c72, #2a5298)',
             'description': 'Shoot down enemy ships, dodge attacks, and survive as long as possible! Addictive arcade action with increasing difficulty.',
             'url': '/games/spaceshooter/',
+            'thumbnail': '/static/images/games/spaceshooter.svg',
             'plays_count': Game.objects.filter(title__iexact='Space Shooter').aggregate(t=models.Sum('plays_count'))['t'] or 0
+        },
+        {
+            'id': 'tictactoe',
+            'title': 'Tic Tac Toe',
+            'badge': 'Live · Multiplayer',
+            'badge_class': 'multiplayer',
+            'icon': 'bi-grid-3x3',
+            'gradient': 'linear-gradient(135deg, #8e2de2, #4a00e0)',
+            'description': 'Play against friends in real-time! Create a game room, share the link or invite friends to challenge anyone instantly.',
+            'url': '/games/tictactoe/',
+            'thumbnail': '/static/images/games/tictactoe.svg',
+            'plays_count': Game.objects.filter(models.Q(game_type='tictactoe') | models.Q(title__iexact='Tictactoe') | models.Q(title__iexact='Tic Tac Toe')).aggregate(t=models.Sum('plays_count'))['t'] or 0
+        },
+        {
+            'id': 'checkers',
+            'title': 'Checkers',
+            'badge': 'Live · Multiplayer',
+            'badge_class': 'multiplayer',
+            'icon': 'bi-dice-5-fill',
+            'gradient': 'linear-gradient(135deg, #e52d27, #b31217)',
+            'description': 'Classic 8x8 draughts strategy! Jump opponent pieces, crown your kings, and play live against friends or challenging AI.',
+            'url': '/games/checkers/',
+            'thumbnail': '/static/images/games/checkers.svg',
+            'plays_count': Game.objects.filter(models.Q(game_type='checkers') | models.Q(title__iexact='Checkers')).aggregate(t=models.Sum('plays_count'))['t'] or 0
+        },
+        {
+            'id': 'ludo',
+            'title': 'Ludo',
+            'badge': 'Board · Classic',
+            'badge_class': 'board',
+            'icon': 'bi-grid-fill',
+            'gradient': 'linear-gradient(135deg, #11998e, #38ef7d)',
+            'description': 'The timeless 4-player board game! Roll the dice, race your tokens home, and knock opponents back to start.',
+            'url': '/games/ludo/',
+            'thumbnail': '/static/images/games/ludo.svg',
+            'plays_count': Game.objects.filter(title__iexact='Ludo').aggregate(t=models.Sum('plays_count'))['t'] or 0
+        },
+        {
+            'id': 'snake',
+            'title': 'Snake',
+            'badge': 'Arcade · Classic',
+            'badge_class': 'arcade',
+            'icon': 'bi-bezier2',
+            'gradient': 'linear-gradient(135deg, #00b09b, #96c93d)',
+            'description': 'Navigate the retro grid, eat energy apples to grow longer, and test your reflexes without crashing into walls or yourself.',
+            'url': '/games/snake/',
+            'thumbnail': '/static/images/games/snake.svg',
+            'plays_count': Game.objects.filter(title__iexact='Snake').aggregate(t=models.Sum('plays_count'))['t'] or 0
+        },
+        {
+            'id': 'airhockey',
+            'title': 'Air Hockey',
+            'badge': 'Arcade · 2 Player',
+            'badge_class': 'arcade',
+            'icon': 'bi-circle-half',
+            'gradient': 'linear-gradient(135deg, #00c6ff, #0072ff)',
+            'description': 'High-octane neon table arcade! Slide your mallet, deflect dynamic bank shots, and blast the puck past your opponent.',
+            'url': '/games/airhockey/',
+            'thumbnail': '/static/images/games/airhockey.svg',
+            'plays_count': Game.objects.filter(title__iexact='Air Hockey').aggregate(t=models.Sum('plays_count'))['t'] or 0
         },
         {
             'id': 'lovemeter',
@@ -10633,18 +10716,8 @@ def games_view(request):
             'gradient': 'linear-gradient(135deg, #ff416c, #ff4b2b)',
             'description': 'Calculate your love compatibility! Enter two names and see your love percentage with beautiful animations.',
             'url': '/games/lovemeter/',
+            'thumbnail': '/static/images/games/lovemeter.svg',
             'plays_count': Game.objects.filter(title__iexact='Love Meter').aggregate(t=models.Sum('plays_count'))['t'] or 0
-        },
-        {
-            'id': 'tictactoe',
-            'title': 'Online Tic Tac Toe',
-            'badge': 'Live · Multiplayer',
-            'badge_class': 'multiplayer',
-            'icon': 'bi-grid-3x3',
-            'gradient': 'linear-gradient(135deg, #8e2de2, #4a00e0)',
-            'description': 'Play against friends in real-time! Create a game room, share the link or invite friends to challenge anyone instantly.',
-            'url': '/games/tictactoe/',
-            'plays_count': Game.objects.filter(models.Q(game_type='tictactoe') | models.Q(title__iexact='Tictactoe')).aggregate(t=models.Sum('plays_count'))['t'] or 0
         },
         {
             'id': 'catchme',
@@ -10655,10 +10728,16 @@ def games_view(request):
             'gradient': 'linear-gradient(135deg, #f7971e, #ffd200)',
             'description': 'Test your reflexes! Stop the timer exactly at the random target time. Perfect your timing!',
             'url': '/games/catchme/',
+            'thumbnail': '/static/images/games/catchme.svg',
             'plays_count': Game.objects.filter(title__icontains='Catch Me').aggregate(t=models.Sum('plays_count'))['t'] or 0
         }
     ]
 
+
+@login_required
+def games_view(request):
+    """Renders the main Games Hub page."""
+    games_config = _get_games_catalog()
     total_plays = sum(g['plays_count'] for g in games_config)
     recent_scores = GameScore.objects.filter(user=request.user).select_related('game').order_by('-created_at')[:5]
 
@@ -10761,6 +10840,7 @@ def _get_games_right_widgets_context(request):
             })
 
     return {
+        'svg_logo': _load_svg_logo(),
         'your_stats': your_stats,
         'top_players': top_players,
         'recent_friend_activity': recent_friend_activity,
@@ -10803,53 +10883,7 @@ def catch_view(request):
 @login_required
 def api_games_hub(request):
     """API: Returns game directory, play counts, total platform plays, and recent user scores."""
-    games_config = [
-        {
-            'id': 'spaceshooter',
-            'title': 'Space Shooter',
-            'badge': 'Arcade',
-            'badge_class': 'arcade',
-            'icon': 'bi-rocket-takeoff-fill',
-            'gradient': 'linear-gradient(135deg, #1e3c72, #2a5298)',
-            'description': 'Shoot down enemy ships, dodge attacks, and survive as long as possible! Addictive arcade action with increasing difficulty.',
-            'url': '/games/spaceshooter/',
-            'plays_count': Game.objects.filter(title__iexact='Space Shooter').aggregate(t=models.Sum('plays_count'))['t'] or 0
-        },
-        {
-            'id': 'lovemeter',
-            'title': 'Love Meter',
-            'badge': 'Social',
-            'badge_class': 'social',
-            'icon': 'bi-heart-fill',
-            'gradient': 'linear-gradient(135deg, #ff416c, #ff4b2b)',
-            'description': 'Calculate your love compatibility! Enter two names and see your love percentage with beautiful animations.',
-            'url': '/games/lovemeter/',
-            'plays_count': Game.objects.filter(title__iexact='Love Meter').aggregate(t=models.Sum('plays_count'))['t'] or 0
-        },
-        {
-            'id': 'tictactoe',
-            'title': 'Online Tic Tac Toe',
-            'badge': 'Live · Multiplayer',
-            'badge_class': 'multiplayer',
-            'icon': 'bi-grid-3x3',
-            'gradient': 'linear-gradient(135deg, #8e2de2, #4a00e0)',
-            'description': 'Play against friends in real-time! Create a game room, share the link or invite friends to challenge anyone instantly.',
-            'url': '/games/tictactoe/',
-            'plays_count': Game.objects.filter(models.Q(game_type='tictactoe') | models.Q(title__iexact='Tictactoe')).aggregate(t=models.Sum('plays_count'))['t'] or 0
-        },
-        {
-            'id': 'catchme',
-            'title': 'Catch Me If You Can',
-            'badge': 'Reflex',
-            'badge_class': 'reflex',
-            'icon': 'bi-stopwatch',
-            'gradient': 'linear-gradient(135deg, #f7971e, #ffd200)',
-            'description': 'Test your reflexes! Stop the timer exactly at the random target time. Perfect your timing!',
-            'url': '/games/catchme/',
-            'plays_count': Game.objects.filter(title__icontains='Catch Me').aggregate(t=models.Sum('plays_count'))['t'] or 0
-        }
-    ]
-
+    games_config = _get_games_catalog()
     total_plays = sum(g['plays_count'] for g in games_config)
     recent_scores_qs = GameScore.objects.filter(user=request.user).select_related('game').order_by('-created_at')[:6]
     recent_scores = []
@@ -10883,9 +10917,15 @@ def api_games_leaderboard(request):
     elif game_type in ('lovemeter', 'love_meter', 'love'):
         q_filter = models.Q(game__title__iexact='Love Meter') | models.Q(game__game_type='lovemeter')
     elif game_type in ('tictactoe', 'ttt'):
-        q_filter = models.Q(game__game_type='tictactoe') | models.Q(game__title__iexact='Tictactoe')
+        q_filter = models.Q(game__game_type='tictactoe') | models.Q(game__title__iexact='Tictactoe') | models.Q(game__title__iexact='Tic Tac Toe')
     elif game_type in ('checkers', 'checker'):
         q_filter = models.Q(game__game_type='checkers') | models.Q(game__title__iexact='Checkers')
+    elif game_type in ('ludo',):
+        q_filter = models.Q(game__title__iexact='Ludo') | models.Q(game__game_type='ludo')
+    elif game_type in ('snake',):
+        q_filter = models.Q(game__title__iexact='Snake') | models.Q(game__game_type='snake')
+    elif game_type in ('airhockey', 'air_hockey', 'hockey'):
+        q_filter = models.Q(game__title__iexact='Air Hockey') | models.Q(game__game_type='airhockey')
     elif game_type in ('catchme', 'catchmeifyoucan', 'catch_me', 'catch'):
         q_filter = models.Q(game__title__icontains='Catch Me') | models.Q(game__game_type='catchme')
     else:
@@ -10937,7 +10977,15 @@ def api_games_track_play(request):
     elif game_type in ('lovemeter', 'love_meter', 'love'):
         tot = Game.objects.filter(title__iexact='Love Meter').aggregate(t=models.Sum('plays_count'))['t'] or 0
     elif game_type in ('tictactoe', 'ttt'):
-        tot = Game.objects.filter(models.Q(game_type='tictactoe') | models.Q(title__iexact='Tictactoe')).aggregate(t=models.Sum('plays_count'))['t'] or 0
+        tot = Game.objects.filter(models.Q(game_type='tictactoe') | models.Q(title__iexact='Tictactoe') | models.Q(title__iexact='Tic Tac Toe')).aggregate(t=models.Sum('plays_count'))['t'] or 0
+    elif game_type in ('checkers', 'checker'):
+        tot = Game.objects.filter(models.Q(game_type='checkers') | models.Q(title__iexact='Checkers')).aggregate(t=models.Sum('plays_count'))['t'] or 0
+    elif game_type in ('ludo',):
+        tot = Game.objects.filter(title__iexact='Ludo').aggregate(t=models.Sum('plays_count'))['t'] or 0
+    elif game_type in ('snake',):
+        tot = Game.objects.filter(title__iexact='Snake').aggregate(t=models.Sum('plays_count'))['t'] or 0
+    elif game_type in ('airhockey', 'air_hockey', 'hockey'):
+        tot = Game.objects.filter(title__iexact='Air Hockey').aggregate(t=models.Sum('plays_count'))['t'] or 0
     elif game_type in ('catchme', 'catchmeifyoucan', 'catch_me', 'catch'):
         tot = Game.objects.filter(title__icontains='Catch Me').aggregate(t=models.Sum('plays_count'))['t'] or 0
     else:
@@ -11007,13 +11055,574 @@ def api_games_save_score(request):
 def tictactoe_view(request):
     ctx = {
         'active_page': 'games',
-        'game_title': 'Online Tic Tac Toe',
+        'game_title': 'Tic Tac Toe',
+        'svg_logo': _load_svg_logo(),
     }
     ctx.update(_get_games_right_widgets_context(request))
     return render(request, 'dashboard/games/tictactoe.html', ctx)
 
 
+@login_required
+def snake_view(request):
+    """Renders Snake classic arcade game."""
+    ctx = {
+        'active_page': 'games',
+        'game_title': 'Snake',
+        'svg_logo': _load_svg_logo(),
+    }
+    ctx.update(_get_games_right_widgets_context(request))
+    return render(request, 'dashboard/games/snake.html', ctx)
+
+
+@login_required
+def airhockey_view(request):
+    """Renders Air Hockey arcade game."""
+    ctx = {
+        'active_page': 'games',
+        'game_title': 'Air Hockey',
+        'svg_logo': _load_svg_logo(),
+    }
+    ctx.update(_get_games_right_widgets_context(request))
+    return render(request, 'dashboard/games/airhockey.html', ctx)
+
+
+@login_required
+def checkers_view(request):
+    """Renders Checkers online & local multiplayer game."""
+    ctx = {
+        'active_page': 'games',
+        'game_title': 'Checkers',
+        'svg_logo': _load_svg_logo(),
+    }
+    ctx.update(_get_games_right_widgets_context(request))
+    return render(request, 'dashboard/games/checkers.html', ctx)
+
+
+@login_required
+def ludo_view(request):
+    """Renders Ludo classic board game."""
+    ctx = {
+        'active_page': 'games',
+        'game_title': 'Ludo',
+        'svg_logo': _load_svg_logo(),
+    }
+    ctx.update(_get_games_right_widgets_context(request))
+    return render(request, 'dashboard/games/ludo.html', ctx)
+
+
 @csrf_exempt
 @login_required
 def api_tictactoe_room(request):
-    return JsonResponse({'success': True, 'message': 'TicTacToe API ready'})
+    """
+    Redis-backed Ephemeral Matchmaking & Turn-based Room API for Tic Tac Toe.
+    Zero DB migration: uses Django Redis cache with TTL 600s.
+    """
+    from django.core.cache import cache
+
+    TTL = 600
+    WINNING_LINES = [
+        [0, 1, 2], [3, 4, 5], [6, 7, 8],  # Rows
+        [0, 3, 6], [1, 4, 7], [2, 5, 8],  # Columns
+        [0, 4, 8], [2, 4, 6]              # Diagonals
+    ]
+
+    username = request.user.username
+
+    def get_symbol(room):
+        if not room:
+            return None
+        if username == room.get('player_x'):
+            return 'X'
+        elif username == room.get('player_o'):
+            return 'O'
+        return None
+
+    if request.method == 'GET':
+        code = str(request.GET.get('room_code', '')).strip().upper()
+        if not code:
+            return JsonResponse({'success': False, 'error': 'room_code parameter required'}, status=400)
+
+        room = cache.get(f"ttt_room_{code}")
+        if not room:
+            return JsonResponse({'success': False, 'error': 'Room not found or expired'}, status=404)
+
+        return JsonResponse({
+            'success': True,
+            'room': room,
+            'my_symbol': get_symbol(room)
+        })
+
+    elif request.method == 'POST':
+        try:
+            data = json.loads(request.body) if request.body else {}
+        except Exception:
+            data = request.POST.dict()
+
+        action = str(data.get('action', '')).strip().lower()
+
+        # -----------------------------
+        # 1. CREATE ROOM
+        # -----------------------------
+        if action == 'create':
+            import uuid
+            code = uuid.uuid4().hex[:6].upper()
+            room = {
+                'room_code': code,
+                'player_x': username,
+                'player_o': None,
+                'board': [''] * 9,
+                'turn': 'X',
+                'status': 'waiting',
+                'winner': None,
+                'winning_line': [],
+                'scored': False
+            }
+            cache.set(f"ttt_room_{code}", room, TTL)
+            return JsonResponse({
+                'success': True,
+                'room': room,
+                'my_symbol': 'X'
+            })
+
+        # -----------------------------
+        # 2. QUICK MATCH
+        # -----------------------------
+        elif action == 'quick_match':
+            open_rooms = cache.get('ttt_open_rooms') or []
+            matched_code = None
+            valid_open_rooms = []
+
+            for r_code in open_rooms:
+                r_state = cache.get(f"ttt_room_{r_code}")
+                if r_state and r_state.get('status') == 'waiting':
+                    if r_state.get('player_x') != username and not matched_code:
+                        matched_code = r_code
+                    else:
+                        valid_open_rooms.append(r_code)
+
+            if matched_code:
+                room = cache.get(f"ttt_room_{matched_code}")
+                room['player_o'] = username
+                room['status'] = 'playing'
+                cache.set(f"ttt_room_{matched_code}", room, TTL)
+                cache.set('ttt_open_rooms', valid_open_rooms, TTL)
+                return JsonResponse({
+                    'success': True,
+                    'room': room,
+                    'my_symbol': 'O'
+                })
+            else:
+                import uuid
+                code = uuid.uuid4().hex[:6].upper()
+                room = {
+                    'room_code': code,
+                    'player_x': username,
+                    'player_o': None,
+                    'board': [''] * 9,
+                    'turn': 'X',
+                    'status': 'waiting',
+                    'winner': None,
+                    'winning_line': [],
+                    'scored': False
+                }
+                cache.set(f"ttt_room_{code}", room, TTL)
+                valid_open_rooms.append(code)
+                cache.set('ttt_open_rooms', valid_open_rooms, TTL)
+                return JsonResponse({
+                    'success': True,
+                    'room': room,
+                    'my_symbol': 'X'
+                })
+
+        # -----------------------------
+        # 3. JOIN ROOM
+        # -----------------------------
+        elif action == 'join':
+            code = str(data.get('room_code', '')).strip().upper()
+            if not code:
+                return JsonResponse({'success': False, 'error': 'Room code required'}, status=400)
+
+            room = cache.get(f"ttt_room_{code}")
+            if not room:
+                return JsonResponse({'success': False, 'error': 'Room not found or expired'}, status=404)
+
+            if room['status'] == 'waiting':
+                if username == room.get('player_x'):
+                    my_symbol = 'X'
+                else:
+                    room['player_o'] = username
+                    room['status'] = 'playing'
+                    open_rooms = cache.get('ttt_open_rooms') or []
+                    if code in open_rooms:
+                        open_rooms = [c for c in open_rooms if c != code]
+                        cache.set('ttt_open_rooms', open_rooms, TTL)
+                    cache.set(f"ttt_room_{code}", room, TTL)
+                    my_symbol = 'O'
+                return JsonResponse({
+                    'success': True,
+                    'room': room,
+                    'my_symbol': my_symbol
+                })
+            elif room.get('player_x') == username or room.get('player_o') == username:
+                return JsonResponse({
+                    'success': True,
+                    'room': room,
+                    'my_symbol': get_symbol(room)
+                })
+            else:
+                return JsonResponse({'success': False, 'error': 'Room is already full or finished'}, status=400)
+
+        # -----------------------------
+        # 4. MOVE
+        # -----------------------------
+        elif action == 'move':
+            code = str(data.get('room_code', '')).strip().upper()
+            try:
+                index = int(data.get('index', -1))
+            except (ValueError, TypeError):
+                index = -1
+
+            room = cache.get(f"ttt_room_{code}")
+            if not room:
+                return JsonResponse({'success': False, 'error': 'Room not found'}, status=404)
+
+            if room.get('status') != 'playing':
+                return JsonResponse({'success': False, 'error': 'Game is not in active playing status'}, status=400)
+
+            current_turn = room.get('turn', 'X')
+            expected_user = room.get('player_x') if current_turn == 'X' else room.get('player_o')
+            if username != expected_user:
+                return JsonResponse({'success': False, 'error': f"Not your turn! It's {current_turn}'s turn."}, status=403)
+
+            if index < 0 or index > 8 or room['board'][index] != '':
+                return JsonResponse({'success': False, 'error': 'Invalid cell or spot already taken'}, status=400)
+
+            # Place move
+            room['board'][index] = current_turn
+
+            # Check win condition
+            has_won = False
+            for line in WINNING_LINES:
+                if room['board'][line[0]] == current_turn and room['board'][line[1]] == current_turn and room['board'][line[2]] == current_turn:
+                    has_won = True
+                    room['status'] = 'finished'
+                    room['winner'] = current_turn
+                    room['winning_line'] = line
+                    break
+
+            if has_won:
+                if not room.get('scored'):
+                    room['scored'] = True
+                    try:
+                        game_obj = _get_game_by_type('tictactoe')
+                        if game_obj:
+                            Game.objects.filter(id=game_obj.id).update(plays_count=models.F('plays_count') + 1)
+                            winner_uname = room['player_x'] if current_turn == 'X' else room['player_o']
+                            w_user = Auth.objects.filter(username=winner_uname).first()
+                            if w_user:
+                                moves_count = sum(1 for c in room['board'] if c != '')
+                                GameScore.objects.create(
+                                    game=game_obj,
+                                    user=w_user,
+                                    score=100,
+                                    winner=current_turn,
+                                    moves=moves_count,
+                                    duration=0
+                                )
+                    except Exception as e:
+                        import logging
+                        logging.getLogger(__name__).error(f"Error saving tictactoe GameScore: {e}")
+            elif all(c != '' for c in room['board']):
+                room['status'] = 'finished'
+                room['winner'] = 'DRAW'
+                room['winning_line'] = []
+            else:
+                room['turn'] = 'O' if current_turn == 'X' else 'X'
+
+            cache.set(f"ttt_room_{code}", room, TTL)
+            return JsonResponse({
+                'success': True,
+                'room': room,
+                'my_symbol': get_symbol(room)
+            })
+
+        # -----------------------------
+        # 5. REMATCH
+        # -----------------------------
+        elif action == 'rematch':
+            code = str(data.get('room_code', '')).strip().upper()
+            room = cache.get(f"ttt_room_{code}")
+            if not room:
+                return JsonResponse({'success': False, 'error': 'Room not found'}, status=404)
+
+            if username != room.get('player_x') and username != room.get('player_o'):
+                return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+
+            room['board'] = [''] * 9
+            room['turn'] = 'X'
+            room['winner'] = None
+            room['winning_line'] = []
+            room['status'] = 'playing' if (room.get('player_x') and room.get('player_o')) else 'waiting'
+            room['scored'] = False
+
+            cache.set(f"ttt_room_{code}", room, TTL)
+            return JsonResponse({
+                'success': True,
+                'room': room,
+                'my_symbol': get_symbol(room)
+            })
+
+        return JsonResponse({'success': False, 'error': f"Unknown action: {action}"}, status=400)
+
+    return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+
+
+@csrf_exempt
+@login_required
+def api_checkers_room(request):
+    """
+    Redis-backed Ephemeral Matchmaking & Turn-based Room API for Checkers.
+    Zero DB migration: uses Django Redis cache with TTL 600s.
+    """
+    from django.core.cache import cache
+
+    TTL = 600
+    username = request.user.username
+
+    def get_initial_board():
+        # 8x8 checkers board: 'b' for black, 'r' for red, '' for empty
+        return [
+            ['' if (r + c) % 2 == 0 else ('b' if r < 3 else ('r' if r > 4 else '')) for c in range(8)]
+            for r in range(8)
+        ]
+
+    def get_color(room):
+        if not room:
+            return None
+        if username == room.get('player_red'):
+            return 'red'
+        elif username == room.get('player_black'):
+            return 'black'
+        return None
+
+    if request.method == 'GET':
+        code = str(request.GET.get('room_code', '')).strip().upper()
+        if not code:
+            return JsonResponse({'success': False, 'error': 'room_code parameter required'}, status=400)
+
+        room = cache.get(f"chk_room_{code}")
+        if not room:
+            return JsonResponse({'success': False, 'error': 'Room not found or expired'}, status=404)
+
+        return JsonResponse({
+            'success': True,
+            'room': room,
+            'my_color': get_color(room)
+        })
+
+    elif request.method == 'POST':
+        try:
+            data = json.loads(request.body) if request.body else {}
+        except Exception:
+            data = request.POST.dict()
+
+        action = str(data.get('action', '')).strip().lower()
+
+        # -----------------------------
+        # 1. CREATE ROOM
+        # -----------------------------
+        if action == 'create':
+            import uuid
+            code = uuid.uuid4().hex[:6].upper()
+            room = {
+                'room_code': code,
+                'player_red': username,
+                'player_black': None,
+                'board': get_initial_board(),
+                'turn': 'red',
+                'status': 'waiting',
+                'winner': None,
+                'scored': False
+            }
+            cache.set(f"chk_room_{code}", room, TTL)
+            return JsonResponse({
+                'success': True,
+                'room': room,
+                'my_color': 'red'
+            })
+
+        # -----------------------------
+        # 2. QUICK MATCH
+        # -----------------------------
+        elif action == 'quick_match':
+            open_rooms = cache.get('chk_open_rooms') or []
+            matched_code = None
+            valid_open_rooms = []
+
+            for r_code in open_rooms:
+                r_state = cache.get(f"chk_room_{r_code}")
+                if r_state and r_state.get('status') == 'waiting':
+                    if r_state.get('player_red') != username and not matched_code:
+                        matched_code = r_code
+                    else:
+                        valid_open_rooms.append(r_code)
+
+            if matched_code:
+                room = cache.get(f"chk_room_{matched_code}")
+                room['player_black'] = username
+                room['status'] = 'playing'
+                cache.set(f"chk_room_{matched_code}", room, TTL)
+                cache.set('chk_open_rooms', valid_open_rooms, TTL)
+                return JsonResponse({
+                    'success': True,
+                    'room': room,
+                    'my_color': 'black'
+                })
+            else:
+                import uuid
+                code = uuid.uuid4().hex[:6].upper()
+                room = {
+                    'room_code': code,
+                    'player_red': username,
+                    'player_black': None,
+                    'board': get_initial_board(),
+                    'turn': 'red',
+                    'status': 'waiting',
+                    'winner': None,
+                    'scored': False
+                }
+                cache.set(f"chk_room_{code}", room, TTL)
+                valid_open_rooms.append(code)
+                cache.set('chk_open_rooms', valid_open_rooms, TTL)
+                return JsonResponse({
+                    'success': True,
+                    'room': room,
+                    'my_color': 'red'
+                })
+
+        # -----------------------------
+        # 3. JOIN ROOM
+        # -----------------------------
+        elif action == 'join':
+            code = str(data.get('room_code', '')).strip().upper()
+            if not code:
+                return JsonResponse({'success': False, 'error': 'Room code required'}, status=400)
+
+            room = cache.get(f"chk_room_{code}")
+            if not room:
+                return JsonResponse({'success': False, 'error': 'Room not found or expired'}, status=404)
+
+            if room['status'] == 'waiting':
+                if username == room.get('player_red'):
+                    my_color = 'red'
+                else:
+                    room['player_black'] = username
+                    room['status'] = 'playing'
+                    open_rooms = cache.get('chk_open_rooms') or []
+                    if code in open_rooms:
+                        open_rooms = [c for c in open_rooms if c != code]
+                        cache.set('chk_open_rooms', open_rooms, TTL)
+                    cache.set(f"chk_room_{code}", room, TTL)
+                    my_color = 'black'
+                return JsonResponse({
+                    'success': True,
+                    'room': room,
+                    'my_color': my_color
+                })
+            elif room.get('player_red') == username or room.get('player_black') == username:
+                return JsonResponse({
+                    'success': True,
+                    'room': room,
+                    'my_color': get_color(room)
+                })
+            else:
+                return JsonResponse({'success': False, 'error': 'Room is already full or finished'}, status=400)
+
+        # -----------------------------
+        # 4. MOVE
+        # -----------------------------
+        elif action == 'move':
+            code = str(data.get('room_code', '')).strip().upper()
+            room = cache.get(f"chk_room_{code}")
+            if not room:
+                return JsonResponse({'success': False, 'error': 'Room not found'}, status=404)
+
+            if room.get('status') != 'playing':
+                return JsonResponse({'success': False, 'error': 'Game is not in active playing status'}, status=400)
+
+            current_turn = room.get('turn', 'red')
+            expected_user = room.get('player_red') if current_turn == 'red' else room.get('player_black')
+            if username != expected_user:
+                return JsonResponse({'success': False, 'error': f"Not your turn! It's {current_turn}'s turn."}, status=403)
+
+            # Accept updated board if client provides it
+            if 'board' in data:
+                room['board'] = data['board']
+
+            # Update next turn
+            next_turn = data.get('next_turn')
+            if not next_turn:
+                next_turn = 'black' if current_turn == 'red' else 'red'
+            room['turn'] = next_turn
+
+            # Handle winner
+            winner = data.get('winner')
+            if winner:
+                room['status'] = 'finished'
+                room['winner'] = winner
+                if not room.get('scored'):
+                    room['scored'] = True
+                    try:
+                        game_obj = _get_game_by_type('checkers')
+                        if game_obj:
+                            Game.objects.filter(id=game_obj.id).update(plays_count=models.F('plays_count') + 1)
+                            winner_uname = room['player_red'] if str(winner).lower() in ('r', 'red') else room['player_black']
+                            w_user = Auth.objects.filter(username=winner_uname).first()
+                            if w_user:
+                                GameScore.objects.create(
+                                    game=game_obj,
+                                    user=w_user,
+                                    score=100,
+                                    winner=str(winner),
+                                    moves=int(data.get('moves', 0)),
+                                    duration=int(data.get('duration', 0))
+                                )
+                    except Exception as e:
+                        import logging
+                        logging.getLogger(__name__).error(f"Error saving checkers GameScore: {e}")
+
+            cache.set(f"chk_room_{code}", room, TTL)
+            return JsonResponse({
+                'success': True,
+                'room': room,
+                'my_color': get_color(room)
+            })
+
+        # -----------------------------
+        # 5. REMATCH
+        # -----------------------------
+        elif action == 'rematch':
+            code = str(data.get('room_code', '')).strip().upper()
+            room = cache.get(f"chk_room_{code}")
+            if not room:
+                return JsonResponse({'success': False, 'error': 'Room not found'}, status=404)
+
+            if username != room.get('player_red') and username != room.get('player_black'):
+                return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+
+            room['board'] = get_initial_board()
+            room['turn'] = 'red'
+            room['winner'] = None
+            room['status'] = 'playing' if (room.get('player_red') and room.get('player_black')) else 'waiting'
+            room['scored'] = False
+
+            cache.set(f"chk_room_{code}", room, TTL)
+            return JsonResponse({
+                'success': True,
+                'room': room,
+                'my_color': get_color(room)
+            })
+
+        return JsonResponse({'success': False, 'error': f"Unknown action: {action}"}, status=400)
+
+    return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)

@@ -35,6 +35,38 @@
     let lmResultSection, lmProgressFill, lmResultMessage, lmResultDesc;
     let lmPercentageDisplay, lmBigHeart;
     let lmHistoryList, lmTotalCalcSpan;
+    let soundEnabled = localStorage.getItem('lovemeter_sound') !== 'false';
+    let audioCtx = null;
+    function getAudioContext() {
+        if (!audioCtx) {
+            const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtxClass) audioCtx = new AudioCtxClass();
+        }
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        return audioCtx;
+    }
+
+    function playLoveChime(isHigh = false) {
+        if (!soundEnabled) return;
+        try {
+            const ac = getAudioContext();
+            if (!ac) return;
+            const freqs = isHigh ? [523.25, 659.25, 783.99, 1046.50] : [392.00, 523.25, 659.25];
+            freqs.forEach((freq, idx) => {
+                const osc = ac.createOscillator();
+                const gain = ac.createGain();
+                osc.connect(gain);
+                gain.connect(ac.destination);
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, ac.currentTime + idx * 0.08);
+                gain.gain.setValueAtTime(0.1, ac.currentTime + idx * 0.08);
+                gain.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + idx * 0.08 + 0.35);
+                osc.start(ac.currentTime + idx * 0.08);
+                osc.stop(ac.currentTime + idx * 0.08 + 0.38);
+            });
+        } catch (e) {}
+    }
+
 
     function loadSavedData() {
         try {
@@ -206,6 +238,7 @@
     }
 
     function showResult(percentage) {
+        playLoveChime(percentage >= 70);
         const msg = getLoveMessage(percentage);
 
         lmResultSection.style.display = 'block';
@@ -322,6 +355,39 @@
         if (lmCalcBtn) lmCalcBtn.addEventListener('click', doCalculate);
         if (lmRandomBtn) lmRandomBtn.addEventListener('click', pickRandomName);
         if (lmResetBtn) lmResetBtn.addEventListener('click', resetHistory);
+        // Sound toggle
+        const soundBtn = document.getElementById('lmSoundBtn');
+        const soundIcon = document.getElementById('lmSoundIcon');
+        if (soundBtn && soundIcon) {
+            soundIcon.className = soundEnabled ? 'bi bi-volume-up-fill' : 'bi bi-volume-mute-fill';
+            soundBtn.addEventListener('click', () => {
+                soundEnabled = !soundEnabled;
+                localStorage.setItem('lovemeter_sound', soundEnabled);
+                soundIcon.className = soundEnabled ? 'bi bi-volume-up-fill' : 'bi bi-volume-mute-fill';
+            });
+        }
+
+        // Fullscreen toggle
+        const fullscreenBtn = document.getElementById('lmFullscreenBtn');
+        const fullscreenIcon = document.getElementById('lmFullscreenIcon');
+        const arena = document.getElementById('lovemeterArena');
+        if (fullscreenBtn && arena) {
+            fullscreenBtn.addEventListener('click', () => {
+                if (!document.fullscreenElement) {
+                    arena.requestFullscreen().catch(() => {});
+                    if (fullscreenIcon) fullscreenIcon.className = 'bi bi-fullscreen-exit';
+                } else {
+                    document.exitFullscreen().catch(() => {});
+                    if (fullscreenIcon) fullscreenIcon.className = 'bi bi-fullscreen';
+                }
+            });
+            document.addEventListener('fullscreenchange', () => {
+                if (!document.fullscreenElement && fullscreenIcon) {
+                    fullscreenIcon.className = 'bi bi-fullscreen';
+                }
+            });
+        }
+
 
         if (lmName1) lmName1.addEventListener('keypress', (e) => { if (e.key === 'Enter') doCalculate(); });
         if (lmName2) lmName2.addEventListener('keypress', (e) => { if (e.key === 'Enter') doCalculate(); });

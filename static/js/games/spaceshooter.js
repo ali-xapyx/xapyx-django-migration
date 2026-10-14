@@ -28,6 +28,7 @@
 
     // Game state
     let gameRunning = true;
+    let isPaused = false;
     let score = 0;
     let lives = 3;
     let kills = 0;
@@ -197,8 +198,11 @@
     // Starfighter Player
     function drawPlayer() {
         ctx.save();
-        ctx.shadowBlur = 18;
-        ctx.shadowColor = '#ff8c00';
+        // Layered aura instead of expensive ctx.shadowBlur
+        ctx.fillStyle = 'rgba(255, 140, 0, 0.18)';
+        ctx.beginPath();
+        ctx.arc(playerX, playerY, 24, 0, Math.PI * 2);
+        ctx.fill();
 
         // Hull
         ctx.beginPath();
@@ -230,12 +234,10 @@
         ctx.fillStyle = `hsl(${Math.random() * 30 + 15}, 100%, 60%)`;
         ctx.fill();
 
-        // Cockpit
+        // Cockpit with inner highlight
+        ctx.fillStyle = '#ffeaa7';
         ctx.beginPath();
         ctx.arc(playerX, playerY - 6, 4, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffeaa7';
-        ctx.shadowBlur = 12;
-        ctx.shadowColor = '#ffeaa7';
         ctx.fill();
 
         ctx.restore();
@@ -245,8 +247,10 @@
     function drawBullets() {
         ctx.save();
         for (let b of bullets) {
-            ctx.shadowBlur = 14;
-            ctx.shadowColor = '#ff8c00';
+            // Layered laser glow without per-bullet shadowBlur
+            ctx.fillStyle = 'rgba(255, 140, 0, 0.25)';
+            ctx.fillRect(b.x - 4.5, b.y - 9, 9, 18);
+
             const grad = ctx.createLinearGradient(b.x, b.y - 7, b.x, b.y + 7);
             grad.addColorStop(0, '#fff4cc');
             grad.addColorStop(0.5, '#ff9f1a');
@@ -261,8 +265,11 @@
     function drawEnemies() {
         for (let e of enemies) {
             ctx.save();
-            ctx.shadowBlur = 14;
-            ctx.shadowColor = '#ef4444';
+            // Fast ambient halo without shadowBlur
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.18)';
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, 18, 0, Math.PI * 2);
+            ctx.fill();
 
             ctx.beginPath();
             ctx.moveTo(e.x, e.y - 12);
@@ -492,7 +499,7 @@
     }
 
     function shoot() {
-        if (!gameRunning) return;
+        if (!gameRunning || isPaused) return;
         if (shootCooldown > 0) return;
         bullets.push({ x: playerX, y: playerY - 16 });
         shootCooldown = shootDelay;
@@ -533,14 +540,26 @@
     }
 
     function gameLoop() {
-        updateGame();
-        updateStars();
+        if (gameRunning && !isPaused) {
+            updateGame();
+            updateStars();
+        }
         draw();
         animationId = requestAnimationFrame(gameLoop);
     }
 
+    function togglePause() {
+        if (!gameRunning) return;
+        isPaused = !isPaused;
+        const pauseOverlay = document.getElementById('pauseOverlay');
+        const pauseIcon = document.getElementById('ssPauseIcon');
+        if (pauseOverlay) pauseOverlay.style.display = isPaused ? 'flex' : 'none';
+        if (pauseIcon) pauseIcon.className = isPaused ? 'bi bi-play-fill' : 'bi bi-pause-fill';
+    }
+
     // Controls & Input
     function handleMove(clientX) {
+        if (isPaused) return;
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvasWidth / rect.width;
         let newX = (clientX - rect.left) * scaleX;
@@ -552,6 +571,7 @@
         lives = 3;
         kills = 0;
         gameRunning = true;
+        isPaused = false;
         bullets = [];
         enemies = [];
         particles = [];
@@ -571,6 +591,12 @@
     }
 
     function setupEventListeners() {
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                // Tab hidden
+            }
+        });
+
         canvas.addEventListener('mousemove', (e) => {
             e.preventDefault();
             handleMove(e.clientX);
@@ -599,6 +625,12 @@
         }, { passive: false });
 
         window.addEventListener('keydown', (e) => {
+            if (e.key === 'p' || e.key === 'P') {
+                e.preventDefault();
+                togglePause();
+                return;
+            }
+            if (isPaused) return;
             if (e.code === 'Space') {
                 e.preventDefault();
                 getAudioContext();
@@ -618,14 +650,41 @@
         }
 
         // Sound toggle
-        const soundBtn = document.getElementById('soundToggleBtn');
-        const soundIcon = document.getElementById('soundIcon');
+        const soundBtn = document.getElementById('ssSoundBtn') || document.getElementById('soundToggleBtn');
+        const soundIcon = document.getElementById('ssSoundIcon') || document.getElementById('soundIcon');
         if (soundBtn && soundIcon) {
             soundIcon.className = soundEnabled ? 'bi bi-volume-up-fill' : 'bi bi-volume-mute-fill';
             soundBtn.addEventListener('click', () => {
                 soundEnabled = !soundEnabled;
                 localStorage.setItem('spaceshooter_sound', soundEnabled);
                 soundIcon.className = soundEnabled ? 'bi bi-volume-up-fill' : 'bi bi-volume-mute-fill';
+            });
+        }
+
+        // Pause button and Resume
+        const pauseBtn = document.getElementById('ssPauseBtn');
+        const resumeBtn = document.getElementById('resumeBtn');
+        if (pauseBtn) pauseBtn.addEventListener('click', togglePause);
+        if (resumeBtn) resumeBtn.addEventListener('click', togglePause);
+
+        // Fullscreen toggle
+        const fullscreenBtn = document.getElementById('ssFullscreenBtn');
+        const fullscreenIcon = document.getElementById('ssFullscreenIcon');
+        const canvasWrapper = document.getElementById('spaceCanvasWrapper');
+        if (fullscreenBtn && canvasWrapper) {
+            fullscreenBtn.addEventListener('click', () => {
+                if (!document.fullscreenElement) {
+                    canvasWrapper.requestFullscreen().catch(() => {});
+                    if (fullscreenIcon) fullscreenIcon.className = 'bi bi-fullscreen-exit';
+                } else {
+                    document.exitFullscreen().catch(() => {});
+                    if (fullscreenIcon) fullscreenIcon.className = 'bi bi-fullscreen';
+                }
+            });
+            document.addEventListener('fullscreenchange', () => {
+                if (!document.fullscreenElement && fullscreenIcon) {
+                    fullscreenIcon.className = 'bi bi-fullscreen';
+                }
             });
         }
 

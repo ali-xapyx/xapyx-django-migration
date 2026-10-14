@@ -1,0 +1,239 @@
+{% extends "dashboard/base_dashboard.html" %}
+{% load static %}
+
+{% block title %}Air Hockey | XAPYX Games{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Air Hockey Arcade Styles */
+.hockey-arena-container {
+  position: relative;
+  width: 100%;
+  max-width: 580px;
+  margin: 0 auto;
+  background: var(--xpy-card-bg, rgba(12, 12, 35, 0.75));
+  border: 1px solid var(--xpy-border, rgba(255, 255, 255, 0.08));
+  border-radius: var(--xpy-radius, 16px);
+  padding: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.hockey-canvas-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1.7;
+  max-height: 640px;
+  background: #060919;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 2px solid rgba(59, 130, 246, 0.3);
+  box-shadow: inset 0 0 20px rgba(59, 130, 246, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+}
+
+#hockeyCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #060919;
+  cursor: grab;
+}
+
+#hockeyCanvas:active {
+  cursor: grabbing;
+}
+
+/* Mode bar */
+.hockey-mode-bar {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.hockey-mode-btn {
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid var(--xpy-border, rgba(255, 255, 255, 0.1));
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--xpy-text-muted, #94a3b8);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.hockey-mode-btn.active, .hockey-mode-btn:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: #3b82f6;
+  color: #60a5fa;
+}
+
+/* Overlays */
+.hockey-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 9, 25, 0.88);
+  backdrop-filter: blur(6px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  border-radius: 14px;
+}
+
+.hockey-gameover-winner {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #60a5fa;
+  margin: 6px 0 4px;
+}
+
+.hockey-goal-banner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(239, 68, 68, 0.9);
+  color: #fff;
+  font-size: 2rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  padding: 8px 30px;
+  border-radius: 12px;
+  box-shadow: 0 0 25px rgba(239, 68, 68, 0.6);
+  pointer-events: none;
+  animation: goalPop 0.8s ease forwards;
+  z-index: 5;
+}
+
+@keyframes goalPop {
+  0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0; }
+  30% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+  80% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(0.9); opacity: 0; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="dashboardContainer">
+  <div class="dashboard-inner">
+    <div class="dashboard-flex games-play-flex">
+      <div class="dashboard-main games-play-main">
+
+        <!-- Game Header / Arcade HUD -->
+        <div class="game-hud-header">
+          <div class="d-flex align-items-center gap-3">
+            <a href="{% url 'games' %}" class="game-back-btn" title="Back to Games Hub">
+              <i class="bi bi-arrow-left"></i>
+            </a>
+            <div class="game-hud-title">
+              <i class="bi bi-disc-fill text-info"></i>
+              <span>Air Hockey</span>
+            </div>
+          </div>
+
+          <div class="game-hud-stats">
+            <div class="game-hud-stat">
+              <i class="bi bi-person-fill text-primary"></i>
+              <span>You: <strong id="scorePlayer">0</strong></span>
+            </div>
+            <div class="game-hud-stat">
+              <i class="bi bi-robot text-danger"></i>
+              <span>Opponent: <strong id="scoreOpponent">0</strong></span>
+            </div>
+            <div class="game-hud-stat d-none d-sm-flex">
+              <i class="bi bi-trophy text-warning"></i>
+              <span>First to 7</span>
+            </div>
+            <button type="button" class="game-icon-btn" id="hockeyFullscreenBtn" title="Toggle Fullscreen">
+              <i class="bi bi-fullscreen" id="hockeyFullscreenIcon"></i>
+            </button>
+            <button type="button" class="game-icon-btn" id="hockeySoundBtn" title="Toggle Sound">
+              <i class="bi bi-volume-up-fill" id="hockeySoundIcon"></i>
+            </button>
+            <button type="button" class="game-icon-btn" id="hockeyRestartHeaderBtn" title="Restart Match">
+              <i class="bi bi-arrow-repeat"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Air Hockey Container -->
+        <div class="hockey-arena-container" id="hockeyArenaContainer">
+          
+          <!-- Difficulty / Mode Bar -->
+          <div class="hockey-mode-bar">
+            <button type="button" class="hockey-mode-btn" id="btnDiffEasy">Easy AI</button>
+            <button type="button" class="hockey-mode-btn active" id="btnDiffMed">Medium AI</button>
+            <button type="button" class="hockey-mode-btn" id="btnDiffHard">Hard AI</button>
+            <button type="button" class="hockey-mode-btn" id="btnMode2P">2P Local</button>
+          </div>
+
+          <!-- Canvas Table Wrap -->
+          <div class="hockey-canvas-wrap" id="hockeyCanvasWrap">
+            <canvas id="hockeyCanvas" width="400" height="680"></canvas>
+
+            <!-- Goal Flash Banner -->
+            <div id="goalBanner" class="hockey-goal-banner" style="display: none;">GOAL!</div>
+
+            <!-- Game Over Overlay -->
+            <div class="hockey-overlay" id="hockeyGameOverOverlay" style="display: none;">
+              <div class="hockey-gameover-winner" id="hockeyWinnerText">You Win!</div>
+              <p class="text-muted small mb-3" id="hockeySubText">Final Score: 7 - 3</p>
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-primary px-4 py-2 fw-semibold" id="hockeyPlayAgainBtn">
+                  <i class="bi bi-arrow-repeat me-2"></i>Play Again
+                </button>
+                <a href="{% url 'games' %}" class="btn btn-outline-light px-3 py-2">
+                  <i class="bi bi-house me-1"></i>Hub
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Controls Guide -->
+          <div class="game-controls-guide mt-3">
+            <div class="guide-header">
+              <h6><i class="bi bi-controller me-2 text-info"></i>Controls &amp; Match Rules</h6>
+            </div>
+            <div class="guide-grid">
+              <div class="guide-item">
+                <span class="guide-key">MOUSE / TOUCH DRAG</span>
+                <span>Move your blue mallet fluidly</span>
+              </div>
+              <div class="guide-item">
+                <span class="guide-key">VELOCITY STRIKE</span>
+                <span>Hit the puck faster for power shots</span>
+              </div>
+              <div class="guide-item">
+                <span class="guide-key text-info">TABLE HALF</span>
+                <span>Mallets cannot cross the center line</span>
+              </div>
+              <div class="guide-item">
+                <span class="guide-key text-warning">SCORING</span>
+                <span>(7 - Opponent Goals) &times; 150 pts on win</span>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /hockey-arena-container -->
+
+      </div><!-- /dashboard-main -->
+
+      <!-- Right Widgets Column -->
+      {% include "dashboard/partials/right_widgets.html" %}
+
+    </div><!-- /dashboard-flex -->
+  </div><!-- /dashboard-inner -->
+</div><!-- /dashboardContainer -->
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/games/airhockey.js' %}?v=1"></script>
+{% endblock %}

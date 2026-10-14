@@ -160,41 +160,60 @@
     }
 
     function initGamesHub() {
+        const gameRoutes = {
+            'spaceshooter': '/games/spaceshooter/',
+            'tictactoe': '/games/tictactoe/',
+            'checkers': '/games/checkers/',
+            'ludo': '/games/ludo/',
+            'snake': '/games/snake/',
+            'airhockey': '/games/airhockey/',
+            'lovemeter': '/games/lovemeter/',
+            'catchme': '/games/catchme/'
+        };
+
+        function launchGame(element) {
+            const gameType = element.dataset.gameType;
+            const gameTitle = element.dataset.gameTitle || 'Game';
+            const gameUrl = element.dataset.gameUrl;
+
+            let targetUrl = gameUrl || gameRoutes[gameType];
+            if (!targetUrl && (gameType === '1' || (gameType && gameType.includes('tic')))) {
+                targetUrl = '/games/tictactoe/';
+            }
+
+            // Track play asynchronously
+            trackPlay(gameType, (newCount) => {
+                const countEl = document.querySelector(`.plays-count-val[data-game-id="${gameType}"]`);
+                if (countEl) countEl.textContent = newCount.toLocaleString();
+            });
+
+            if (targetUrl) {
+                window.location.href = targetUrl;
+            } else {
+                triggerToast(
+                    `${gameTitle} is launching soon!`,
+                    'Coming Soon',
+                    '🎮'
+                );
+            }
+        }
+
         // Handle Play buttons
         document.querySelectorAll('.game-play-btn').forEach(btn => {
             btn.addEventListener('click', function (e) {
                 e.preventDefault();
-                const gameType = this.dataset.gameType;
-                let routeKey = gameType;
-                if (gameType === '1' || gameType.includes('tic')) routeKey = 'tictactoe';
-                else if (gameType.includes('space') || gameType === '7') routeKey = 'spaceshooter';
-                else if (gameType.includes('love') || gameType === '14') routeKey = 'lovemeter';
-                else if (gameType.includes('catch') || gameType === '15') routeKey = 'catchme';
-                const gameTitle = this.dataset.gameTitle || 'Game';
+                e.stopPropagation();
+                launchGame(this);
+            });
+        });
 
-                const gameRoutes = {
-                    'spaceshooter': '/games/spaceshooter/',
-                    'lovemeter': '/games/lovemeter/',
-                    'catchme': '/games/catchme/',
-                    'tictactoe': '/games/tictactoe/'
-                };
-
-                // Track play asynchronously
-                trackPlay(gameType, (newCount) => {
-                    const countEl = document.querySelector(`.plays-count-val[data-game-id="${gameType}"]`);
-                    if (countEl) countEl.textContent = newCount.toLocaleString();
-                });
-
-                if (gameRoutes[routeKey]) {
-                    window.location.href = gameRoutes[routeKey];
-                } else {
-                    // Multiplayer coming in Phase 3
-                    triggerToast(
-                        `${gameTitle} multiplayer is launching in Phase 3!`,
-                        'Coming Soon',
-                        '🎮'
-                    );
-                }
+        // Handle Card clicks
+        document.querySelectorAll('.game-card').forEach(card => {
+            card.style.cursor = 'pointer';
+            card.addEventListener('click', function (e) {
+                if (e.target.closest('.game-play-btn')) return;
+                e.preventDefault();
+                launchGame(this);
             });
         });
 
@@ -205,11 +224,6 @@
                 tabBtns.forEach(b => b.classList.remove('active'));
                 this.classList.add('active');
                 const gameType = this.dataset.gameType;
-                let routeKey = gameType;
-                if (gameType === '1' || gameType.includes('tic')) routeKey = 'tictactoe';
-                else if (gameType.includes('space') || gameType === '7') routeKey = 'spaceshooter';
-                else if (gameType.includes('love') || gameType === '14') routeKey = 'lovemeter';
-                else if (gameType.includes('catch') || gameType === '15') routeKey = 'catchme';
                 loadLeaderboard(gameType);
             });
         });

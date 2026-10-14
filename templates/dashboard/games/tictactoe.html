@@ -51,6 +51,35 @@
             </div>
           </div>
 
+          <!-- Online Lobby Bar -->
+          <div class="ttt-online-lobby my-3" id="tttOnlineLobby" style="display: none;">
+            <div class="d-flex flex-wrap align-items-center justify-content-center gap-2 mb-2">
+              <button type="button" class="btn btn-sm btn-warning fw-bold" id="btnQuickMatch">
+                <i class="bi bi-lightning-fill me-1"></i>Quick Match
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-info" id="btnCreateRoom">
+                <i class="bi bi-plus-circle me-1"></i>Create Room
+              </button>
+              <div class="input-group input-group-sm ttt-join-group" style="max-width: 200px;">
+                <input type="text" class="form-control text-uppercase text-center font-monospace" id="inputRoomCode" maxlength="6" placeholder="ROOM CODE">
+                <button class="btn btn-outline-primary" type="button" id="btnJoinRoom">
+                  <i class="bi bi-box-arrow-in-right me-1"></i>Join
+                </button>
+              </div>
+            </div>
+
+            <!-- Active Room Info Pill -->
+            <div class="ttt-room-info-pill text-center my-2" id="tttRoomInfo" style="display: none;">
+              <span class="room-code-badge" id="pillRoomCode" role="button" title="Click to copy room code">
+                <i class="bi bi-key-fill text-warning me-1"></i>ROOM: <strong id="valRoomCode">------</strong> <i class="bi bi-clipboard ms-1 small"></i>
+              </span>
+              <span class="room-players-badge ms-2" id="pillPlayers">
+                <span class="text-warning fw-bold" id="valPlayerX">X: ---</span> vs <span class="text-info fw-bold" id="valPlayerO">O: ---</span>
+              </span>
+              <span class="badge bg-secondary ms-2" id="pillMySymbol">You: ?</span>
+            </div>
+          </div>
+
           <!-- Status Banner -->
           <div class="ttt-status-banner text-center my-3" id="tttStatus">
             Your turn! You are <span class="text-warning fw-bold">X</span>
@@ -91,5 +120,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/games/tictactoe.js' %}?v=1"></script>
+<script src="{% static 'js/games/tictactoe.js' %}?v=2"></script>
 {% endblock %}

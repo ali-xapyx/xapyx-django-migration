@@ -4,7 +4,7 @@
 {% block title %}Chat Roulette | XAPYX{% endblock %}
 
 {% block content %}
-<div id="dashboardContainer" class="no-right-widgets">
+<div id="dashboardContainer" class="roulette-page-container roulette-container">
   <div class="dashboard-inner roulette-inner">
     <div class="dashboard-flex roulette-flex">
       <div class="dashboard-main roulette-dashboard-main">
@@ -156,10 +156,14 @@
 
         </div>
 
-      </div>
-    </div>
-  </div>
-</div>
+      </div><!-- /dashboard-main -->
+
+      <!-- Right Widgets Column -->
+      {% include "dashboard/partials/right_widgets.html" %}
+
+    </div><!-- /dashboard-flex -->
+  </div><!-- /dashboard-inner -->
+</div><!-- /dashboardContainer -->
 
 <!-- ============================================================
      REPORT USER MODAL (Phase 3)

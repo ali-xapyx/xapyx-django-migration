@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 220" width="100%" height="100%">
+  <defs>
+    <linearGradient id="ludo-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0f0e26"/>
+      <stop offset="100%" stop-color="#1b1238"/>
+    </linearGradient>
+    <filter id="ludo-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+  <rect width="400" height="220" fill="url(#ludo-bg)"/>
+  <!-- Ludo 4-Quadrant Board Base -->
+  <g transform="translate(90, 25)" stroke="rgba(255,255,255,0.15)" stroke-width="1.5">
+    <rect x="0" y="0" width="75" height="75" rx="8" fill="#ef4444" opacity="0.85"/>
+    <rect x="95" y="0" width="75" height="75" rx="8" fill="#22c55e" opacity="0.85"/>
+    <rect x="0" y="95" width="75" height="75" rx="8" fill="#3b82f6" opacity="0.85"/>
+    <rect x="95" y="95" width="75" height="75" rx="8" fill="#eab308" opacity="0.85"/>
+    <!-- Inner tokens spots -->
+    <circle cx="24" cy="24" r="8" fill="#fff" opacity="0.7"/>
+    <circle cx="51" cy="51" r="8" fill="#fff" opacity="0.7"/>
+    <circle cx="119" cy="24" r="8" fill="#fff" opacity="0.7"/>
+    <circle cx="146" cy="51" r="8" fill="#fff" opacity="0.7"/>
+    <circle cx="24" cy="119" r="8" fill="#fff" opacity="0.7"/>
+    <circle cx="51" cy="146" r="8" fill="#fff" opacity="0.7"/>
+    <circle cx="119" cy="119" r="8" fill="#fff" opacity="0.7"/>
+    <circle cx="146" cy="146" r="8" fill="#fff" opacity="0.7"/>
+    <!-- Central Home Triangle -->
+    <polygon points="85,75 75,95 95,95" fill="#f87171"/>
+    <polygon points="85,75 95,85 95,95" fill="#4ade80"/>
+  </g>
+  <!-- 3D Lucky Dice (Showing 6) -->
+  <g transform="translate(285, 95) rotate(-12)" filter="url(#ludo-glow)">
+    <rect x="-35" y="-35" width="70" height="70" rx="14" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"/>
+    <!-- 6 Dots on Die -->
+    <circle cx="-18" cy="-20" r="5" fill="#ef4444"/>
+    <circle cx="-18" cy="0" r="5" fill="#ef4444"/>
+    <circle cx="-18" cy="20" r="5" fill="#ef4444"/>
+    <circle cx="18" cy="-20" r="5" fill="#ef4444"/>
+    <circle cx="18" cy="0" r="5" fill="#ef4444"/>
+    <circle cx="18" cy="20" r="5" fill="#ef4444"/>
+  </g>
+  <!-- Shiny 3D Game Token -->
+  <g transform="translate(250, 160)" filter="url(#ludo-glow)">
+    <ellipse cx="0" cy="16" rx="18" ry="7" fill="rgba(0,0,0,0.5)"/>
+    <ellipse cx="0" cy="10" rx="16" ry="6" fill="#15803d"/>
+    <path d="M -12,8 Q -16,-6 -6,-16 L 6,-16 Q 16,-6 12,8 Z" fill="#22c55e" stroke="#86efac" stroke-width="1.5"/>
+    <circle cx="0" cy="-22" r="10" fill="#4ade80" stroke="#bbf7d0" stroke-width="1.5"/>
+    <ellipse cx="-3" cy="-25" rx="3" ry="2" fill="#fff" opacity="0.8"/>
+  </g>
+</svg>

@@ -106,10 +106,10 @@
       const active = i === 0 ? ' active' : '';
       if (m.type === 'image') {
         return '<div class="slider-item' + active + '" data-index="' + i + '">' +
-          '<img src="' + (m.thumbnail_url || m.url) + '" width="800" height="600" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=\'' + m.url + '\'" onclick="gvOpenImageViewer(\'' + m.url + '\')">' +
+          '<img src="' + (m.thumbnail_url || m.url) + '" width="800" height="600" loading="lazy" decoding="async" onload="if(this.naturalWidth>=this.naturalHeight)this.classList.add(\'landscape\')" onerror="this.onerror=null;this.src=\'' + m.url + '\'" onclick="openMediaLightbox(\'' + (m.url || '').replace(/'/g, "\\'") + '\')">' +
           '</div>';
       }
-      return '<div class="slider-item' + active + '" data-index="' + i + '">' +
+      return '<div class="slider-item has-video' + active + '" data-index="' + i + '">' +
         '<video controls preload="metadata" muted playsinline loop onclick="gvToggleVideoSound(this, event)">' +
         '<source src="' + m.url + '" type="' + (m.mime_type || 'video/mp4') + '">' +
         '</video></div>';
@@ -570,8 +570,12 @@
   };
 
   window.gvOpenImageViewer = function (url) {
-    document.getElementById('gvImageViewerImg').src = url;
-    new bootstrap.Modal(document.getElementById('gvImageViewerModal')).show();
+    if (window.openMediaLightbox) {
+      window.openMediaLightbox(url);
+    } else {
+      document.getElementById('gvImageViewerImg').src = url;
+      new bootstrap.Modal(document.getElementById('gvImageViewerModal')).show();
+    }
   };
 
   // ============================================================

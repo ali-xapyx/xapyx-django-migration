@@ -1,0 +1,267 @@
+{% extends "dashboard/base_dashboard.html" %}
+{% load static %}
+
+{% block title %}Ludo | XAPYX Games{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Ludo Board & Controls */
+.ludo-arena-container {
+  position: relative;
+  width: 100%;
+  max-width: 620px;
+  margin: 0 auto;
+  background: var(--xpy-card-bg, rgba(12, 12, 35, 0.75));
+  border: 1px solid var(--xpy-border, rgba(255, 255, 255, 0.08));
+  border-radius: var(--xpy-radius, 16px);
+  padding: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.ludo-mode-bar {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.ludo-mode-btn {
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid var(--xpy-border, rgba(255, 255, 255, 0.1));
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--xpy-text-muted, #94a3b8);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.ludo-mode-btn.active, .ludo-mode-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+  color: #f87171;
+}
+
+/* 15x15 Canvas Board */
+.ludo-canvas-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: #0f172a;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 3px solid #334155;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#ludoCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #0f172a;
+  cursor: pointer;
+}
+
+/* Controls strip & Dice Roller */
+.ludo-controls-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+
+.ludo-turn-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.ludo-turn-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 10px currentColor;
+}
+
+/* Dice Roller Box */
+.ludo-dice-box {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 1.7rem;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  border: 2px solid #e2e8f0;
+}
+
+.ludo-dice-box:hover {
+  transform: scale(1.08);
+}
+
+.ludo-dice-box.rolling {
+  animation: diceRoll 0.4s ease infinite;
+}
+
+@keyframes diceRoll {
+  0% { transform: rotate(0deg) scale(1.05); }
+  50% { transform: rotate(180deg) scale(0.95); }
+  100% { transform: rotate(360deg) scale(1.05); }
+}
+
+/* Game Over Overlay */
+.ludo-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 5, 16, 0.92);
+  backdrop-filter: blur(6px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  border-radius: 14px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="dashboardContainer">
+  <div class="dashboard-inner">
+    <div class="dashboard-flex games-play-flex">
+      <div class="dashboard-main games-play-main">
+
+        <!-- Game Header / Arcade HUD -->
+        <div class="game-hud-header">
+          <div class="d-flex align-items-center gap-3">
+            <a href="{% url 'games' %}" class="game-back-btn" title="Back to Games Hub">
+              <i class="bi bi-arrow-left"></i>
+            </a>
+            <div class="game-hud-title">
+              <i class="bi bi-dice-6-fill text-warning"></i>
+              <span>Ludo</span>
+            </div>
+          </div>
+
+          <div class="game-hud-stats">
+            <div class="game-hud-stat">
+              <i class="bi bi-flag-fill text-success"></i>
+              <span>Home: <strong id="ludoHomeCount">0 / 4</strong></span>
+            </div>
+            <div class="game-hud-stat d-none d-sm-flex">
+              <i class="bi bi-dice-3 text-info"></i>
+              <span>Dice: <strong id="ludoDiceVal">-</strong></span>
+            </div>
+            <button type="button" class="game-icon-btn" id="ludoFullscreenBtn" title="Toggle Fullscreen">
+              <i class="bi bi-fullscreen" id="ludoFullscreenIcon"></i>
+            </button>
+            <button type="button" class="game-icon-btn" id="ludoSoundBtn" title="Toggle Sound">
+              <i class="bi bi-volume-up-fill" id="ludoSoundIcon"></i>
+            </button>
+            <button type="button" class="game-icon-btn" id="ludoRestartHeaderBtn" title="Restart Match">
+              <i class="bi bi-arrow-repeat"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Ludo Arena Container -->
+        <div class="ludo-arena-container" id="ludoArenaContainer">
+          
+          <!-- Mode Selector -->
+          <div class="ludo-mode-bar">
+            <button type="button" class="ludo-mode-btn active" id="btnMode1v1">vs 1 AI Bot (1v1)</button>
+            <button type="button" class="ludo-mode-btn" id="btnMode4p">vs 3 AI Bots (4P)</button>
+            <button type="button" class="ludo-mode-btn" id="btnModePassPlay">Pass &amp; Play (2-4P)</button>
+          </div>
+
+          <!-- Board Canvas -->
+          <div class="ludo-canvas-wrap" id="ludoCanvasWrap">
+            <canvas id="ludoCanvas" width="600" height="600"></canvas>
+
+            <!-- Game Over Overlay -->
+            <div class="ludo-overlay" id="ludoGameOverOverlay" style="display: none;">
+              <h2 class="fw-bold mb-1 text-white" id="ludoWinnerText">Red Wins!</h2>
+              <p class="text-muted small mb-3" id="ludoSubText">All 4 tokens reached home safely</p>
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-warning px-4 py-2 fw-semibold" id="ludoPlayAgainBtn">
+                  <i class="bi bi-arrow-repeat me-2"></i>Play Again
+                </button>
+                <a href="{% url 'games' %}" class="btn btn-outline-light px-3 py-2">
+                  <i class="bi bi-house me-1"></i>Hub
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Controls & Dice Bar -->
+          <div class="ludo-controls-strip">
+            <div class="ludo-turn-badge" id="ludoTurnBadge">
+              <span class="ludo-turn-dot" id="ludoTurnDot" style="color: #ef4444; background: #ef4444;"></span>
+              <span id="ludoTurnName" style="color: #ef4444;">Red Turn</span>
+            </div>
+
+            <div class="d-flex align-items-center gap-3">
+              <span class="text-muted small d-none d-sm-inline" id="ludoHintText">Click dice to roll</span>
+              <div class="ludo-dice-box" id="ludoDiceBox" title="Click to Roll Dice">🎲</div>
+            </div>
+          </div>
+
+          <!-- Controls Guide -->
+          <div class="game-controls-guide mt-3">
+            <div class="guide-header">
+              <h6><i class="bi bi-controller me-2 text-warning"></i>Classic Ludo Rules</h6>
+            </div>
+            <div class="guide-grid">
+              <div class="guide-item">
+                <span class="guide-key text-danger">ROLL A 6</span>
+                <span>Unlocks token from base + grants a bonus roll</span>
+              </div>
+              <div class="guide-item">
+                <span class="guide-key text-warning">CUT OPPONENT</span>
+                <span>Land on their token to send it back to base</span>
+              </div>
+              <div class="guide-item">
+                <span class="guide-key text-success">SAFE STARS ⭐</span>
+                <span>Tokens on star tiles cannot be captured</span>
+              </div>
+              <div class="guide-item">
+                <span class="guide-key text-info">HOME RUN</span>
+                <span>First player to bring all 4 tokens home wins (+500 pts)</span>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /ludo-arena-container -->
+
+      </div><!-- /dashboard-main -->
+
+      <!-- Right Widgets Column -->
+      {% include "dashboard/partials/right_widgets.html" %}
+
+    </div><!-- /dashboard-flex -->
+  </div><!-- /dashboard-inner -->
+</div><!-- /dashboardContainer -->
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/games/ludo.js' %}?v=1"></script>
+{% endblock %}

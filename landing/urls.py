@@ -218,13 +218,18 @@ urlpatterns = [
     path('api/roulette/heartbeat/', views.api_roulette_heartbeat, name='api_roulette_heartbeat'),
     path('api/roulette/report/', views.api_roulette_report, name='api_roulette_report'),
 
-    # Games Hub (Task 22 Phase 1)
+    # Games Hub (Task 22 Phase 1, 2, 3)
     path('games/', views.games_view, name='games'),
     path('games/spaceshooter/', views.space_view, name='game_spaceshooter'),
     path('games/lovemeter/', views.love_view, name='game_lovemeter'),
     path('games/catchme/', views.catch_view, name='game_catchme'),
     path('games/tictactoe/', views.tictactoe_view, name='game_tictactoe'),
+    path('games/snake/', views.snake_view, name='game_snake'),
+    path('games/airhockey/', views.airhockey_view, name='game_airhockey'),
+    path('games/checkers/', views.checkers_view, name='game_checkers'),
+    path('games/ludo/', views.ludo_view, name='game_ludo'),
     path('api/games/tictactoe/room/', views.api_tictactoe_room, name='api_tictactoe_room'),
+    path('api/games/checkers/room/', views.api_checkers_room, name='api_checkers_room'),
     path('api/games/hub/', views.api_games_hub, name='api_games_hub'),
     path('api/games/leaderboard/', views.api_games_leaderboard, name='api_games_leaderboard'),
     path('api/games/track-play/', views.api_games_track_play, name='api_games_track_play'),

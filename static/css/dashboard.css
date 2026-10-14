@@ -8564,7 +8564,7 @@ html[data-theme="light"] .notification-panel {
     #dashboardContainer.roulette-page-container,
     .roulette-container,
     .roulette-page-wrapper {
-        height: 100vh;
+        height: 100dvh;
         overflow: hidden;
         position: fixed;
         width: 100%;
@@ -8575,7 +8575,7 @@ html[data-theme="light"] .notification-panel {
 
     body:has(.roulette-box) {
         overflow: hidden !important;
-        height: 100vh !important;
+        height: 100dvh !important;
     }
 
     .roulette-inner {

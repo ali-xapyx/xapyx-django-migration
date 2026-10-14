@@ -117,9 +117,13 @@
 
 
     function openImagePreview(src) {
-        const modal = new bootstrap.Modal(document.getElementById('imageViewerModal'));
-        document.getElementById('viewerImage').src = src;
-        modal.show();
+        if (window.openMediaLightbox) {
+            window.openMediaLightbox(src);
+        } else {
+            const modal = new bootstrap.Modal(document.getElementById('imageViewerModal'));
+            document.getElementById('viewerImage').src = src;
+            modal.show();
+        }
     }
 
 
@@ -500,10 +504,10 @@
         if (post.media && post.media.length > 0) {
             mediaHtml = '<div class="post-media-slider" id="slider-' + post.id + '" data-media=\'' + JSON.stringify(post.media) + '\'><div class="slider-container">' +
                 post.media.map(function(m, idx) {
-                    return '<div class="slider-item ' + (idx === 0 ? 'active' : '') + '" data-index="' + idx + '">' +
+                    return '<div class="slider-item ' + (m.type === 'video' ? 'has-video ' : '') + (idx === 0 ? 'active' : '') + '" data-index="' + idx + '">' +
                         (m.type === 'video'
                             ? '<video controls preload="metadata" muted playsinline loop autoplay onclick="toggleVideoSound(this, event)"><source src="' + m.url + '" type="' + (m.mime_type || 'video/mp4') + '"></video>'
-                            : '<img src="' + (m.thumbnail_url || m.url) + '" width="800" height="600" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=\'' + m.url + '\'" onclick="openImagePreview(\'' + m.url + '\')">') +
+                            : '<img src="' + (m.thumbnail_url || m.url) + '" width="800" height="600" loading="lazy" decoding="async" onload="if(this.naturalWidth>=this.naturalHeight)this.classList.add(\'landscape\')" onerror="this.onerror=null;this.src=\'' + m.url + '\'" onclick="openMediaLightbox(\'' + (m.url || '').replace(/'/g, "\\'") + '\')">') +
                         '</div>';
                 }).join('') +
                 '</div>' +

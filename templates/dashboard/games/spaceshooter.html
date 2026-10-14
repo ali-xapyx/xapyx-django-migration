@@ -34,8 +34,14 @@
               <i class="bi bi-star-fill text-warning"></i>
               <span>Best: <strong id="highScoreDisplay">0</strong></span>
             </div>
-            <button type="button" class="game-icon-btn" id="soundToggleBtn" title="Toggle Sound">
-              <i class="bi bi-volume-up-fill" id="soundIcon"></i>
+            <button type="button" class="game-icon-btn" id="ssFullscreenBtn" title="Toggle Fullscreen">
+              <i class="bi bi-fullscreen" id="ssFullscreenIcon"></i>
+            </button>
+            <button type="button" class="game-icon-btn" id="ssSoundBtn" title="Toggle Sound">
+              <i class="bi bi-volume-up-fill" id="ssSoundIcon"></i>
+            </button>
+            <button type="button" class="game-icon-btn" id="ssPauseBtn" title="Pause / Resume (P)">
+              <i class="bi bi-pause-fill" id="ssPauseIcon"></i>
             </button>
           </div>
         </div>
@@ -53,6 +59,20 @@
             <p><i class="bi bi-mouse text-warning me-2"></i>Move mouse / Drag touch to steer starfighter</p>
             <p><i class="bi bi-lightning-fill text-warning me-2"></i>Click, Tap, or Spacebar to fire lasers</p>
             <p><i class="bi bi-bullseye text-danger me-2"></i>Destroy alien invaders to score points!</p>
+          </div>
+
+          <!-- Paused Overlay -->
+          <div class="space-game-over-overlay" id="pauseOverlay" style="display: none;">
+            <div class="space-game-over-content">
+              <div class="space-game-over-icon">⏸️</div>
+              <h2 class="space-game-over-title">Game Paused</h2>
+              <p class="space-game-over-score">Press P or Resume to continue</p>
+              <div class="space-game-over-buttons">
+                <button type="button" class="btn btn-warning px-4 py-2" id="resumeBtn">
+                  <i class="bi bi-play-fill me-1"></i>Resume
+                </button>
+              </div>
+            </div>
           </div>
 
           <!-- Game Over Modal Overlay -->
@@ -88,8 +108,8 @@
               <span>Fire Plasma Lasers</span>
             </div>
             <div class="guide-item">
-              <span class="guide-key">&larr; &rarr;</span>
-              <span>Nudge Left / Right</span>
+              <span class="guide-key">P KEY / BUTTON</span>
+              <span>Pause / Resume Mission</span>
             </div>
             <div class="guide-item">
               <span class="guide-key text-danger">DANGER</span>
@@ -109,5 +129,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/games/spaceshooter.js' %}?v=1"></script>
+<script src="{% static 'js/games/spaceshooter.js' %}?v=3"></script>
 {% endblock %}

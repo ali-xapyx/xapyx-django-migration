@@ -47,6 +47,63 @@
     let scoreEl, streakEl, bestEl;
     let startBtn, stopBtn, resetBtn, resetAllBtn;
     let feedbackEl, historyListEl;
+    let soundEnabled = localStorage.getItem('catchme_sound') !== 'false';
+    let audioCtx = null;
+    function getAudioContext() {
+        if (!audioCtx) {
+            const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtxClass) audioCtx = new AudioCtxClass();
+        }
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        return audioCtx;
+    }
+
+    function playCatchTone(type = 'tick') {
+        if (!soundEnabled) return;
+        try {
+            const ac = getAudioContext();
+            if (!ac) return;
+            const osc = ac.createOscillator();
+            const gain = ac.createGain();
+            osc.connect(gain);
+            gain.connect(ac.destination);
+
+            if (type === 'tick') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, ac.currentTime);
+                gain.gain.setValueAtTime(0.04, ac.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + 0.03);
+                osc.start();
+                osc.stop(ac.currentTime + 0.04);
+            } else if (type === 'perfect') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, ac.currentTime);
+                osc.frequency.setValueAtTime(659.25, ac.currentTime + 0.08);
+                osc.frequency.setValueAtTime(783.99, ac.currentTime + 0.16);
+                gain.gain.setValueAtTime(0.12, ac.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + 0.35);
+                osc.start();
+                osc.stop(ac.currentTime + 0.38);
+            } else if (type === 'close') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(587.33, ac.currentTime);
+                osc.frequency.setValueAtTime(659.25, ac.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.1, ac.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + 0.25);
+                osc.start();
+                osc.stop(ac.currentTime + 0.27);
+            } else if (type === 'miss') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(220, ac.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(110, ac.currentTime + 0.25);
+                gain.gain.setValueAtTime(0.1, ac.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + 0.25);
+                osc.start();
+                osc.stop(ac.currentTime + 0.28);
+            }
+        } catch (e) {}
+    }
+
 
     function loadData() {
         try {
@@ -210,6 +267,7 @@
         updateTimerDisplay();
         cmiycRunning = true;
         cmiycStartTime = performance.now();
+        playCatchTone('tick');
 
         if (feedbackEl) feedbackEl.style.display = 'none';
 
@@ -252,6 +310,7 @@
             cmiycStreak++;
             if (cmiycScore > cmiycBest) cmiycBest = cmiycScore;
             showFeedback(`🎯 <strong>PERFECT CATCH!</strong> Exactly ${stoppedTime.toFixed(2)}s (+100 pts)`, 'success');
+            playCatchTone('perfect');
             createConfetti();
         } else if (absDiff <= 0.20 && !autoTimeout) {
             isWin = true;
@@ -260,13 +319,16 @@
             cmiycStreak++;
             if (cmiycScore > cmiycBest) cmiycBest = cmiycScore;
             showFeedback(`⚡ <strong>SO CLOSE!</strong> Stopped at ${stoppedTime.toFixed(2)}s (+25 pts)`, 'warning');
+            playCatchTone('close');
         } else {
             cmiycStreak = 0;
             if (autoTimeout) {
                 showFeedback(`⏰ <strong>TIME'S UP!</strong> Exceeded ${MAX_TIME}s`, 'danger');
+                playCatchTone('miss');
             } else {
                 const hint = diff > 0 ? `${diff.toFixed(2)}s late` : `${Math.abs(diff).toFixed(2)}s early`;
                 showFeedback(`❌ <strong>MISSED!</strong> Target was ${cmiycTarget.toFixed(2)}s (${hint})`, 'danger');
+                playCatchTone('miss');
             }
         }
 
@@ -350,6 +412,39 @@
         if (stopBtn) stopBtn.addEventListener('click', () => stopTimer(false));
         if (resetBtn) resetBtn.addEventListener('click', resetTimer);
         if (resetAllBtn) resetAllBtn.addEventListener('click', resetAllStats);
+        // Sound toggle
+        const soundBtn = document.getElementById('cmSoundBtn');
+        const soundIcon = document.getElementById('cmSoundIcon');
+        if (soundBtn && soundIcon) {
+            soundIcon.className = soundEnabled ? 'bi bi-volume-up-fill' : 'bi bi-volume-mute-fill';
+            soundBtn.addEventListener('click', () => {
+                soundEnabled = !soundEnabled;
+                localStorage.setItem('catchme_sound', soundEnabled);
+                soundIcon.className = soundEnabled ? 'bi bi-volume-up-fill' : 'bi bi-volume-mute-fill';
+            });
+        }
+
+        // Fullscreen toggle
+        const fullscreenBtn = document.getElementById('cmFullscreenBtn');
+        const fullscreenIcon = document.getElementById('cmFullscreenIcon');
+        const arena = document.getElementById('catchmeArena');
+        if (fullscreenBtn && arena) {
+            fullscreenBtn.addEventListener('click', () => {
+                if (!document.fullscreenElement) {
+                    arena.requestFullscreen().catch(() => {});
+                    if (fullscreenIcon) fullscreenIcon.className = 'bi bi-fullscreen-exit';
+                } else {
+                    document.exitFullscreen().catch(() => {});
+                    if (fullscreenIcon) fullscreenIcon.className = 'bi bi-fullscreen';
+                }
+            });
+            document.addEventListener('fullscreenchange', () => {
+                if (!document.fullscreenElement && fullscreenIcon) {
+                    fullscreenIcon.className = 'bi bi-fullscreen';
+                }
+            });
+        }
+
 
         // Keyboard Spacebar to start/stop
         window.addEventListener('keydown', (e) => {
