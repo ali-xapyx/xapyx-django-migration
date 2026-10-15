@@ -106,7 +106,8 @@
       const active = i === 0 ? ' active' : '';
       if (m.type === 'image') {
         return '<div class="slider-item' + active + '" data-index="' + i + '">' +
-          '<img src="' + (m.thumbnail_url || m.url) + '" width="800" height="600" loading="lazy" decoding="async" onload="if(this.naturalWidth>=this.naturalHeight)this.classList.add(\'landscape\')" onerror="this.onerror=null;this.src=\'' + m.url + '\'" onclick="openMediaLightbox(\'' + (m.url || '').replace(/'/g, "\\'") + '\')">' +
+          '<img class="post-media-blur-bg" src="' + (m.thumbnail_url || m.url) + '" alt="" aria-hidden="true">' +
+          '<img src="' + (m.thumbnail_url || m.url) + '" class="post-image slider-image" width="800" height="600" loading="lazy" decoding="async" onload="if(typeof applyAmbientBackground===\'function\')applyAmbientBackground(this);if(this.naturalWidth>=this.naturalHeight)this.classList.add(\'landscape\')" onerror="this.onerror=null;this.src=\'' + m.url + '\'" onclick="openMediaLightbox(\'' + (m.url || '').replace(/'/g, "\\'") + '\')">' +
           '</div>';
       }
       return '<div class="slider-item has-video' + active + '" data-index="' + i + '">' +
@@ -146,6 +147,15 @@
       avThumb = av.replace(/\.(jpg|jpeg|png|gif|webp)$/i, '_avatar.webp');
     }
 
+    var isPending = post.status === 'pending';
+    var pendingBadge = isPending ? ' · <span class="badge bg-warning text-dark badge-pending">Pending Approval</span>' : '';
+    var adminApproveHtml = (isPending && IS_ADMIN)
+      ? '<div class="post-pending-actions mt-2 mb-2 d-flex gap-2">' +
+          '<button class="btn btn-sm btn-success" type="button" onclick="gvApprovePost(' + post.id + ')"><i class="bi bi-check-lg"></i> Approve</button>' +
+          '<button class="btn btn-sm btn-outline-danger" type="button" onclick="gvRejectPost(' + post.id + ')"><i class="bi bi-x-lg"></i> Reject</button>' +
+        '</div>'
+      : '';
+
     return '' +
       '<div class="post-card-vertical" data-post-id="' + post.id + '">' +
         '<div class="post-header">' +
@@ -155,6 +165,7 @@
               '<h6>' + escapeHtml(post.author.name) + '</h6>' +
               '<span class="post-meta">@' + escapeHtml(post.author.username) + ' · ' + escapeHtml(post.time_ago) +
                 (post.is_edited ? ' · <span class="badge-edit">Edited</span>' : '') +
+                pendingBadge +
               '</span>' +
             '</div>' +
           '</div>' +
@@ -169,7 +180,11 @@
         '</div>' +
         '<div class="post-body">' +
           (post.content ? '<div class="post-content">' + escapeHtml(post.content).replace(/\n/g, '<br>') + '</div>' : '') +
+          adminApproveHtml +
           renderMedia(post) +
+          '<div class="post-stats-top">' +
+            '<span class="post-views-count"><i class="bi bi-eye"></i> ' + (post.views || 0) + '</span>' +
+          '</div>' +
         '</div>' +
         '<div class="post-footer">' +
           '<div class="post-actions-horizontal">' +
@@ -197,6 +212,52 @@
       '</div>';
   }
 
+// ============================================================
+// SKELETON PLACEHOLDERS FOR PAGINATION
+// ============================================================
+function renderPostSkeleton() {
+    return '<div class="post-card-vertical post-skeleton" aria-hidden="true">' +
+        '<div class="post-header">' +
+            '<div class="post-author d-flex align-items-center gap-2">' +
+                '<div class="skeleton-shimmer skeleton-avatar"></div>' +
+                '<div class="post-author-info" style="flex:1;">' +
+                    '<div class="skeleton-shimmer skeleton-line skeleton-title"></div>' +
+                    '<div class="skeleton-shimmer skeleton-line skeleton-subtitle"></div>' +
+                '</div>' +
+            '</div>' +
+        '</div>' +
+        '<div class="post-content" style="padding: 12px 0 8px;">' +
+            '<div class="skeleton-shimmer skeleton-line" style="width: 92%;"></div>' +
+            '<div class="skeleton-shimmer skeleton-line" style="width: 68%;"></div>' +
+        '</div>' +
+        '<div class="skeleton-shimmer skeleton-media"></div>' +
+        '<div class="post-footer d-flex justify-content-between pt-2">' +
+            '<div class="skeleton-shimmer skeleton-action-btn"></div>' +
+            '<div class="skeleton-shimmer skeleton-action-btn"></div>' +
+            '<div class="skeleton-shimmer skeleton-action-btn"></div>' +
+            '<div class="skeleton-shimmer skeleton-action-btn"></div>' +
+        '</div>' +
+    '</div>';
+}
+
+function appendPostSkeletons(container, count) {
+    if (!container) return;
+    count = count || 2;
+    var html = '';
+    for (var i = 0; i < count; i++) {
+        html += renderPostSkeleton();
+    }
+    container.insertAdjacentHTML('beforeend', html);
+}
+
+function removePostSkeletons(container) {
+    if (!container) return;
+    var skeletons = container.querySelectorAll('.post-skeleton');
+    skeletons.forEach(function(sk) {
+        sk.remove();
+    });
+}
+
   // ============================================================
   // LOAD POSTS
   // ============================================================
@@ -211,13 +272,18 @@
     if (reset) {
       page = 1;
       hasMore = true;
-      feed.innerHTML = '<div class="gv-loading"><div class="spinner-border text-primary"></div></div>';
-      loadMoreBox.classList.add('d-none');
+      feed.innerHTML = '';
+      appendPostSkeletons(feed, 3);
+      if (loadMoreBox) loadMoreBox.classList.add('d-none');
+    } else {
+      appendPostSkeletons(feed, 2);
+      if (loadMoreBox) loadMoreBox.classList.add('d-none');
     }
 
     try {
       const r = await fetch('/api/groups/' + GROUP_ID + '/posts/?page=' + page);
       const d = await r.json();
+      removePostSkeletons(feed);
       if (!d.success) throw new Error(d.error || 'Failed');
 
       if (reset) feed.innerHTML = '';
@@ -245,6 +311,7 @@
       }
       page++;
     } catch (e) {
+      removePostSkeletons(feed);
       console.warn('loadPosts failed', e);
       if (reset) {
         feed.innerHTML = '<div class="gv-empty-feed"><div class="gv-empty-icon"><i class="bi bi-exclamation-triangle"></i></div><h5>Failed to load posts</h5><p>Please refresh and try again.</p></div>';
@@ -347,41 +414,119 @@
   }
 
   // ============================================================
-  // REACTIONS
+  // REACTIONS (Optimistic UI)
   // ============================================================
+  const reactingGroupPosts = {};
+
   window.gvReact = async function (postId, reaction) {
-    try {
-      const d = await postJSON('/api/groups/posts/' + postId + '/react/', { reaction });
-      if (!d.success) {
-        toast(d.error || 'Failed', 'error');
-        return;
+    if (!postId || (reaction !== 'like' && reaction !== 'dislike')) return;
+    if (reactingGroupPosts[postId]) return;
+
+    const card = document.querySelector('.post-card-vertical[data-post-id="' + postId + '"]');
+    if (!card) return;
+    const likeBtn = card.querySelector('.like-btn');
+    const dislikeBtn = card.querySelector('.dislike-btn');
+    if (!likeBtn || !dislikeBtn) return;
+
+    const likeCountEl = likeBtn.querySelector('.action-count');
+    const dislikeCountEl = dislikeBtn.querySelector('.action-count');
+
+    const currentLikes = parseInt(likeCountEl ? likeCountEl.textContent : '0', 10) || 0;
+    const currentDislikes = parseInt(dislikeCountEl ? dislikeCountEl.textContent : '0', 10) || 0;
+
+    const wasLiked = likeBtn.classList.contains('active');
+    const wasDisliked = dislikeBtn.classList.contains('active');
+
+    const prevState = {
+      wasLiked: wasLiked,
+      wasDisliked: wasDisliked,
+      likes: currentLikes,
+      dislikes: currentDislikes
+    };
+
+    let optLiked = false;
+    let optDisliked = false;
+    let optLikes = currentLikes;
+    let optDislikes = currentDislikes;
+
+    if (reaction === 'like') {
+      if (wasLiked) {
+        optLiked = false;
+        optDisliked = false;
+        optLikes = Math.max(0, currentLikes - 1);
+        optDislikes = currentDislikes;
+      } else if (wasDisliked) {
+        optLiked = true;
+        optDisliked = false;
+        optLikes = currentLikes + 1;
+        optDislikes = Math.max(0, currentDislikes - 1);
+      } else {
+        optLiked = true;
+        optDisliked = false;
+        optLikes = currentLikes + 1;
+        optDislikes = currentDislikes;
       }
-      const card = document.querySelector('.post-card-vertical[data-post-id="' + postId + '"]');
-      if (!card) return;
-      const likeBtn = card.querySelector('.like-btn');
-      const dislikeBtn = card.querySelector('.dislike-btn');
+    } else if (reaction === 'dislike') {
+      if (wasDisliked) {
+        optLiked = false;
+        optDisliked = false;
+        optLikes = currentLikes;
+        optDislikes = Math.max(0, currentDislikes - 1);
+      } else if (wasLiked) {
+        optLiked = false;
+        optDisliked = true;
+        optLikes = Math.max(0, currentLikes - 1);
+        optDislikes = currentDislikes + 1;
+      } else {
+        optLiked = false;
+        optDisliked = true;
+        optLikes = currentLikes;
+        optDislikes = currentDislikes + 1;
+      }
+    }
 
-      likeBtn.querySelector('.action-count').textContent = d.likes;
-      dislikeBtn.querySelector('.action-count').textContent = d.dislikes;
+    function renderReactionState(isLiked, isDisliked, countLikes, countDislikes) {
+      if (likeCountEl) likeCountEl.textContent = countLikes;
+      if (dislikeCountEl) dislikeCountEl.textContent = countDislikes;
 
-      if (d.user_reaction === 'like') {
+      if (isLiked) {
         likeBtn.classList.add('active');
-        likeBtn.querySelector('i').className = 'bi bi-hand-thumbs-up-fill';
-        dislikeBtn.classList.remove('active');
-        dislikeBtn.querySelector('i').className = 'bi bi-hand-thumbs-down';
-      } else if (d.user_reaction === 'dislike') {
-        dislikeBtn.classList.add('active');
-        dislikeBtn.querySelector('i').className = 'bi bi-hand-thumbs-down-fill';
-        likeBtn.classList.remove('active');
-        likeBtn.querySelector('i').className = 'bi bi-hand-thumbs-up';
+        const iconL = likeBtn.querySelector('i');
+        if (iconL) iconL.className = 'bi bi-hand-thumbs-up-fill';
       } else {
         likeBtn.classList.remove('active');
-        likeBtn.querySelector('i').className = 'bi bi-hand-thumbs-up';
+        const iconL = likeBtn.querySelector('i');
+        if (iconL) iconL.className = 'bi bi-hand-thumbs-up';
+      }
+
+      if (isDisliked) {
+        dislikeBtn.classList.add('active');
+        const iconD = dislikeBtn.querySelector('i');
+        if (iconD) iconD.className = 'bi bi-hand-thumbs-down-fill';
+      } else {
         dislikeBtn.classList.remove('active');
-        dislikeBtn.querySelector('i').className = 'bi bi-hand-thumbs-down';
+        const iconD = dislikeBtn.querySelector('i');
+        if (iconD) iconD.className = 'bi bi-hand-thumbs-down';
+      }
+    }
+
+    // Instant 0ms Optimistic UI update
+    renderReactionState(optLiked, optDisliked, optLikes, optDislikes);
+    reactingGroupPosts[postId] = true;
+
+    try {
+      const d = await postJSON('/api/groups/posts/' + postId + '/react/', { reaction });
+      if (d.success) {
+        renderReactionState(d.user_reaction === 'like', d.user_reaction === 'dislike', d.likes, d.dislikes);
+      } else {
+        renderReactionState(prevState.wasLiked, prevState.wasDisliked, prevState.likes, prevState.dislikes);
+        toast(d.error || 'Failed', 'error');
       }
     } catch (e) {
+      renderReactionState(prevState.wasLiked, prevState.wasDisliked, prevState.likes, prevState.dislikes);
       toast('Network error', 'error');
+    } finally {
+      delete reactingGroupPosts[postId];
     }
   };
 
@@ -445,30 +590,128 @@
 
   window.gvSubmitComment = async function (postId) {
     const input = document.getElementById('gvCommentInput-' + postId);
+    if (!input) return;
     const content = input.value.trim();
     if (!content) return;
     const btn = input.nextElementSibling;
-    const orig = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    const orig = btn ? btn.innerHTML : 'Post';
+
+    const savedContent = content;
+    input.value = '';
+
+    // Snapshot comment count
+    const card = document.querySelector('.post-card-vertical[data-post-id="' + postId + '"]');
+    const countEl = card ? card.querySelector('.comment-btn .action-count') : null;
+    const prevCount = countEl ? parseInt(countEl.textContent || '0', 10) : 0;
+    if (countEl) countEl.textContent = prevCount + 1;
+
+    // Optimistic comment DOM insertion
+    const c = document.getElementById('gvCommentsContainer-' + postId);
+    const noComments = c ? c.querySelector('.no-comments') : null;
+    const wasNoComments = Boolean(noComments);
+    if (noComments) noComments.style.display = 'none';
+
+    const tempId = 'temp-' + Date.now();
+    const currentUserName = document.querySelector('.user-info h4, .avatar-img')?.alt || 'You';
+    const currentUserPic = document.querySelector('.avatar-mini-img, .avatar-img')?.getAttribute('src') || '/static/images/avatars/default.png';
+
+    const optimisticCm = {
+      id: tempId,
+      author: {
+        id: USER_ID,
+        name: currentUserName,
+        username: (window.XPY_CONFIG && window.XPY_CONFIG.username) || currentUserName,
+        picture: currentUserPic
+      },
+      time_ago: 'Just now',
+      content: savedContent
+    };
+
+    if (c) {
+      c.insertAdjacentHTML('beforeend', renderComment(optimisticCm, postId));
+    }
+    const tempEl = c ? c.querySelector('.comment-item[data-comment-id="' + tempId + '"]') : null;
+    if (tempEl) {
+      tempEl.style.opacity = '0.65';
+      tempEl.style.transition = 'opacity 0.2s ease';
+      tempEl.dataset.isOptimistic = 'true';
+    }
+
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    }
+
     try {
-      const d = await postJSON('/api/groups/posts/' + postId + '/comments/add/', { content });
-      if (!d.success) { toast(d.error || 'Failed', 'error'); return; }
-      input.value = '';
-      const c = document.getElementById('gvCommentsContainer-' + postId);
-      const noComments = c.querySelector('.no-comments');
-      if (noComments) noComments.remove();
-      c.insertAdjacentHTML('beforeend', renderComment(d.comment, postId));
-      const card = document.querySelector('.post-card-vertical[data-post-id="' + postId + '"]');
-      if (card) {
-        const countEl = card.querySelector('.comment-btn .action-count');
-        if (countEl) countEl.textContent = parseInt(countEl.textContent) + 1;
+      const d = await postJSON('/api/groups/posts/' + postId + '/comments/add/', { content: savedContent });
+      if (d.success) {
+        if (tempEl) {
+          tempEl.style.opacity = '1';
+          tempEl.dataset.commentId = d.comment.id;
+          delete tempEl.dataset.isOptimistic;
+          const delBtn = tempEl.querySelector('.comment-delete-btn');
+          if (delBtn) {
+            delBtn.setAttribute('onclick', 'gvDeleteComment(' + d.comment.id + ', ' + postId + ')');
+          }
+        }
+        if (wasNoComments && noComments) {
+          noComments.remove();
+        }
+      } else {
+        if (tempEl) tempEl.remove();
+        if (wasNoComments && noComments) noComments.style.display = '';
+        if (countEl) countEl.textContent = prevCount;
+        input.value = savedContent;
+        toast(d.error || 'Failed to post comment', 'error');
+      }
+    } catch (e) {
+      if (tempEl) tempEl.remove();
+      if (wasNoComments && noComments) noComments.style.display = '';
+      if (countEl) countEl.textContent = prevCount;
+      input.value = savedContent;
+      toast('Network error', 'error');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = orig;
+      }
+      input.focus();
+    }
+  };
+
+  // Group Admin Moderation Actions
+  window.gvApprovePost = async function(postId) {
+    try {
+      const d = await postJSON('/api/groups/posts/' + postId + '/approve/', {});
+      if (d.success) {
+        toast('Post approved', 'success');
+        const card = document.querySelector('.post-card-vertical[data-post-id="' + postId + '"]');
+        if (card) {
+          card.querySelector('.badge-pending')?.remove();
+          card.querySelector('.post-pending-actions')?.remove();
+        }
+      } else {
+        toast(d.error || 'Failed to approve', 'error');
       }
     } catch (e) {
       toast('Network error', 'error');
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = orig;
+    }
+  };
+
+  window.gvRejectPost = async function(postId) {
+    const ok = await confirmDialog('Reject Post', 'Are you sure you want to reject this post?', 'Reject');
+    if (!ok) return;
+    try {
+      const d = await postJSON('/api/groups/posts/' + postId + '/reject/', {});
+      if (d.success) {
+        toast('Post rejected', 'success');
+        const card = document.querySelector('.post-card-vertical[data-post-id="' + postId + '"]');
+        if (card) card.remove();
+      } else {
+        toast(d.error || 'Failed to reject', 'error');
+      }
+    } catch (e) {
+      toast('Network error', 'error');
     }
   };
 
@@ -525,18 +768,60 @@
     const cancel = document.getElementById('gvDeleteCancel');
     ok.onclick = async () => {
       cleanup();
-      const d = await postJSON('/api/groups/posts/' + deletePostId + '/delete/', {});
-      if (d.success) {
-        const card = document.querySelector('.post-card-vertical[data-post-id="' + deletePostId + '"]');
-        if (card) {
-          card.style.transition = 'opacity 0.3s, transform 0.3s';
-          card.style.opacity = '0';
-          card.style.transform = 'translateY(-10px)';
-          setTimeout(() => card.remove(), 300);
+
+      const card = document.querySelector('.post-card-vertical[data-post-id="' + deletePostId + '"]');
+      const countEl = document.getElementById('gvPostCount');
+      const countElMob = document.getElementById('gvPostCountMobile');
+
+      const prevCount = countEl ? (parseInt(countEl.textContent || '0', 10) || 0) : null;
+      const prevCountMob = countElMob ? (parseInt(countElMob.textContent || '0', 10) || 0) : null;
+
+      if (countEl && prevCount !== null) countEl.textContent = Math.max(0, prevCount - 1);
+      if (countElMob && prevCountMob !== null) countElMob.textContent = Math.max(0, prevCountMob - 1);
+
+      let prevDisplay = '';
+      if (card) {
+        prevDisplay = card.style.display;
+        card.style.transition = 'all 0.2s ease';
+        card.style.opacity = '0';
+        card.style.transform = 'scale(0.96)';
+        setTimeout(() => {
+          if (card && card.style.opacity === '0') {
+            card.style.display = 'none';
+          }
+        }, 200);
+      }
+
+      try {
+        const d = await postJSON('/api/groups/posts/' + deletePostId + '/delete/', {});
+        if (d.success) {
+          if (card) card.remove();
+          toast('Post deleted', 'success');
+        } else {
+          // Rollback on failure
+          if (card) {
+            card.style.display = prevDisplay;
+            setTimeout(() => {
+              card.style.opacity = '1';
+              card.style.transform = '';
+            }, 10);
+          }
+          if (countEl && prevCount !== null) countEl.textContent = prevCount;
+          if (countElMob && prevCountMob !== null) countElMob.textContent = prevCountMob;
+          toast(d.error || 'Failed', 'error');
         }
-        toast('Post deleted', 'success');
-      } else {
-        toast(d.error || 'Failed', 'error');
+      } catch (err) {
+        // Rollback on network error
+        if (card) {
+          card.style.display = prevDisplay;
+          setTimeout(() => {
+            card.style.opacity = '1';
+            card.style.transform = '';
+          }, 10);
+        }
+        if (countEl && prevCount !== null) countEl.textContent = prevCount;
+        if (countElMob && prevCountMob !== null) countElMob.textContent = prevCountMob;
+        toast('Failed to delete post', 'error');
       }
     };
     cancel.onclick = cleanup;
@@ -829,6 +1114,16 @@
     document.getElementById('gvVideoInput')?.addEventListener('change', handleMediaSelect);
     document.getElementById('gvPostSubmit')?.addEventListener('click', createPost);
     document.getElementById('gvLoadMoreBtn')?.addEventListener('click', () => loadPosts(false));
+
+    let gvScrollTimeout;
+    window.addEventListener('scroll', function() {
+      clearTimeout(gvScrollTimeout);
+      gvScrollTimeout = setTimeout(function() {
+        if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 600 && !isLoading && hasMore) {
+          loadPosts(false);
+        }
+      }, 150);
+    });
     document.getElementById('editPostContent')?.addEventListener('input', updateEditCharCount);
 
     // Enter key on comment inputs

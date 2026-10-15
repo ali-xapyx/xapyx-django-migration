@@ -258,6 +258,15 @@
         }).join('');
     }
 
+    // ---- Right Widgets Stat Update Helper ----
+    function updateWidgetStat(id, delta) {
+        const el = document.getElementById(id);
+        if (el) {
+            const current = parseInt(el.textContent.replace(/[^0-9]/g, '') || '0', 10);
+            el.textContent = Math.max(0, current + delta);
+        }
+    }
+
     // ---- Actions ----
     window.__joinPublicRoom = async function (roomId) {
         try {
@@ -329,6 +338,9 @@
             const data = await res.json();
             if (data.success) {
                 loadRooms();
+                updateWidgetStat('widgetTotalRooms', -1);
+                updateWidgetStat('widgetMyRooms', -1);
+                updateWidgetStat('orbitMyRoomsCount', -1);
             } else {
                 alert(data.error || 'Failed to leave room');
             }
@@ -348,6 +360,7 @@
             const data = await res.json();
             if (data.success) {
                 loadRooms();
+                updateWidgetStat('widgetJoinedRooms', -1);
             } else {
                 alert(data.error || 'Failed to delete room');
             }
@@ -502,6 +515,9 @@
                     if (bsCreateModal) bsCreateModal.hide();
                     createRoomForm.reset();
                     loadRooms();
+                    updateWidgetStat('widgetTotalRooms', 1);
+                    updateWidgetStat('widgetMyRooms', 1);
+                    updateWidgetStat('orbitMyRoomsCount', 1);
                 } else {
                     alert(data.error || 'Failed to create room');
                 }
@@ -584,6 +600,51 @@
         chatroomsPrivacyFilter.addEventListener('change', (e) => {
             privacyFilter = e.target.value;
             loadRooms();
+        });
+    }
+
+
+    // ---- Right Widgets Drawer & Actions ----
+    const toggleWidgetsDrawerBtn = document.getElementById('toggleWidgetsDrawerBtn');
+    const closeWidgetsDrawerBtn = document.getElementById('closeWidgetsDrawerBtn');
+    const rightWidgetsPanel = document.getElementById('rightWidgetsPanel');
+    const widgetsOverlay = document.getElementById('widgetsOverlay');
+    const widgetNewRoomBtn = document.getElementById('widgetNewRoomBtn');
+
+    function openWidgetsDrawer() {
+        if (rightWidgetsPanel) rightWidgetsPanel.classList.add('drawer-open');
+        if (widgetsOverlay) widgetsOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeWidgetsDrawer() {
+        if (rightWidgetsPanel) rightWidgetsPanel.classList.remove('drawer-open');
+        if (widgetsOverlay) widgetsOverlay.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    if (toggleWidgetsDrawerBtn) {
+        toggleWidgetsDrawerBtn.addEventListener('click', openWidgetsDrawer);
+    }
+    if (closeWidgetsDrawerBtn) {
+        closeWidgetsDrawerBtn.addEventListener('click', closeWidgetsDrawer);
+    }
+    if (widgetsOverlay) {
+        widgetsOverlay.addEventListener('click', closeWidgetsDrawer);
+    }
+
+    if (widgetNewRoomBtn) {
+        widgetNewRoomBtn.addEventListener('click', () => {
+            closeWidgetsDrawer();
+            if (createRoomForm) createRoomForm.reset();
+            if (createPicPreviewWrap) createPicPreviewWrap.classList.add('d-none');
+            if (createNameFeedback) createNameFeedback.innerHTML = '';
+            if (createRoomModalEl) {
+                if (typeof bootstrap !== 'undefined') {
+                    const inst = bootstrap.Modal.getInstance(createRoomModalEl) || new bootstrap.Modal(createRoomModalEl);
+                    inst.show();
+                }
+            }
         });
     }
 

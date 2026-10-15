@@ -525,20 +525,71 @@ document.addEventListener('DOMContentLoaded', function() {
     finally { btn.disabled = false; btn.innerHTML = 'Post'; }
   }
 
+// ============================================================
+// SKELETON PLACEHOLDERS FOR PAGINATION
+// ============================================================
+function renderPostSkeleton() {
+    return '<div class="post-card-vertical post-skeleton" aria-hidden="true">' +
+        '<div class="post-header">' +
+            '<div class="post-author d-flex align-items-center gap-2">' +
+                '<div class="skeleton-shimmer skeleton-avatar"></div>' +
+                '<div class="post-author-info" style="flex:1;">' +
+                    '<div class="skeleton-shimmer skeleton-line skeleton-title"></div>' +
+                    '<div class="skeleton-shimmer skeleton-line skeleton-subtitle"></div>' +
+                '</div>' +
+            '</div>' +
+        '</div>' +
+        '<div class="post-content" style="padding: 12px 0 8px;">' +
+            '<div class="skeleton-shimmer skeleton-line" style="width: 92%;"></div>' +
+            '<div class="skeleton-shimmer skeleton-line" style="width: 68%;"></div>' +
+        '</div>' +
+        '<div class="skeleton-shimmer skeleton-media"></div>' +
+        '<div class="post-footer d-flex justify-content-between pt-2">' +
+            '<div class="skeleton-shimmer skeleton-action-btn"></div>' +
+            '<div class="skeleton-shimmer skeleton-action-btn"></div>' +
+            '<div class="skeleton-shimmer skeleton-action-btn"></div>' +
+            '<div class="skeleton-shimmer skeleton-action-btn"></div>' +
+        '</div>' +
+    '</div>';
+}
+
+function appendPostSkeletons(container, count) {
+    if (!container) return;
+    count = count || 2;
+    var html = '';
+    for (var i = 0; i < count; i++) {
+        html += renderPostSkeleton();
+    }
+    container.insertAdjacentHTML('beforeend', html);
+}
+
+function removePostSkeletons(container) {
+    if (!container) return;
+    var skeletons = container.querySelectorAll('.post-skeleton');
+    skeletons.forEach(function(sk) {
+        sk.remove();
+    });
+}
+
   async function loadPosts(reset = false) {
     if (isLoading || !hasMorePosts) return;
     isLoading = true;
     const feed = document.getElementById('feedContainer');
     const lm = document.getElementById('loadMoreContainer');
     if (reset) {
-      feed.innerHTML = '<div class="xapyx-empty-state"><div class="spinner-border text-primary"></div></div>';
+      feed.innerHTML = '';
+      appendPostSkeletons(feed, 3);
       lm?.classList.add('d-none');
       currentPage = 1;
       hasMorePosts = true;
+    } else {
+      appendPostSkeletons(feed, 2);
+      lm?.classList.add('d-none');
     }
     try {
       const r = await fetch(`/api/user-posts/?profile_user_id=${profileUserId}&page=${currentPage}`);
       const data = await r.json();
+      removePostSkeletons(feed);
       if (data.success) {
         if (reset || currentPage === 1) feed.innerHTML = '';
         if (data.posts.length > 0) {
@@ -564,6 +615,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       } else throw new Error(data.error || 'Failed to load posts');
     } catch (e) {
+      removePostSkeletons(feed);
       if (currentPage === 1) {
         feed.innerHTML = `
           <div class="xapyx-empty-state">
@@ -605,7 +657,8 @@ document.addEventListener('DOMContentLoaded', function() {
         post.media.map(function(m, idx) {
           return '<div class="slider-item ' + (idx === 0 ? 'active' : '') + '" data-index="' + idx + '">' +
             (m.type === 'image'
-              ? '<img src="' + m.url + '" width="800" height="600" loading="lazy" onclick="openMediaViewerFromPost(' + post.id + ', ' + idx + ')">'
+              ? '<img class="post-media-blur-bg" src="' + m.url + '" alt="" aria-hidden="true">' +
+                '<img src="' + m.url + '" class="post-image slider-image" width="800" height="600" loading="lazy" onclick="openMediaViewerFromPost(' + post.id + ', ' + idx + ')">'
               : '<video controls preload="metadata" muted playsinline loop onclick="toggleVideoSound(this, event)"><source src="' + m.url + '" type="' + (m.mime_type || 'video/mp4') + '"></video>') +
             '</div>';
         }).join('') +
@@ -691,8 +744,8 @@ document.addEventListener('DOMContentLoaded', function() {
       +   (needsSeeMore ? '<div class="see-more-container"><a href="javascript:void(0)" class="see-more-link" onclick="window.__viewPost(' + post.id + ')">See more <i class="bi bi-arrow-right"></i></a></div>' : '')
       +   mediaHtml
       +   pollHtml
-      +   '<div class="post-stats-top" onclick="window.__viewPost(' + post.id + ')" style="gap:12px;">'
-      +     '<span style="color:var(--xpy-primary);font-weight:600;font-size:0.8rem;margin-right:auto;">View post <i class="bi bi-arrow-right-short"></i></span>'
+      +   '<div class="post-stats-top" onclick="window.__viewPost(' + post.id + ')">'
+      +     '<span class="post-view-link" style="color:var(--xpy-primary);font-weight:600;font-size:0.8rem;">View post <i class="bi bi-arrow-right-short"></i></span>'
       +     '<span class="post-views-count"><i class="bi bi-eye"></i> ' + (post.views || 0) + '</span>'
       +   '</div>'
       + '</div>'
@@ -710,6 +763,35 @@ document.addEventListener('DOMContentLoaded', function() {
     if (ok) window.__deletePost(postId);
   };
   window.__deletePost = async function(postId) {
+    const el = document.querySelector(`.post-card-vertical[data-post-id="${postId}"]`);
+
+    // Find profile post stat counter in horizontal strip
+    let postStatEl = null;
+    document.querySelectorAll('.xapyx-stat-card').forEach(function(card) {
+      const label = card.querySelector('.xapyx-stat-label');
+      if (label && label.textContent.trim().toLowerCase() === 'posts') {
+        postStatEl = card.querySelector('.xapyx-stat-number');
+      }
+    });
+    const prevStatCount = postStatEl ? (parseInt(postStatEl.textContent || '0', 10) || 0) : null;
+    if (postStatEl && prevStatCount !== null) {
+      postStatEl.textContent = Math.max(0, prevStatCount - 1);
+    }
+
+    // 0ms Optimistic collapse/hide
+    let prevDisplay = '';
+    if (el) {
+      prevDisplay = el.style.display;
+      el.style.transition = 'all 0.2s ease';
+      el.style.opacity = '0';
+      el.style.transform = 'scale(0.96)';
+      setTimeout(() => {
+        if (el && el.style.opacity === '0') {
+          el.style.display = 'none';
+        }
+      }, 200);
+    }
+
     try {
       const r = await csrfFetch('/api/posts/delete/', {
         method: 'POST',
@@ -718,17 +800,40 @@ document.addEventListener('DOMContentLoaded', function() {
       });
       const d = await r.json();
       if (d.success) {
-        const el = document.querySelector(`.post-card-vertical[data-post-id="${postId}"]`);
         if (el) {
           clearViewTimer(postId);
           if (postObserver) postObserver.unobserve(el);
-          el.style.opacity = '0.5';
-          el.style.pointerEvents = 'none';
-          setTimeout(() => el.remove(), 300);
+          el.remove();
         }
         showAlert('Post deleted', 'success');
-      } else showAlert(d.error || 'Failed to delete', 'error');
-    } catch (e) { showAlert('Failed to delete', 'error'); }
+      } else {
+        // Rollback on API failure
+        if (el) {
+          el.style.display = prevDisplay;
+          setTimeout(() => {
+            el.style.opacity = '1';
+            el.style.transform = '';
+          }, 10);
+        }
+        if (postStatEl && prevStatCount !== null) {
+          postStatEl.textContent = prevStatCount;
+        }
+        showAlert(d.error || 'Failed to delete', 'error');
+      }
+    } catch (e) {
+      // Rollback on network failure
+      if (el) {
+        el.style.display = prevDisplay;
+        setTimeout(() => {
+          el.style.opacity = '1';
+          el.style.transform = '';
+        }, 10);
+      }
+      if (postStatEl && prevStatCount !== null) {
+        postStatEl.textContent = prevStatCount;
+      }
+      showAlert('Failed to delete', 'error');
+    }
   };
 
   window.__reactPost = async function(postId, reaction) {
@@ -828,34 +933,93 @@ document.addEventListener('DOMContentLoaded', function() {
 
   window.__submitComment = async function(postId) {
     const inp = document.getElementById(`comment-input-${postId}`);
+    if (!inp) return;
     const btn = inp.nextElementSibling;
     const content = inp.value.trim();
     if (!content) { showAlert('Enter a comment', 'warning'); inp.focus(); return; }
     const mentions = extractMentions(content);
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    const savedContent = content;
+    inp.value = '';
+
+    // Snapshot comment count
+    const postEl = document.querySelector(`.post-card-vertical[data-post-id="${postId}"]`);
+    const cc = postEl ? postEl.querySelector('.comment-btn .action-count') : null;
+    const prevCount = cc ? parseInt(cc.textContent || '0', 10) : 0;
+    if (cc) cc.textContent = prevCount + 1;
+
+    // Optimistic comment DOM insertion
+    const c = document.getElementById(`comments-container-${postId}`);
+    const noC = c ? c.querySelector('.no-comments') : null;
+    const wasNoC = Boolean(noC);
+    if (noC) noC.style.display = 'none';
+
+    const currentUserId = (typeof loggedUserId !== 'undefined' && loggedUserId) || (window.XPY_CONFIG && window.XPY_CONFIG.userId) || null;
+    const currentUserPic = document.querySelector('.avatar-mini-img, .avatar-img, .profile-avatar-img')?.getAttribute('src') || '/static/images/avatars/default.png';
+    const currentUserName = document.querySelector('.user-info h4, .profile-name')?.textContent.trim() || 'You';
+
+    const tempId = 'temp-' + Date.now();
+    const optimisticComment = {
+      id: tempId,
+      author: {
+        id: currentUserId,
+        name: currentUserName,
+        username: (window.XPY_CONFIG && window.XPY_CONFIG.username) || currentUserName,
+        picture: currentUserPic
+      },
+      content: savedContent,
+      time_ago: 'Just now'
+    };
+
+    const tempEl = createCommentElement(optimisticComment);
+    tempEl.style.opacity = '0.65';
+    tempEl.style.transition = 'opacity 0.2s ease';
+    tempEl.dataset.isOptimistic = 'true';
+    if (c) c.appendChild(tempEl);
+
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    }
+
     try {
       const r = await csrfFetch('/api/posts/comments/add/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ post_id: postId, content, mentions, type: 'user' })
+        body: JSON.stringify({ post_id: postId, content: savedContent, mentions, type: 'user' })
       });
       const d = await r.json();
       if (d.success) {
-        inp.value = '';
-        const c = document.getElementById(`comments-container-${postId}`);
-        c.querySelector('.no-comments')?.remove();
-        c.querySelector('a.btn')?.remove();
-        c.appendChild(createCommentElement(d.comment, postId));
-        const postEl = document.querySelector(`.post-card-vertical[data-post-id="${postId}"]`);
-        if (postEl) {
-          const cc = postEl.querySelector('.comment-btn .action-count');
-          cc.textContent = parseInt(cc.textContent) + 1;
+        if (tempEl && tempEl.parentNode) {
+          tempEl.style.opacity = '1';
+          tempEl.dataset.commentId = d.comment.id;
+          delete tempEl.dataset.isOptimistic;
+          const delBtn = tempEl.querySelector('.comment-delete-btn');
+          if (delBtn) {
+            delBtn.setAttribute('onclick', 'window.__deleteComment(' + d.comment.id + ', null)');
+          }
         }
+        if (wasNoC && noC) noC.remove();
         showAlert('Comment posted!', 'success');
-      } else showAlert(d.error || 'Failed', 'error');
-    } catch (e) { showAlert('Failed', 'error'); }
-    finally { btn.disabled = false; btn.innerHTML = 'Post'; }
+      } else {
+        if (tempEl && tempEl.parentNode) tempEl.remove();
+        if (wasNoC && noC) noC.style.display = '';
+        if (cc) cc.textContent = prevCount;
+        inp.value = savedContent;
+        showAlert(d.error || 'Failed', 'error');
+      }
+    } catch (e) {
+      if (tempEl && tempEl.parentNode) tempEl.remove();
+      if (wasNoC && noC) noC.style.display = '';
+      if (cc) cc.textContent = prevCount;
+      inp.value = savedContent;
+      showAlert('Failed', 'error');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = 'Post';
+      }
+      inp.focus();
+    }
   };
 
   window.__deleteComment = async function(commentId, postId) {

@@ -32,6 +32,7 @@
   display: flex;
   flex-direction: column;
   background: var(--xpy-card-bg);
+  -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   border-radius: var(--xpy-radius);
   border: 1px solid var(--xpy-border);
@@ -52,6 +53,7 @@
   display: flex;
   flex-direction: column;
   background: var(--xpy-card-bg);
+  -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   border-radius: var(--xpy-radius);
   border: 1px solid var(--xpy-border);
@@ -259,7 +261,7 @@
 .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
 
 /* ---- Tickets list internals ---- */
-.chats-header { padding: 16px 20px; border-bottom: 1px solid var(--xpy-border); flex-shrink: 0; }
+.chats-header { padding: 16px 20px; border-bottom: 1px solid var(--xpy-border); flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .chats-header-content { display: flex; align-items: center; gap: 12px; }
 .profile-pic {
   width: 48px; height: 48px;
@@ -286,7 +288,7 @@
 }
 .search-input:focus { outline: none; border-color: var(--xpy-primary); box-shadow: 0 0 0 3px rgba(var(--xpy-primary-rgb), 0.12); }
 
-.chats-list { flex: 1; overflow-y: auto; padding: 4px 0; }
+.chats-list { flex: 1; overflow-y: auto; padding: 4px 0; -webkit-overflow-scrolling: touch; }
 .chats-list::-webkit-scrollbar { width: 4px; }
 .chats-list::-webkit-scrollbar-thumb { background: var(--xpy-border); border-radius: 2px; }
 
@@ -408,6 +410,7 @@
   gap: 12px;
   max-height: 120px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .media-preview-item {
   position: relative;
@@ -489,3 +492,357 @@ html[data-theme="light"] select option {
   background-color: #ffffff;
   color: #1a1a2e;
 }
+/* iOS Safari Auto-Zoom Prevention */
+@media (max-width: 767.98px) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
+    textarea,
+    select {
+        font-size: 16px !important;
+    }
+}
+
+
+/* ============================================================
+   SUPPORT CENTER: MODERN BUTTONS, MOBILE POSITIONING & MODAL FIX
+   ============================================================ */
+
+/* 1. Modern Primary Theme Button for Create New Ticket */
+.support-create-ticket-btn {
+  background: linear-gradient(135deg, var(--xpy-primary, #6366f1) 0%, var(--xpy-secondary, #a855f7) 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 14px !important;
+  padding: 12px 22px !important;
+  font-weight: 600 !important;
+  font-size: 0.92rem !important;
+  letter-spacing: 0.2px;
+  box-shadow: 0 4px 18px rgba(99, 102, 241, 0.35) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative;
+  overflow: hidden;
+  text-decoration: none !important;
+}
+.support-create-ticket-btn::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%; width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.6s ease;
+}
+.support-create-ticket-btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 26px rgba(99, 102, 241, 0.5) !important;
+  color: #ffffff !important;
+}
+.support-create-ticket-btn:hover::before {
+  left: 100%;
+}
+.support-create-ticket-btn:active {
+  transform: translateY(0) !important;
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3) !important;
+}
+.support-create-ticket-btn i {
+  font-size: 1.05rem;
+  transition: transform 0.25s ease;
+}
+.support-create-ticket-btn:hover i {
+  transform: scale(1.15);
+}
+
+/* Also style any .chats-footer .btn-primary as modern theme button */
+.chats-footer .btn-primary {
+  background: linear-gradient(135deg, var(--xpy-primary, #6366f1) 0%, var(--xpy-secondary, #a855f7) 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 14px !important;
+  padding: 12px 22px !important;
+  font-weight: 600 !important;
+  font-size: 0.92rem !important;
+  letter-spacing: 0.2px;
+  box-shadow: 0 4px 18px rgba(99, 102, 241, 0.35) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+}
+.chats-footer .btn-primary:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 26px rgba(99, 102, 241, 0.5) !important;
+}
+
+/* 2. Modern Header Action Button */
+.support-header-create-btn {
+  background: linear-gradient(135deg, var(--xpy-primary, #6366f1) 0%, var(--xpy-secondary, #a855f7) 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-radius: 20px !important;
+  padding: 7px 14px !important;
+  font-weight: 600 !important;
+  font-size: 0.82rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.3) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  cursor: pointer;
+  white-space: nowrap !important;
+  flex-shrink: 0;
+  text-decoration: none !important;
+}
+.support-header-create-btn:hover {
+  transform: translateY(-1px) scale(1.02) !important;
+  box-shadow: 0 4px 18px rgba(99, 102, 241, 0.45) !important;
+  color: #ffffff !important;
+}
+.support-header-create-btn:active {
+  transform: translateY(0) !important;
+}
+.support-header-create-btn i {
+  font-size: 0.85rem;
+}
+
+/* 3. Mobile Floating Action Button (FAB) */
+.support-fab-btn {
+  display: none;
+}
+
+@media (max-width: 767.98px) {
+  .support-fab-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    right: 20px;
+    bottom: calc(var(--mobile-nav-height, 60px) + 20px + env(safe-area-inset-bottom, 16px));
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--xpy-primary, #6366f1) 0%, var(--xpy-secondary, #a855f7) 100%);
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 6px 22px rgba(99, 102, 241, 0.5);
+    z-index: 1045;
+    font-size: 22px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .support-fab-btn:hover {
+    transform: scale(1.08) translateY(-2px);
+    box-shadow: 0 10px 30px rgba(99, 102, 241, 0.6);
+    color: #ffffff !important;
+  }
+  .support-fab-btn:active {
+    transform: scale(0.94);
+  }
+  body.modal-open .support-fab-btn {
+    display: none !important;
+  }
+
+  /* Support Page Mobile Container & Clearance */
+  .support-wrapper {
+    height: auto !important;
+    min-height: calc(100dvh - 180px);
+  }
+  .support-container {
+    height: auto !important;
+    min-height: calc(100dvh - 180px);
+  }
+  #ticketsListContainer {
+    position: relative !important;
+    inset: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: calc(100dvh - 180px);
+    border-radius: 0 !important;
+    border: none !important;
+    z-index: 20;
+    transform: translateX(0);
+    transition: transform 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: calc(var(--mobile-nav-height, 60px) + env(safe-area-inset-bottom, 16px)) !important;
+    box-sizing: border-box;
+  }
+  #ticketsListContainer.hidden {
+    display: none !important;
+    transform: translateX(-100%);
+  }
+  .chats-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+  }
+  .support-container .chats-footer,
+  .support-create-ticket-btn-static {
+    display: none !important;
+  }
+}
+
+/* 4. Modal Safe Area & Scrollability Fix */
+#newTicketModal .modal-dialog {
+  max-height: 85vh;
+  margin: 1.75rem auto;
+}
+#newTicketModal .modal-content {
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--xpy-card-bg, #1a1a2e);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--xpy-border, rgba(255, 255, 255, 0.1));
+  border-radius: 18px;
+  overflow: hidden;
+}
+#newTicketModal .modal-header {
+  border-bottom: 1px solid var(--xpy-border, rgba(255, 255, 255, 0.1));
+  padding: 16px 20px;
+  flex-shrink: 0;
+}
+#newTicketModal .modal-body {
+  max-height: 85vh;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  padding: 20px;
+  flex: 1 1 auto;
+}
+#newTicketModal .modal-footer {
+  border-top: 1px solid var(--xpy-border, rgba(255, 255, 255, 0.1));
+  padding: 14px 20px calc(20px + env(safe-area-inset-bottom, 16px)) 20px !important;
+  background: var(--xpy-card-bg, #1a1a2e);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+#newTicketModal .modal-footer .btn-secondary {
+  border-radius: 12px;
+  padding: 10px 18px;
+  font-weight: 500;
+}
+
+@media (max-width: 767.98px) {
+  #newTicketModal .modal-dialog {
+    max-height: 85vh;
+    margin: 12px auto 0 auto !important;
+    width: calc(100% - 20px);
+    max-width: 100%;
+    display: flex;
+    align-items: flex-end;
+  }
+  #newTicketModal .modal-content {
+    max-height: 85vh;
+    border-radius: 20px 20px 0 0 !important;
+  }
+  #newTicketModal .modal-body {
+    max-height: calc(85vh - 130px) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px 16px 20px 16px;
+  }
+  #newTicketModal .modal-footer {
+    padding: 14px 16px calc(20px + env(safe-area-inset-bottom, 16px)) 16px !important;
+  }
+}
+
+
+/* ============================================================
+   LIGHT MODE: SUPPORT CENTER CONTRAST ENHANCEMENTS
+   ============================================================ */
+[data-theme="light"] .support-container,
+html[data-theme="light"] .support-container,
+[data-theme="light"] .support-sidebar,
+html[data-theme="light"] .support-sidebar,
+[data-theme="light"] .support-main,
+html[data-theme="light"] .support-main {
+    background: #ffffff !important;
+    border-color: var(--xpy-border, #e2e8f0) !important;
+}
+
+[data-theme="light"] .chats-header,
+html[data-theme="light"] .chats-header,
+[data-theme="light"] .chat-header,
+html[data-theme="light"] .chat-header,
+[data-theme="light"] .chat-input-area,
+html[data-theme="light"] .chat-input-area {
+    background: #ffffff !important;
+    border-color: var(--xpy-border, #e2e8f0) !important;
+}
+
+[data-theme="light"] .chats-title,
+html[data-theme="light"] .chats-title,
+[data-theme="light"] .chat-user-name,
+html[data-theme="light"] .chat-user-name {
+    color: var(--text-primary, #0f172a) !important;
+}
+
+[data-theme="light"] .chats-subtitle,
+html[data-theme="light"] .chats-subtitle,
+[data-theme="light"] .chat-user-status,
+html[data-theme="light"] .chat-user-status {
+    color: var(--xpy-text-secondary, #64748b) !important;
+}
+
+[data-theme="light"] .chats-item,
+html[data-theme="light"] .chats-item {
+    border-color: var(--xpy-border, #e2e8f0) !important;
+}
+
+[data-theme="light"] .chats-item:hover,
+html[data-theme="light"] .chats-item:hover {
+    background: #f8fafc !important;
+}
+
+[data-theme="light"] .chats-item.active,
+html[data-theme="light"] .chats-item.active {
+    background: rgba(var(--xpy-primary-rgb, 255, 140, 0), 0.08) !important;
+    border-left: 3px solid var(--xpy-primary, #ff8c00) !important;
+}
+
+[data-theme="light"] .message-wrapper.user .message-bubble,
+html[data-theme="light"] .message-wrapper.user .message-bubble {
+    background: rgba(var(--xpy-primary-rgb, 255, 140, 0), 0.12) !important;
+    border-color: rgba(var(--xpy-primary-rgb, 255, 140, 0), 0.3) !important;
+    color: var(--text-primary, #0f172a) !important;
+}
+
+[data-theme="light"] .message-wrapper.user .message-sender,
+html[data-theme="light"] .message-wrapper.user .message-sender {
+    color: var(--xpy-primary, #c2410c) !important;
+    font-weight: 700 !important;
+}
+
+[data-theme="light"] .message-wrapper.admin .message-bubble,
+html[data-theme="light"] .message-wrapper.admin .message-bubble {
+    background: #ffffff !important;
+    border-color: var(--xpy-border, #e2e8f0) !important;
+    color: var(--text-primary, #0f172a) !important;
+}
+
+[data-theme="light"] #newTicketModal .modal-content,
+html[data-theme="light"] #newTicketModal .modal-content,
+[data-theme="light"] #newTicketModal .modal-footer,
+html[data-theme="light"] #newTicketModal .modal-footer {
+    background: #ffffff !important;
+    border-color: var(--xpy-border, #e2e8f0) !important;
+    color: var(--text-primary, #0f172a) !important;
+}
+
+[data-theme="light"] #newTicketModal .form-control,
+html[data-theme="light"] #newTicketModal .form-control,
+[data-theme="light"] #newTicketModal .form-select,
+html[data-theme="light"] #newTicketModal .form-select {
+    background: #ffffff !important;
+    border-color: var(--xpy-border, #e2e8f0) !important;
+    color: var(--text-primary, #0f172a) !important;
+}
+

@@ -1,33 +1,84 @@
 {% extends "admin_portal/base_admin.html" %}
 {% load static %}
 
-{% block title %}Store Management | XAPYX Admin Portal{% endblock %}
+{% block title %}Store & Marketplace Moderation | XAPYX Admin Portal{% endblock %}
 {% block header_title %}Store & Marketplace{% endblock %}
 
 {% block content %}
 <div class="admsup-page-header">
   <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
     <div>
-      <h4 class="mb-1 fw-bold admsup-heading"><i class="bi bi-shop me-2 text-primary"></i>XAPYX Store Management</h4>
-      <p class="mb-0 small" style="color: var(--admsup-text-muted);">Product catalog, categories, and marketplace inventory</p>
+      <h4 class="mb-1 fw-bold admsup-heading"><i class="bi bi-shop me-2 text-primary"></i>Store Product Moderation</h4>
+      <p class="mb-0 small" style="color: var(--admsup-text-muted);">Review pending listings, moderate marketplace items, and manage product categories</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="/store/" target="_blank" class="btn btn-sm btn-admsup-secondary d-flex align-items-center gap-2 px-3 py-2">
+        <i class="bi bi-box-arrow-up-right"></i>
+        <span>View Live Store</span>
+      </a>
+      <button type="button" class="btn btn-sm btn-primary d-flex align-items-center gap-2 px-3 py-2" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+        <i class="bi bi-folder-plus"></i>
+        <span>Add Category</span>
+      </button>
     </div>
   </div>
 </div>
 
+{% if msg %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+  <i class="bi bi-check-circle-fill me-2"></i>{{ msg }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+{% if err %}
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+  <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ err }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<!-- Quick Stat Cards -->
 <div class="row g-3 mb-4">
-  <div class="col-12 col-sm-6">
+  <div class="col-6 col-lg">
     <div class="admin-stat-card stat-total">
       <div>
-        <div class="admin-stat-label">Total Products</div>
+        <div class="admin-stat-label">Total Listings</div>
         <div class="admin-stat-number mt-1">{{ products_count }}</div>
       </div>
       <div class="admin-stat-icon"><i class="bi bi-box-seam"></i></div>
     </div>
   </div>
-  <div class="col-12 col-sm-6">
+  <div class="col-6 col-lg">
+    <div class="admin-stat-card stat-pending">
+      <div>
+        <div class="admin-stat-label">Pending Review</div>
+        <div class="admin-stat-number mt-1 text-warning">{{ pending_count }}</div>
+      </div>
+      <div class="admin-stat-icon"><i class="bi bi-hourglass-split"></i></div>
+    </div>
+  </div>
+  <div class="col-6 col-lg">
+    <div class="admin-stat-card stat-resolved">
+      <div>
+        <div class="admin-stat-label">Approved Items</div>
+        <div class="admin-stat-number mt-1 text-success">{{ approved_count }}</div>
+      </div>
+      <div class="admin-stat-icon"><i class="bi bi-check2-circle"></i></div>
+    </div>
+  </div>
+  <div class="col-6 col-lg">
+    <div class="admin-stat-card" style="background: var(--admsup-card-bg); border-left: 4px solid #f59e0b;">
+      <div>
+        <div class="admin-stat-label">Sold Out</div>
+        <div class="admin-stat-number mt-1 text-warning" style="color: #f59e0b !important;">{{ sold_count }}</div>
+      </div>
+      <div class="admin-stat-icon"><i class="bi bi-tag-fill" style="color: #f59e0b;"></i></div>
+    </div>
+  </div>
+  <div class="col-6 col-lg">
     <div class="admin-stat-card stat-progress">
       <div>
-        <div class="admin-stat-label">Store Categories</div>
+        <div class="admin-stat-label">Categories</div>
         <div class="admin-stat-number mt-1 text-primary">{{ categories_count }}</div>
       </div>
       <div class="admin-stat-icon"><i class="bi bi-tags"></i></div>
@@ -35,13 +86,372 @@
   </div>
 </div>
 
-<div class="admin-panel-card p-5 text-center">
-  <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 68px; height: 68px; background: rgba(59, 130, 246, 0.12); color: #3b82f6;">
-    <i class="bi bi-shop fs-2"></i>
+<!-- Search & Filter Controls -->
+<div class="admin-panel-card mb-4 p-3">
+  <form method="get" action="/portal-admin/store/" class="row g-2 align-items-center">
+    <div class="col-12 col-md-5">
+      <div class="input-group">
+        <span class="input-group-text" style="background: var(--admsup-surface-2); border-color: var(--admsup-border); color: var(--admsup-text-muted);">
+          <i class="bi bi-search"></i>
+        </span>
+        <input type="text" name="q" value="{{ search_q }}" class="form-control"
+               style="background: var(--admsup-surface-2); border-color: var(--admsup-border); color: var(--admsup-text);"
+               placeholder="Search by title, location, @seller, or ID...">
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <select name="status" class="form-select" style="background: var(--admsup-surface-2); border-color: var(--admsup-border); color: var(--admsup-text);">
+        <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Statuses</option>
+        <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending Review</option>
+        <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
+        <option value="sold" {% if status_filter == 'sold' %}selected{% endif %}>Sold Out</option>
+        <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+      </select>
+    </div>
+    <div class="col-6 col-md-2">
+      <select name="category" class="form-select" style="background: var(--admsup-surface-2); border-color: var(--admsup-border); color: var(--admsup-text);">
+        <option value="all" {% if category_filter == 'all' %}selected{% endif %}>All Categories</option>
+        {% for cat in categories_list %}
+        <option value="{{ cat.name }}" {% if category_filter == cat.name %}selected{% endif %}>{{ cat.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-12 col-md-2 d-flex gap-2">
+      <button type="submit" class="btn btn-primary w-100">Filter</button>
+      {% if search_q or status_filter != 'all' or category_filter != 'all' %}
+      <a href="/portal-admin/store/" class="btn btn-admsup-secondary">Reset</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
+
+<!-- Moderation Products Table -->
+<div class="admin-panel-card mb-4">
+  <div class="admin-panel-header p-3 d-flex align-items-center justify-content-between">
+    <div class="fw-bold d-flex align-items-center gap-2">
+      <i class="bi bi-grid-3x3-gap-fill text-primary"></i>
+      <span>Products Moderation Queue ({{ total_filtered }} matching)</span>
+    </div>
+    <span class="small" style="color: var(--admsup-text-muted);">Pending items are prioritized first</span>
   </div>
-  <h5 class="fw-bold admsup-heading">Store Catalog ({{ products_count }} Products, {{ categories_count }} Categories)</h5>
-  <p class="small mx-auto mb-0" style="max-width: 520px; color: var(--admsup-text-muted);">
-    The Store & Marketplace module is scheduled for the final phase of the rollout once initial product categories and inventory items are ready to be populated.
-  </p>
+
+  <div class="table-responsive">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Seller</th>
+          <th>Category</th>
+          <th>Price</th>
+          <th>Location</th>
+          <th>Status</th>
+          <th>Date</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in products_list %}
+        <tr>
+          <!-- Thumbnail & Title -->
+          <td>
+            <div class="d-flex align-items-center gap-2" style="min-width: 220px;">
+              <a href="{{ p.first_image }}" target="_blank" class="flex-shrink-0">
+                <img src="{{ p.first_image }}" alt="{{ p.title }}" class="rounded object-fit-cover" width="46" height="46"
+                     style="border: 1px solid var(--admsup-border);"
+                     onerror="this.onerror=null; this.src='/static/images/products/product.jpg';">
+              </a>
+              <div>
+                <a href="/store/{{ p.ad_id }}/" target="_blank" class="fw-semibold small text-decoration-none d-block text-truncate" style="color: var(--admsup-text); max-width: 240px;" title="{{ p.title }}">
+                  {{ p.title }}
+                </a>
+                <span class="font-monospace small" style="color: var(--admsup-text-muted); font-size: 0.72rem;">#{{ p.id }} &bull; {{ p.ad_id }}</span>
+              </div>
+            </div>
+          </td>
+
+          <!-- Seller Username & Avatar -->
+          <td>
+            <a href="/user/{{ p.user_id }}/" target="_blank" class="d-flex align-items-center gap-2 text-decoration-none">
+              <img src="{{ p.user_picture }}" alt="{{ p.username }}" class="rounded-circle flex-shrink-0" width="28" height="28"
+                   style="border: 1px solid var(--admsup-border);"
+                   onerror="this.onerror=null; this.src='/static/images/avatars/default.png';">
+              <span class="admsup-user-pill">@{{ p.username }}</span>
+            </a>
+          </td>
+
+          <!-- Category -->
+          <td>
+            <span class="badge" style="background: var(--admsup-surface-2); color: var(--admsup-text); border: 1px solid var(--admsup-border); font-weight: 500;">
+              {{ p.category }}
+            </span>
+          </td>
+
+          <!-- Price -->
+          <td>
+            <div class="fw-bold text-primary small">PKR {{ p.price|floatformat:0 }}</div>
+          </td>
+
+          <!-- Location -->
+          <td class="small" style="color: var(--admsup-text-muted); white-space: nowrap;">
+            <i class="bi bi-geo-alt me-1 text-danger"></i>{{ p.location }}
+          </td>
+
+          <!-- Status Badge -->
+          <td>
+            {% if p.is_sold %}
+              <span class="badge bg-secondary bg-opacity-50 text-light border border-secondary border-opacity-50 px-2 py-1 mb-1 d-inline-block">
+                <i class="bi bi-tag-fill me-1"></i>Sold Out
+              </span>
+            {% endif %}
+            {% if p.status == 'approved' %}
+              <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 px-2 py-1">
+                <i class="bi bi-check-circle-fill me-1"></i>Approved
+              </span>
+            {% elif p.status == 'rejected' %}
+              <span class="badge bg-danger bg-opacity-25 text-danger border border-danger border-opacity-25 px-2 py-1">
+                <i class="bi bi-x-circle-fill me-1"></i>Rejected
+              </span>
+            {% else %}
+              <span class="badge bg-warning bg-opacity-25 text-warning border border-warning border-opacity-25 px-2 py-1">
+                <i class="bi bi-hourglass-split me-1"></i>Pending
+              </span>
+            {% endif %}
+          </td>
+
+          <!-- Date -->
+          <td class="small" style="color: var(--admsup-text-muted); white-space: nowrap;">
+            {{ p.created_at|date:"M d, Y" }}
+          </td>
+
+          <!-- Actions Column (Approve, Reject, Delete, View) -->
+          <td class="text-end">
+            <div class="d-inline-flex align-items-center gap-1">
+              
+              <!-- View Details in store -->
+              <a href="/store/{{ p.ad_id }}/" target="_blank" class="btn btn-sm btn-admsup-secondary py-1 px-2" title="View Listing Page">
+                <i class="bi bi-box-arrow-up-right"></i>
+              </a>
+
+              <!-- Approve Action -->
+              {% if p.status != 'approved' %}
+              <form method="post" action="/portal-admin/store/" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="approve">
+                <input type="hidden" name="product_id" value="{{ p.id }}">
+                <button type="submit" class="btn btn-sm btn-success py-1 px-2 d-inline-flex align-items-center gap-1" title="Approve Listing">
+                  <i class="bi bi-check-lg"></i>
+                  <span class="d-none d-xl-inline">Approve</span>
+                </button>
+              </form>
+              {% endif %}
+
+              <!-- Reject Action -->
+              {% if p.status != 'rejected' %}
+              <form method="post" action="/portal-admin/store/" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="reject">
+                <input type="hidden" name="product_id" value="{{ p.id }}">
+                <button type="submit" class="btn btn-sm btn-outline-warning py-1 px-2 d-inline-flex align-items-center gap-1" title="Reject Listing">
+                  <i class="bi bi-x-lg"></i>
+                  <span class="d-none d-xl-inline">Reject</span>
+                </button>
+              </form>
+              {% endif %}
+
+              <!-- Delete Action -->
+              <form method="post" action="/portal-admin/store/" class="d-inline" onsubmit="return confirm('Permanently delete product #{{ p.id }} ({{ p.title|escapejs }})? This action cannot be undone.');">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="product_id" value="{{ p.id }}">
+                <button type="submit" class="btn btn-sm btn-outline-danger py-1 px-2" title="Delete Listing">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8" class="text-center py-5" style="color: var(--admsup-text-muted);">
+            <i class="bi bi-shop fs-1 d-block mb-2 opacity-50"></i>
+            No store products found matching your current filter.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination Controls -->
+  {% if total_pages > 1 %}
+  <div class="p-3 border-top d-flex justify-content-between align-items-center" style="border-color: var(--admsup-border) !important;">
+    <small style="color: var(--admsup-text-muted);">Page {{ page }} of {{ total_pages }} ({{ total_filtered }} items)</small>
+    <div class="d-flex gap-2">
+      {% if page > 1 %}
+      <a href="?q={{ search_q|urlencode }}&status={{ status_filter }}&category={{ category_filter }}&page={{ page|add:'-1' }}" class="btn btn-sm btn-admsup-secondary">Previous</a>
+      {% endif %}
+      {% if page < total_pages %}
+      <a href="?q={{ search_q|urlencode }}&status={{ status_filter }}&category={{ category_filter }}&page={{ page|add:'1' }}" class="btn btn-sm btn-primary">Next</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Category Management Card -->
+<div class="admin-panel-card p-4">
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-2 border-bottom" style="border-color: var(--admsup-border) !important;">
+    <div>
+      <h5 class="fw-bold mb-1 admsup-heading"><i class="bi bi-tags me-2 text-primary"></i>Store Categories ({{ categories_count }})</h5>
+      <p class="small mb-0" style="color: var(--admsup-text-muted);">Catalog taxonomy for buyers and sellers to discover products</p>
+    </div>
+    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+      <i class="bi bi-plus-circle me-1"></i> New Category
+    </button>
+  </div>
+
+  <div class="row g-3">
+    {% for cat in categories_list %}
+    <div class="col-6 col-md-4 col-lg-3">
+      <div class="p-3 rounded d-flex align-items-center justify-content-between" style="background: var(--admsup-surface-2); border: 1px solid var(--admsup-border);">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-folder2-open text-primary fs-5"></i>
+          <div>
+            <div class="fw-semibold small" style="color: var(--admsup-text);">{{ cat.name }}</div>
+            <div class="small" style="color: var(--admsup-text-muted); font-size: 0.72rem;">{{ cat.product_count }} listing{{ cat.product_count|pluralize }}</div>
+          </div>
+        </div>
+        <form method="post" action="/portal-admin/store/" class="d-inline" onsubmit="return confirm('Delete category {{ cat.name|escapejs }}?');">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="delete_category">
+          <input type="hidden" name="category_id" value="{{ cat.id }}">
+          <button type="submit" class="btn btn-link btn-sm text-muted p-0" title="Delete Category">
+            <i class="bi bi-x-circle text-danger opacity-75"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Store Moderation & Product History Audit Log -->
+<div class="admin-panel-card mb-4">
+  <div class="admin-panel-header p-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2">
+      <i class="bi bi-clock-history text-primary fs-5"></i>
+      <h6 class="mb-0 fw-bold" style="color: var(--admsup-text);">Store Moderation & Activity History Log</h6>
+      <span class="badge rounded-pill ms-2" style="background: var(--admsup-surface-2); color: var(--admsup-text); border: 1px solid var(--admsup-border);">
+        {{ store_audit_logs|length }} Events
+      </span>
+    </div>
+    <span class="small" style="color: var(--admsup-text-muted);">Historical audit of rejected, sold-out, approved, and deleted products</span>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table admin-table mb-0 align-middle">
+      <thead>
+        <tr>
+          <th>Log ID</th>
+          <th>Action</th>
+          <th>Details</th>
+          <th>Actor / User</th>
+          <th>IP Address</th>
+          <th>Timestamp</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if not store_audit_logs %}
+        <tr>
+          <td colspan="6" class="text-center py-4 text-muted">
+            <i class="bi bi-inbox fs-3 d-block mb-1 opacity-50"></i>
+            No store audit events logged yet.
+          </td>
+        </tr>
+        {% else %}
+          {% for log in store_audit_logs %}
+          <tr>
+            <td class="font-monospace small" style="color: var(--admsup-text-muted);">#{{ log.id }}</td>
+            <td>
+              {% if log.action == 'store_product_approve' %}
+                <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 px-2 py-1">
+                  <i class="bi bi-check-circle-fill me-1"></i>Approved
+                </span>
+              {% elif log.action == 'store_product_reject' %}
+                <span class="badge bg-danger bg-opacity-25 text-danger border border-danger border-opacity-25 px-2 py-1">
+                  <i class="bi bi-x-circle-fill me-1"></i>Rejected
+                </span>
+              {% elif log.action == 'store_product_sold' %}
+                <span class="badge bg-warning bg-opacity-25 text-warning border border-warning border-opacity-25 px-2 py-1">
+                  <i class="bi bi-tag-fill me-1"></i>Marked Sold
+                </span>
+              {% elif log.action == 'store_product_delete' %}
+                <span class="badge bg-secondary bg-opacity-25 text-light border border-secondary border-opacity-25 px-2 py-1">
+                  <i class="bi bi-trash-fill me-1"></i>Deleted
+                </span>
+              {% elif log.action == 'store_category_add' %}
+                <span class="badge bg-primary bg-opacity-25 text-primary border border-primary border-opacity-25 px-2 py-1">
+                  <i class="bi bi-folder-plus me-1"></i>Category Added
+                </span>
+              {% elif log.action == 'store_category_delete' %}
+                <span class="badge bg-dark text-muted border border-secondary border-opacity-25 px-2 py-1">
+                  <i class="bi bi-folder-minus me-1"></i>Category Deleted
+                </span>
+              {% else %}
+                <span class="badge bg-secondary px-2 py-1">{{ log.action }}</span>
+              {% endif %}
+            </td>
+            <td class="small" style="color: var(--admsup-text); max-width: 380px;">
+              {{ log.details }}
+            </td>
+            <td>
+              <span class="admsup-user-pill">{{ log.admin_name }}</span>
+            </td>
+            <td class="font-monospace small" style="color: var(--admsup-text-muted);">
+              {{ log.ip_address|default:"-" }}
+            </td>
+            <td class="small" style="color: var(--admsup-text-muted); white-space: nowrap;">
+              {{ log.created_at|date:"M d, Y H:i" }}
+            </td>
+          </tr>
+          {% endfor %}
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal: Add Category -->
+<div class="modal fade" id="addCategoryModal" tabindex="-1" aria-labelledby="addCategoryModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background: var(--admsup-card-bg); color: var(--admsup-text); border: 1px solid var(--admsup-border);">
+      <div class="modal-header" style="border-color: var(--admsup-border);">
+        <h5 class="modal-title fw-bold" id="addCategoryModalLabel"><i class="bi bi-folder-plus text-primary me-2"></i>Add Store Category</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="post" action="/portal-admin/store/" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_category">
+        <div class="modal-body p-4">
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Category Name <span class="text-danger">*</span></label>
+            <input type="text" name="category_name" class="form-control" placeholder="e.g., Gaming, Collectibles, Musical Instruments"
+                   style="background: var(--admsup-surface-2); border-color: var(--admsup-border); color: var(--admsup-text);" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Category Thumbnail (Optional)</label>
+            <input type="file" name="category_image" class="form-control" accept="image/*"
+                   style="background: var(--admsup-surface-2); border-color: var(--admsup-border); color: var(--admsup-text);">
+            <div class="form-text small" style="color: var(--admsup-text-muted);">Default placeholder icon is used if omitted.</div>
+          </div>
+        </div>
+        <div class="modal-footer" style="border-color: var(--admsup-border);">
+          <button type="button" class="btn btn-admsup-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary px-4 fw-semibold">Create Category</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 {% endblock %}

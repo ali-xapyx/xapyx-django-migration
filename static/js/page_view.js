@@ -403,6 +403,52 @@
 
 
 
+// ============================================================
+// SKELETON PLACEHOLDERS FOR PAGINATION
+// ============================================================
+function renderPostSkeleton() {
+    return '<div class="post-card-vertical post-skeleton" aria-hidden="true">' +
+        '<div class="post-header">' +
+            '<div class="post-author d-flex align-items-center gap-2">' +
+                '<div class="skeleton-shimmer skeleton-avatar"></div>' +
+                '<div class="post-author-info" style="flex:1;">' +
+                    '<div class="skeleton-shimmer skeleton-line skeleton-title"></div>' +
+                    '<div class="skeleton-shimmer skeleton-line skeleton-subtitle"></div>' +
+                '</div>' +
+            '</div>' +
+        '</div>' +
+        '<div class="post-content" style="padding: 12px 0 8px;">' +
+            '<div class="skeleton-shimmer skeleton-line" style="width: 92%;"></div>' +
+            '<div class="skeleton-shimmer skeleton-line" style="width: 68%;"></div>' +
+        '</div>' +
+        '<div class="skeleton-shimmer skeleton-media"></div>' +
+        '<div class="post-footer d-flex justify-content-between pt-2">' +
+            '<div class="skeleton-shimmer skeleton-action-btn"></div>' +
+            '<div class="skeleton-shimmer skeleton-action-btn"></div>' +
+            '<div class="skeleton-shimmer skeleton-action-btn"></div>' +
+            '<div class="skeleton-shimmer skeleton-action-btn"></div>' +
+        '</div>' +
+    '</div>';
+}
+
+function appendPostSkeletons(container, count) {
+    if (!container) return;
+    count = count || 2;
+    var html = '';
+    for (var i = 0; i < count; i++) {
+        html += renderPostSkeleton();
+    }
+    container.insertAdjacentHTML('beforeend', html);
+}
+
+function removePostSkeletons(container) {
+    if (!container) return;
+    var skeletons = container.querySelectorAll('.post-skeleton');
+    skeletons.forEach(function(sk) {
+        sk.remove();
+    });
+}
+
     async function loadPosts(reset = false) {
         if (State.isLoading || (!State.hasMorePosts && !reset)) return;
         
@@ -413,7 +459,11 @@
         if (reset) {
             State.currentPage = 1;
             State.hasMorePosts = true;
-            feedContainer.innerHTML = '<div class="loading-spinner"><div class="spinner-border text-primary"></div></div>';
+            feedContainer.innerHTML = '';
+            appendPostSkeletons(feedContainer, 3);
+            if (loadMoreContainer) loadMoreContainer.classList.add('d-none');
+        } else {
+            appendPostSkeletons(feedContainer, 2);
             if (loadMoreContainer) loadMoreContainer.classList.add('d-none');
         }
         
@@ -422,6 +472,7 @@
                 credentials: 'same-origin'
             });
             const data = await response.json();
+            removePostSkeletons(feedContainer);
             
             if (data.success) {
                 if (reset) feedContainer.innerHTML = '';
@@ -449,6 +500,7 @@
                 }
             }
         } catch (error) {
+            removePostSkeletons(feedContainer);
             console.error('Error loading posts:', error);
             if (reset) {
                 feedContainer.innerHTML = `
@@ -490,11 +542,11 @@
             +   '<ul class="dropdown-menu">'
             +     '<li><a class="dropdown-item" href="#" onclick="sharePost(' + post.id + '); return false;">'
             +       '<i class="bi bi-link-45deg"></i> Copy Link</a></li>'
-            +     (CONFIG.userId === post.author.id || CONFIG.isAdmin
+            +     (CONFIG.isAdmin
                   ? '<li><hr class="dropdown-divider"></li>'
                   + '<li><a class="dropdown-item text-danger" href="#" '
                   + 'onclick="confirmDeletePost(' + post.id + '); return false;">'
-                  + '<i class="bi bi-trash"></i> Delete</a></li>'
+                  + '<i class="bi bi-trash"></i> Delete Post</a></li>'
                   : '')
             +   '</ul>'
             + '</div>'
@@ -507,7 +559,8 @@
                     return '<div class="slider-item ' + (m.type === 'video' ? 'has-video ' : '') + (idx === 0 ? 'active' : '') + '" data-index="' + idx + '">' +
                         (m.type === 'video'
                             ? '<video controls preload="metadata" muted playsinline loop autoplay onclick="toggleVideoSound(this, event)"><source src="' + m.url + '" type="' + (m.mime_type || 'video/mp4') + '"></video>'
-                            : '<img src="' + (m.thumbnail_url || m.url) + '" width="800" height="600" loading="lazy" decoding="async" onload="if(this.naturalWidth>=this.naturalHeight)this.classList.add(\'landscape\')" onerror="this.onerror=null;this.src=\'' + m.url + '\'" onclick="openMediaLightbox(\'' + (m.url || '').replace(/'/g, "\\'") + '\')">') +
+                            : '<img class="post-media-blur-bg" src="' + (m.thumbnail_url || m.url) + '" alt="" aria-hidden="true">' +
+                              '<img src="' + (m.thumbnail_url || m.url) + '" class="post-image slider-image" width="800" height="600" loading="lazy" decoding="async" onload="if(typeof applyAmbientBackground===\'function\')applyAmbientBackground(this);if(this.naturalWidth>=this.naturalHeight)this.classList.add(\'landscape\')" onerror="this.onerror=null;this.src=\'' + m.url + '\'" onclick="openMediaLightbox(\'' + (m.url || '').replace(/'/g, "\\'") + '\')">') +
                         '</div>';
                 }).join('') +
                 '</div>' +
@@ -527,7 +580,7 @@
             ? formatMentions(escapeHtml(truncated))
             : escapeHtml(truncated);
 
-        var statsTop = '<div class="post-stats-top" style="cursor:default;gap:12px;">'
+        var statsTop = '<div class="post-stats-top" style="cursor:default;">'
             + '<span class="post-views-count"><i class="bi bi-eye"></i> '
             +   (post.views || 0) + '</span>'
             + '</div>';
@@ -676,11 +729,56 @@
 
     async function submitComment(postId) {
         const input = document.getElementById(`comment-input-${postId}`);
-        const content = input?.value.trim();
+        if (!input) return;
+        const content = input.value.trim();
         if (!content) return;
-        
-        input.disabled = true;
-        
+
+        const savedContent = content;
+        input.value = '';
+
+        const postCard = document.querySelector(`.post-card-vertical[data-post-id="${postId}"]`);
+        const commentCount = postCard?.querySelector('.comment-btn .action-count') || postCard?.querySelector('.comment-btn span');
+        const prevCount = commentCount ? parseInt(commentCount.textContent || '0', 10) : 0;
+        if (commentCount) commentCount.textContent = prevCount + 1;
+
+        const container = document.getElementById(`comments-container-${postId}`);
+        const noComments = container?.querySelector('.no-comments');
+        const wasNoComments = Boolean(noComments);
+        if (noComments) noComments.style.display = 'none';
+
+        const tempId = 'temp-' + Date.now();
+        const currentUserName = (function() {
+            const el = document.querySelector('.user-info h4, .avatar-img');
+            return el ? (el.alt || el.textContent.trim()) : 'You';
+        })();
+        const currentUsername = (function() {
+            const el = document.querySelector('.user-info span');
+            const u = el ? el.textContent.trim().replace(/^@/, '') : '';
+            return u || 'you';
+        })();
+        const currentUserPic = (function() {
+            const el = document.querySelector('.avatar-mini-img, .avatar-img');
+            return el ? el.getAttribute('src') : '/static/images/avatars/default.png';
+        })();
+
+        const optimisticComment = {
+            id: tempId,
+            author: {
+                id: CONFIG.userId,
+                name: currentUserName,
+                username: currentUsername,
+                picture: currentUserPic
+            },
+            content: savedContent,
+            time_ago: 'Just now'
+        };
+
+        const tempEl = createCommentElement(optimisticComment);
+        tempEl.style.opacity = '0.65';
+        tempEl.style.transition = 'opacity 0.2s ease';
+        tempEl.dataset.isOptimistic = 'true';
+        if (container) container.appendChild(tempEl);
+
         try {
             const response = await fetch(`/api/pages/posts/${postId}/comments/add/`, {
                 method: 'POST',
@@ -689,25 +787,38 @@
                     'Content-Type': 'application/json',
                     'X-CSRFToken': getCsrfToken()
                 },
-                body: JSON.stringify({ content: content })
+                body: JSON.stringify({ content: savedContent })
             });
-            
+
             const data = await response.json();
-            
+
             if (data.success) {
-                input.value = '';
-                const container = document.getElementById(`comments-container-${postId}`);
-                container.appendChild(createCommentElement(data.comment));
-                
-                const postCard = document.querySelector(`.post-card-vertical[data-post-id="${postId}"]`);
-                const commentCount = postCard?.querySelector('.comment-btn .action-count') || postCard?.querySelector('.comment-btn span');
-                if (commentCount) commentCount.textContent = parseInt(commentCount.textContent || '0') + 1;
+                if (tempEl) {
+                    tempEl.style.opacity = '1';
+                    tempEl.dataset.commentId = data.comment.id;
+                    delete tempEl.dataset.isOptimistic;
+                    const delBtn = tempEl.querySelector('.comment-actions button, button.comment-delete-btn');
+                    if (delBtn) {
+                        delBtn.setAttribute('onclick', `deleteComment(${data.comment.id})`);
+                    }
+                }
+                if (wasNoComments && noComments) {
+                    noComments.remove();
+                }
+            } else {
+                if (tempEl) tempEl.remove();
+                if (wasNoComments && noComments) noComments.style.display = '';
+                if (commentCount) commentCount.textContent = prevCount;
+                input.value = savedContent;
+                showAlertModal('Error', data.error || 'Failed to post comment', 'error');
             }
         } catch (error) {
-            console.error('Error submitting comment:', error);
+            if (tempEl) tempEl.remove();
+            if (wasNoComments && noComments) noComments.style.display = '';
+            if (commentCount) commentCount.textContent = prevCount;
+            input.value = savedContent;
             showAlertModal('Error', 'Failed to post comment', 'error');
         } finally {
-            input.disabled = false;
             input.focus();
         }
     }
@@ -739,7 +850,93 @@
 
 
 
+    const reactingPagePosts = {};
+
     async function reactToPost(postId, reaction, btn) {
+        if (!postId || (reaction !== 'like' && reaction !== 'dislike')) return;
+        if (reactingPagePosts[postId]) return;
+
+        const postCard = document.querySelector(`.post-card-vertical[data-post-id="${postId}"]`);
+        if (!postCard) return;
+
+        const likeBtn = postCard.querySelector('.like-btn');
+        const dislikeBtn = postCard.querySelector('.dislike-btn');
+        if (!likeBtn || !dislikeBtn) return;
+
+        const likeCountEl = likeBtn.querySelector('.action-count') || likeBtn.querySelector('span');
+        const dislikeCountEl = dislikeBtn.querySelector('.action-count') || dislikeBtn.querySelector('span');
+
+        const currentLikes = parseInt(likeCountEl ? likeCountEl.textContent : '0', 10) || 0;
+        const currentDislikes = parseInt(dislikeCountEl ? dislikeCountEl.textContent : '0', 10) || 0;
+
+        const wasLiked = likeBtn.classList.contains('active');
+        const wasDisliked = dislikeBtn.classList.contains('active');
+
+        const prevState = {
+            wasLiked: wasLiked,
+            wasDisliked: wasDisliked,
+            likes: currentLikes,
+            dislikes: currentDislikes
+        };
+
+        let optLiked = false;
+        let optDisliked = false;
+        let optLikes = currentLikes;
+        let optDislikes = currentDislikes;
+
+        if (reaction === 'like') {
+            if (wasLiked) {
+                optLiked = false;
+                optDisliked = false;
+                optLikes = Math.max(0, currentLikes - 1);
+                optDislikes = currentDislikes;
+            } else if (wasDisliked) {
+                optLiked = true;
+                optDisliked = false;
+                optLikes = currentLikes + 1;
+                optDislikes = Math.max(0, currentDislikes - 1);
+            } else {
+                optLiked = true;
+                optDisliked = false;
+                optLikes = currentLikes + 1;
+                optDislikes = currentDislikes;
+            }
+        } else if (reaction === 'dislike') {
+            if (wasDisliked) {
+                optLiked = false;
+                optDisliked = false;
+                optLikes = currentLikes;
+                optDislikes = Math.max(0, currentDislikes - 1);
+            } else if (wasLiked) {
+                optLiked = false;
+                optDisliked = true;
+                optLikes = Math.max(0, currentLikes - 1);
+                optDislikes = currentDislikes + 1;
+            } else {
+                optLiked = false;
+                optDisliked = true;
+                optLikes = currentLikes;
+                optDislikes = currentDislikes + 1;
+            }
+        }
+
+        function renderReactionState(isLiked, isDisliked, countLikes, countDislikes) {
+            if (likeCountEl) likeCountEl.textContent = countLikes;
+            if (dislikeCountEl) dislikeCountEl.textContent = countDislikes;
+
+            likeBtn.classList.toggle('active', isLiked);
+            const iconL = likeBtn.querySelector('i');
+            if (iconL) iconL.className = `bi bi-hand-thumbs-up${isLiked ? '-fill' : ''}`;
+
+            dislikeBtn.classList.toggle('active', isDisliked);
+            const iconD = dislikeBtn.querySelector('i');
+            if (iconD) iconD.className = `bi bi-hand-thumbs-down${isDisliked ? '-fill' : ''}`;
+        }
+
+        // Instant 0ms Optimistic UI update
+        renderReactionState(optLiked, optDisliked, optLikes, optDislikes);
+        reactingPagePosts[postId] = true;
+
         try {
             const response = await fetch(`/api/pages/posts/${postId}/react/`, {
                 method: 'POST',
@@ -750,28 +947,18 @@
                 },
                 body: JSON.stringify({ reaction: reaction })
             });
-            
             const data = await response.json();
-            
             if (data.success) {
-                const postCard = document.querySelector(`.post-card-vertical[data-post-id="${postId}"]`);
-                const likeBtn = postCard?.querySelector('.like-btn');
-                const dislikeBtn = postCard?.querySelector('.dislike-btn');
-                
-                if (likeBtn) {
-                    likeBtn.classList.toggle('active', data.user_reaction === 'like');
-                    likeBtn.querySelector('i').className = `bi bi-hand-thumbs-up${data.user_reaction === 'like' ? '-fill' : ''}`;
-                    likeBtn.querySelector('span').textContent = data.likes;
-                }
-                if (dislikeBtn) {
-                    dislikeBtn.classList.toggle('active', data.user_reaction === 'dislike');
-                    dislikeBtn.querySelector('i').className = `bi bi-hand-thumbs-down${data.user_reaction === 'dislike' ? '-fill' : ''}`;
-                    dislikeBtn.querySelector('span').textContent = data.dislikes;
-                }
+                renderReactionState(data.user_reaction === 'like', data.user_reaction === 'dislike', data.likes, data.dislikes);
+            } else {
+                renderReactionState(prevState.wasLiked, prevState.wasDisliked, prevState.likes, prevState.dislikes);
+                showAlert(data.error || 'Failed to react', 'error');
             }
         } catch (error) {
-            console.error('Error reacting:', error);
-            showAlert('Error reacting to post', 'error');
+            renderReactionState(prevState.wasLiked, prevState.wasDisliked, prevState.likes, prevState.dislikes);
+            showAlert('Network error: reaction not saved', 'error');
+        } finally {
+            delete reactingPagePosts[postId];
         }
     }
 
@@ -785,33 +972,68 @@
 
 
     async function deletePost(postId) {
+        const modalEl = document.getElementById('deleteConfirmModal');
+        const modalInstance = bootstrap.Modal.getInstance(modalEl);
+        if (modalInstance) modalInstance.hide();
+        State.postToDelete = null;
+
+        const postEl = document.querySelector(`.post-card-vertical[data-post-id="${postId}"]`);
+        const desktopEl = document.getElementById('desktopPostsCount');
+        const mobileEl = document.getElementById('mobilePostsCount');
+
+        const prevDesk = desktopEl ? (parseInt(desktopEl.textContent || '0', 10) || 0) : null;
+        const prevMob = mobileEl ? (parseInt(mobileEl.textContent || '0', 10) || 0) : null;
+
+        if (desktopEl && prevDesk !== null) desktopEl.textContent = Math.max(0, prevDesk - 1);
+        if (mobileEl && prevMob !== null) mobileEl.textContent = Math.max(0, prevMob - 1);
+
+        let prevDisplay = '';
+        if (postEl) {
+            prevDisplay = postEl.style.display;
+            postEl.style.transition = 'all 0.2s ease';
+            postEl.style.opacity = '0';
+            postEl.style.transform = 'scale(0.96)';
+            setTimeout(() => {
+                if (postEl && postEl.style.opacity === '0') {
+                    postEl.style.display = 'none';
+                }
+            }, 200);
+        }
+
         try {
             const response = await fetch(`/api/pages/posts/${postId}/delete/`, {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: { 'X-CSRFToken': getCsrfToken() }
             });
-            
             const data = await response.json();
-            
             if (data.success) {
-                const postEl = document.querySelector(`.post-card-vertical[data-post-id="${postId}"]`);
-                if (postEl) {
-                    postEl.classList.add('deleting');
-                    setTimeout(() => {
-                        postEl.remove();
-                        ['desktopPostsCount', 'mobilePostsCount'].forEach(id => {
-                            const el = document.getElementById(id);
-                            if (el) el.textContent = Math.max(0, parseInt(el.textContent || '0') - 1);
-                        });
-                    }, 300);
-                }
-                bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal')).hide();
-                State.postToDelete = null;
+                if (postEl) postEl.remove();
                 showAlert('Post deleted', 'success');
+            } else {
+                // Rollback on API failure
+                if (postEl) {
+                    postEl.style.display = prevDisplay;
+                    setTimeout(() => {
+                        postEl.style.opacity = '1';
+                        postEl.style.transform = '';
+                    }, 10);
+                }
+                if (desktopEl && prevDesk !== null) desktopEl.textContent = prevDesk;
+                if (mobileEl && prevMob !== null) mobileEl.textContent = prevMob;
+                showAlertModal('Error', data.error || 'Failed to delete post', 'error');
             }
         } catch (error) {
             console.error('Error deleting post:', error);
+            if (postEl) {
+                postEl.style.display = prevDisplay;
+                setTimeout(() => {
+                    postEl.style.opacity = '1';
+                    postEl.style.transform = '';
+                }, 10);
+            }
+            if (desktopEl && prevDesk !== null) desktopEl.textContent = prevDesk;
+            if (mobileEl && prevMob !== null) mobileEl.textContent = prevMob;
             showAlertModal('Error', 'Failed to delete post', 'error');
         }
     }

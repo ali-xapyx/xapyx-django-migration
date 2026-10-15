@@ -9,6 +9,7 @@ ALLOWED_HOSTS = [
     'testserver',
     'beta.xapyx.com',
     'xapyx.com',
+    '*',
 ]
 
 CSRF_TRUSTED_ORIGINS = [
@@ -17,4 +18,5 @@ CSRF_TRUSTED_ORIGINS = [
     'http://184.192.39.68:8000',
     'http://beta.xapyx.com',
     'https://beta.xapyx.com',
+    'https://*.trycloudflare.com',
 ]

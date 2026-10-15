@@ -8,13 +8,22 @@
    ------------------------------------------------------------ */
 @media (max-width: 900px) {
   .xpy-page {
+    min-height: 100vh;
     min-height: 100dvh;
-    height: 100dvh;
+    height: auto;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 12px;
-    overflow: hidden;
+    padding: 16px 12px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 20px));
+    padding-left: calc(12px + env(safe-area-inset-left, 0px));
+    padding-right: calc(12px + env(safe-area-inset-right, 0px));
+    padding-top: calc(16px + env(safe-area-inset-top, 0px));
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
+    min-width: 0;
   }
 }
 
@@ -23,6 +32,8 @@
    ------------------------------------------------------------ */
 .xpy-signup-card {
   background: var(--xpy-bg-card);
+  min-width: 0;
+  box-sizing: border-box;
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
   border: 1px solid var(--xpy-border-glow);
@@ -497,7 +508,7 @@
     height: 44px;
     min-height: 44px;
     padding: 9px 12px;
-    font-size: 0.85rem;
+    font-size: 16px !important;
   }
   .xpy-contact-btn {
     height: 32px;
@@ -530,5 +541,15 @@
     min-height: 42px;
     padding: 8px 12px;
     font-size: 0.8rem;
+  }
+}
+/* iOS Safari Auto-Zoom Prevention */
+@media (max-width: 767.98px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
+  textarea,
+  select,
+  .xpy-input-wrap input,
+  .xpy-input-field {
+    font-size: 16px !important;
   }
 }

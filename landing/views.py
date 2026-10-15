@@ -2416,6 +2416,27 @@ def view_post_view(request, post_id):
         if not cur.fetchone():
             return redirect('/feed/')
 
+    # Session key to prevent counting the same user's multiple page refreshes
+    session_key = f'viewed_post_{post_id}'
+    if not request.session.get(session_key):
+        request.session[session_key] = True
+        with connection.cursor() as cur:
+            # Direct raw SQL increment on space_posts (safe with unmanaged MariaDB tables)
+            cur.execute(
+                "UPDATE space_posts SET views_count = views_count + 1 WHERE post_id = %s",
+                [post_id]
+            )
+            # Record user interaction for distinct user analytics
+            cur.execute("""
+                INSERT INTO space_user_interactions 
+                    (user_id, post_id, view_count, last_viewed_at, created_at, updated_at)
+                VALUES (%s, %s, 1, NOW(), NOW(), NOW())
+                ON DUPLICATE KEY UPDATE
+                    view_count = view_count + 1,
+                    last_viewed_at = NOW(),
+                    updated_at = NOW()
+            """, [user.id, post_id])
+
     # Friends — for @mention autocomplete in comments
     friends = []
     with connection.cursor() as cur:
@@ -2583,19 +2604,77 @@ def api_posts_edit(request):
 # NOTIFICATIONS
 # ============================================================
 
+def get_sidebar_unread_counts(user_id):
+    """
+    Computes real-time unread counts for direct Chat/Messages and general Notifications via raw SQL:
+    - chat: unread direct messages in messages table
+    - total_notifications: unread notifications in notifications table
+    (Badges for Groups, Pages, and Shoutbox streamlined/removed per design requirements)
+    """
+    if not user_id:
+        return {'chat': 0, 'groups': 0, 'pages': 0, 'chatrooms': 0, 'shoutbox': 0, 'friends': 0, 'total_notifications': 0}
+
+    counts = {
+        'chat': 0,
+        'groups': 0,
+        'pages': 0,
+        'chatrooms': 0,
+        'shoutbox': 0,
+        'friends': 0,
+        'total_notifications': 0
+    }
+
+    try:
+        with connection.cursor() as cur:
+            # 1. Unread direct messages (Chat)
+            cur.execute("""
+                SELECT COUNT(*) FROM messages
+                WHERE receiver_id = %s AND is_read = 0 AND is_deleted = 0
+            """, [user_id])
+            counts['chat'] = cur.fetchone()[0] or 0
+
+            # 2. Total unread general notifications
+            cur.execute("""
+                SELECT COUNT(*) FROM notifications
+                WHERE user_id = %s AND COALESCE(is_read, 0) = 0 AND (expires_at IS NULL OR expires_at > NOW())
+            """, [user_id])
+            counts['total_notifications'] = cur.fetchone()[0] or 0
+
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Error fetching sidebar unread counts: {e}")
+
+    return counts
+
+
+@login_required
+def api_sidebar_counts(request):
+    """GET /api/sidebar/counts/ — real-time unread counts for all sidebar sections."""
+    counts = get_sidebar_unread_counts(request.user.id)
+    return JsonResponse({
+        'success': True,
+        'counts': counts,
+        **counts,
+    })
+
+
 @login_required
 def api_notifications_count(request):
-    """GET /api/notifications/count/ — unread notification count."""
-    user_id = request.user.id
-    with connection.cursor() as cur:
-        cur.execute(
-            "SELECT COUNT(*) FROM notifications "
-            "WHERE user_id = %s AND is_read = 0 "
-            "AND (expires_at IS NULL OR expires_at > NOW())",
-            [user_id]
-        )
-        count = cur.fetchone()[0] or 0
-    return JsonResponse({'success': True, 'unread_count': count})
+    """GET /api/notifications/count/ — unread notification count + sidebar section counts."""
+    counts = get_sidebar_unread_counts(request.user.id)
+    resp = JsonResponse({
+        'success': True,
+        'unread_count': counts['total_notifications'],
+        'counts': counts,
+        'chat_unread': counts['chat'],
+        'groups_unread': counts['groups'],
+        'pages_unread': counts['pages'],
+        'chatrooms_unread': counts['chatrooms'],
+        'shoutbox_unread': counts['shoutbox'],
+        'friends_pending': counts['friends'],
+    })
+    resp['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    return resp
 
 
 @login_required
@@ -2629,14 +2708,15 @@ def api_notifications_delete(request):
 def api_notifications_mark_read(request, notif_id):
     user_id = request.user.id
     with connection.cursor() as cur:
-        cur.execute(
-            "UPDATE notifications SET is_read = 1 WHERE id = %s AND user_id = %s",
-            [notif_id, user_id]
-        )
-        cur.execute(
-            "SELECT COUNT(*) FROM notifications WHERE user_id = %s AND is_read = 0 AND (expires_at IS NULL OR expires_at > NOW())",
-            [user_id]
-        )
+        cur.execute("""
+            UPDATE notifications 
+            SET is_read = 1, is_seen = 1 
+            WHERE id = %s AND user_id = %s
+        """, [notif_id, user_id])
+        cur.execute("""
+            SELECT COUNT(*) FROM notifications 
+            WHERE user_id = %s AND COALESCE(is_read, 0) = 0 AND (expires_at IS NULL OR expires_at > NOW())
+        """, [user_id])
         new_count = cur.fetchone()[0] or 0
 
     try:
@@ -2645,7 +2725,9 @@ def api_notifications_mark_read(request, notif_id):
     except Exception:
         pass
 
-    return JsonResponse({'success': True, 'unread_count': new_count})
+    resp = JsonResponse({'success': True, 'unread_count': new_count})
+    resp['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    return resp
 
 
 @login_required
@@ -2654,11 +2736,11 @@ def api_notifications_read_all(request):
     """POST /api/notifications/read-all/ — mark all notifications as read."""
     user_id = request.user.id
     with connection.cursor() as cur:
-        cur.execute(
-            "UPDATE notifications SET is_read = 1 "
-            "WHERE user_id = %s AND is_read = 0",
-            [user_id]
-        )
+        cur.execute("""
+            UPDATE notifications 
+            SET is_read = 1, is_seen = 1 
+            WHERE user_id = %s
+        """, [user_id])
     # Sync to Firebase
     try:
         from .firebase_push import mark_all_notifications_read
@@ -2666,7 +2748,9 @@ def api_notifications_read_all(request):
     except Exception:
         pass
 
-    return JsonResponse({'success': True})
+    resp = JsonResponse({'success': True, 'unread_count': 0})
+    resp['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    return resp
 
 
 def _full_avatar_url(raw):
@@ -2691,7 +2775,7 @@ def api_notifications_list(request):
         # Unread count
         cur.execute(
             "SELECT COUNT(*) FROM notifications "
-            "WHERE user_id = %s AND is_read = 0 "
+            "WHERE user_id = %s AND COALESCE(is_read, 0) = 0 "
             "AND (expires_at IS NULL OR expires_at > NOW())",
             [user_id]
         )
@@ -2787,11 +2871,13 @@ def api_notifications_list(request):
             'actor_picture': _full_avatar_url(r[12]),
         })
 
-    return JsonResponse({
+    resp = JsonResponse({
         'success': True,
         'unread_count': unread,
         'notifications': notifications,
     })
+    resp['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    return resp
 # ============================================================
 # NOTIFICATIONS — Full page and extended endpoints (Task 16)
 # ============================================================
@@ -2804,7 +2890,7 @@ def notifications_page(request):
         # Total unread count
         cur.execute(
             "SELECT COUNT(*) FROM notifications "
-            "WHERE user_id = %s AND is_read = 0 "
+            "WHERE user_id = %s AND COALESCE(is_read, 0) = 0 "
             "AND (expires_at IS NULL OR expires_at > NOW())",
             [user_id]
         )
@@ -2857,7 +2943,7 @@ def api_notifications_page(request):
 
     # Filter logic matching PHP tabs & Django types
     if filter_tab == 'unread':
-        where_clauses.append("n.is_read = 0")
+        where_clauses.append("COALESCE(n.is_read, 0) = 0")
     elif filter_tab == 'read':
         where_clauses.append("n.is_read = 1")
     elif filter_tab == 'mentions':
@@ -2873,7 +2959,7 @@ def api_notifications_page(request):
         # Total unread count for user (always accurate)
         cur.execute(
             "SELECT COUNT(*) FROM notifications "
-            "WHERE user_id = %s AND is_read = 0 "
+            "WHERE user_id = %s AND COALESCE(is_read, 0) = 0 "
             "AND (expires_at IS NULL OR expires_at > NOW())",
             [user_id]
         )
@@ -3396,7 +3482,17 @@ def api_friends_decline(request):
     if request_id <= 0:
         return JsonResponse({'success': False, 'error': 'Invalid request ID'})
 
+    sender_id = None
     with connection.cursor() as cur:
+        cur.execute(
+            "SELECT sender_id FROM friends "
+            "WHERE id = %s AND receiver_id = %s AND status = 'pending'",
+            [request_id, user_id]
+        )
+        frow = cur.fetchone()
+        if frow:
+            sender_id = frow[0]
+
         # Delete only if: it's MY pending request (I'm the receiver)
         cur.execute(
             "DELETE FROM friends "
@@ -3407,6 +3503,31 @@ def api_friends_decline(request):
 
     if deleted == 0:
         return JsonResponse({'success': False, 'error': 'Friend request not found or already processed'})
+
+    # Cleanup matching unread friend_request notification for the recipient
+    if sender_id:
+        try:
+            with connection.cursor() as cur:
+                cur.execute(
+                    "SELECT id FROM notifications "
+                    "WHERE user_id = %s AND actor_id = %s AND type = 'friend_request' AND is_read = 0",
+                    [user_id, sender_id]
+                )
+                notif_ids = [r[0] for r in cur.fetchall()]
+                cur.execute(
+                    "DELETE FROM notifications "
+                    "WHERE user_id = %s AND actor_id = %s AND type = 'friend_request' AND is_read = 0",
+                    [user_id, sender_id]
+                )
+            if notif_ids:
+                try:
+                    from .firebase_push import delete_notification
+                    for nid in notif_ids:
+                        delete_notification(user_id, nid)
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
     return JsonResponse({'success': True, 'message': 'Friend request declined'})
 
@@ -3424,7 +3545,17 @@ def api_friends_cancel(request):
     if request_id <= 0:
         return JsonResponse({'success': False, 'error': 'Invalid request ID'})
 
+    receiver_id = None
     with connection.cursor() as cur:
+        cur.execute(
+            "SELECT receiver_id FROM friends "
+            "WHERE id = %s AND sender_id = %s AND status = 'pending'",
+            [request_id, user_id]
+        )
+        frow = cur.fetchone()
+        if frow:
+            receiver_id = frow[0]
+
         # Delete only if: I sent it and it's still pending
         cur.execute(
             "DELETE FROM friends "
@@ -3435,6 +3566,31 @@ def api_friends_cancel(request):
 
     if deleted == 0:
         return JsonResponse({'success': False, 'error': 'Friend request not found or already processed'})
+
+    # Cleanup matching unread friend_request notification for the recipient
+    if receiver_id:
+        try:
+            with connection.cursor() as cur:
+                cur.execute(
+                    "SELECT id FROM notifications "
+                    "WHERE user_id = %s AND actor_id = %s AND type = 'friend_request' AND is_read = 0",
+                    [receiver_id, user_id]
+                )
+                notif_ids = [r[0] for r in cur.fetchall()]
+                cur.execute(
+                    "DELETE FROM notifications "
+                    "WHERE user_id = %s AND actor_id = %s AND type = 'friend_request' AND is_read = 0",
+                    [receiver_id, user_id]
+                )
+            if notif_ids:
+                try:
+                    from .firebase_push import delete_notification
+                    for nid in notif_ids:
+                        delete_notification(receiver_id, nid)
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
     return JsonResponse({'success': True, 'message': 'Friend request cancelled'})
 
@@ -3737,11 +3893,67 @@ def serve_sw(request):
     """Serve the service worker from /sw.js (root) as browsers expect."""
     path = os.path.join(settings.BASE_DIR, 'static', 'sw.js')
     try:
-        with open(path, 'r') as f:
+        with open(path, 'r', encoding='utf-8') as f:
             content = f.read()
     except FileNotFoundError:
         content = "// no-op"
-    return HttpResponse(content, content_type='application/javascript')
+    resp = HttpResponse(content, content_type='application/javascript')
+    resp['Service-Worker-Allowed'] = '/'
+    resp['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    return resp
+
+
+@csrf_exempt
+@login_required
+def api_save_push_subscription(request):
+    """
+    GET /api/save-push-subscription/ -> returns VAPID public key
+    POST /api/save-push-subscription/ -> stores push subscription in DB via raw SQL
+    DELETE /api/save-push-subscription/ -> deactivates push subscription
+    """
+    import json as _json
+    from landing.push_notifications import (
+        get_vapid_public_key,
+        save_push_subscription,
+        deactivate_push_subscription
+    )
+
+    if request.method == 'GET':
+        return JsonResponse({
+            'success': True,
+            'public_key': get_vapid_public_key(),
+            'vapid_public_key': get_vapid_public_key(),
+        })
+
+    if request.method == 'DELETE':
+        try:
+            body = _json.loads(request.body.decode('utf-8') or '{}')
+        except Exception:
+            body = {}
+        endpoint = body.get('endpoint') or request.POST.get('endpoint') or ''
+        deactivate_push_subscription(request.user.id, endpoint)
+        return JsonResponse({'success': True, 'message': 'Subscription deactivated'})
+
+    if request.method == 'POST':
+        try:
+            if request.content_type == 'application/json' or (request.body and request.body.startswith(b'{')):
+                data = _json.loads(request.body.decode('utf-8') or '{}')
+            else:
+                data = request.POST.dict()
+                if 'keys' in data and isinstance(data['keys'], str):
+                    try:
+                        data['keys'] = _json.loads(data['keys'])
+                    except Exception:
+                        pass
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': f'Invalid JSON: {e}'}, status=400)
+
+        ok, msg = save_push_subscription(request.user.id, data)
+        if ok:
+            return JsonResponse({'success': True, 'message': msg})
+        return JsonResponse({'success': False, 'error': msg}, status=400)
+
+    return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
 
 
 @login_required
@@ -4061,6 +4273,18 @@ def _profile_send_friend_request(request, user_id, data):
             VALUES (%s, %s, 'pending', NOW())
         """, [user_id, receiver_id])
 
+    # Side effect: notify the receiver
+    sender_name = request.user.name or request.user.username or 'Someone'
+    _notify(
+        user_id=receiver_id,
+        notif_type='friend_request',
+        title='👥 New Friend Request',
+        message=f'{sender_name} wants to be your friend',
+        icon='user-friends',
+        link='/friends/',
+        actor_id=user_id,
+    )
+
     return JsonResponse({'success': True, 'message': 'Friend request sent successfully'})
 
 
@@ -4074,6 +4298,31 @@ def _profile_cancel_friend_request(request, user_id, data):
             DELETE FROM friends 
             WHERE sender_id = %s AND receiver_id = %s AND status = 'pending'
         """, [user_id, friend_id])
+        deleted = cur.rowcount
+
+    if deleted > 0:
+        try:
+            with connection.cursor() as cur:
+                cur.execute(
+                    "SELECT id FROM notifications "
+                    "WHERE user_id = %s AND actor_id = %s AND type = 'friend_request' AND is_read = 0",
+                    [friend_id, user_id]
+                )
+                notif_ids = [r[0] for r in cur.fetchall()]
+                cur.execute(
+                    "DELETE FROM notifications "
+                    "WHERE user_id = %s AND actor_id = %s AND type = 'friend_request' AND is_read = 0",
+                    [friend_id, user_id]
+                )
+            if notif_ids:
+                try:
+                    from .firebase_push import delete_notification
+                    for nid in notif_ids:
+                        delete_notification(friend_id, nid)
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
     return JsonResponse({'success': True, 'message': 'Friend request cancelled'})
 
@@ -5184,7 +5433,7 @@ def api_support_messages(request):
                    sender_type, sender_name, is_read, created_at
             FROM support_messages
             WHERE ticket_id = %s
-            ORDER BY created_at ASC
+            ORDER BY created_at ASC, id ASC
         """, [ticket_id])
         rows = cur.fetchall()
 
@@ -7603,19 +7852,19 @@ def api_page_post_create(request, page_id):
             _delete_from_s3([k for k, _, _ in uploaded_media])
             s3_failures.append(f"Media DB insert failed: {e}")
 
-    # Step 4: Mention notifications outside transaction
+    # Step 4: Mention & Page post notifications outside transaction
     sender_name = getattr(request.user, 'name', None) or request.user.username or 'Someone'
     try:
         with connection.cursor() as cur:
-            cur.execute("SELECT creator_id FROM page_posts WHERE id = %s", [post_id])
-            pp_author = cur.fetchone()
-            if pp_author and pp_author[0] != user.id:
+            cur.execute("SELECT creator_id FROM pages WHERE id = %s", [page_id])
+            p_owner = cur.fetchone()
+            if p_owner and p_owner[0] != user.id:
                 _notify(
-                    user_id=pp_author[0],
-                    notif_type='comment',
-                    title=f'{sender_name} commented on your page post',
+                    user_id=p_owner[0],
+                    notif_type='page_post',
+                    title=f'{sender_name} posted on your page',
                     message=f'{sender_name}: {content[:100]}',
-                    icon='comment',
+                    icon='file-earmark-text',
                     link=f'/pages/{page_id}/',
                     actor_id=user.id
                 )
@@ -7934,7 +8183,7 @@ def api_page_comment_add(request, post_id):
 
     with connection.cursor() as cur:
         cur.execute("""
-            SELECT pp.page_id, p.title
+            SELECT pp.page_id, p.title, pp.creator_id, p.creator_id
             FROM page_posts pp
             JOIN pages p ON pp.page_id = p.id
             WHERE pp.id = %s
@@ -7946,6 +8195,8 @@ def api_page_comment_add(request, post_id):
 
     page_id = row[0]
     page_title = row[1] or 'a page'
+    post_author_id = row[2]
+    page_owner_id = row[3]
 
     from django.db import transaction
     inserted_mentions = []
@@ -7992,6 +8243,36 @@ def api_page_comment_add(request, post_id):
                 icon='at',
                 link=f'/pages/{page_id}/',
                 actor_id=request.user.id,
+            )
+        except Exception:
+            pass
+
+    # Notify post author if not self and not already mentioned
+    if post_author_id and post_author_id != user.id and post_author_id not in inserted_mentions:
+        try:
+            _notify(
+                user_id=post_author_id,
+                notif_type='comment',
+                title=f'{sender_name} commented on your page post',
+                message=f'{sender_name}: {content[:100]}',
+                icon='comment',
+                link=f'/pages/{page_id}/',
+                actor_id=user.id
+            )
+        except Exception:
+            pass
+
+    # Notify page owner if different from post author and not self
+    if page_owner_id and page_owner_id != user.id and page_owner_id != post_author_id and page_owner_id not in inserted_mentions:
+        try:
+            _notify(
+                user_id=page_owner_id,
+                notif_type='comment',
+                title=f'{sender_name} commented on a post on "{page_title}"',
+                message=f'{sender_name}: {content[:100]}',
+                icon='comment',
+                link=f'/pages/{page_id}/',
+                actor_id=user.id
             )
         except Exception:
             pass
@@ -8366,7 +8647,7 @@ def api_page_messages(request):
             FROM page_messages pm
             JOIN auth a ON pm.sender_id = a.id
             WHERE pm.conversation_id = %s
-            ORDER BY pm.created_at ASC
+            ORDER BY pm.created_at ASC, pm.id ASC
         """, [conv_id])
         rows = cur.fetchall()
 
@@ -8640,6 +8921,13 @@ def api_page_mark_read(request):
             cur.execute("UPDATE page_conversations SET user_unread_count = 0 WHERE id = %s", [conv_id])
             cur.execute("UPDATE page_messages SET is_read = 1 WHERE conversation_id = %s AND sender_type = 'admin'", [conv_id])
 
+        cur.execute("""
+            UPDATE notifications
+            SET is_read = 1, is_seen = 1
+            WHERE user_id = %s AND type = 'page_message' AND COALESCE(is_read, 0) = 0
+              AND link LIKE %s
+        """, [user_id, f'%conv={conv_id}%'])
+
     return JsonResponse({'success': True})
 
 
@@ -8647,51 +8935,53 @@ def api_page_mark_read(request):
 # DIRECT MESSAGES (Task 18 Phase 1)
 # ============================================================
 
-def _push_chat_message_firebase(chat_id, message_data):
+def _push_chat_message_firebase(chat_id, message_data, sender_id=None, receiver_id=None):
     """
     Push a 1-on-1 DM to Firebase RTDB node:
     chats/{chat_id}/messages/{message_id}
+    AND user inbox nodes for instant delivery and conversation list sync:
+    user_chats/{receiver_id}/{sender_id}
+    user_chats/{sender_id}/{receiver_id}
     Using FIREBASE_CHAT_DB_URL REST endpoint.
     """
-    import os, requests, logging
+    import os, requests, logging, time
     _log = logging.getLogger(__name__)
     base_url = os.environ.get('FIREBASE_CHAT_DB_URL', 'https://xapyx-chat-default-rtdb.firebaseio.com').rstrip('/')
     url = f"{base_url}/chats/{chat_id}/messages/{message_data['id']}.json"
     try:
-        resp = requests.put(url, json=message_data, timeout=5)
-        if resp.status_code == 200:
-            return True
-        _log.warning(f"Firebase chat push returned HTTP {resp.status_code}: {resp.text}")
-        return False
+        requests.put(url, json=message_data, timeout=5)
     except Exception as e:
         _log.warning(f"Firebase chat push failed: {e}")
-        return False
+
+    s_id = sender_id or message_data.get('sender_id')
+    r_id = receiver_id or message_data.get('receiver_id')
+    if s_id and r_id:
+        inbox_payload = {
+            'chat_id': chat_id,
+            'msg_id': str(message_data['id']),
+            'content': message_data.get('content') or message_data.get('message') or '',
+            'last_message': message_data.get('content') or message_data.get('message') or '',
+            'message_type': message_data.get('message_type') or 'text',
+            'sender_id': s_id,
+            'sender_name': message_data.get('sender_name') or 'User',
+            'receiver_id': r_id,
+            'timestamp': message_data.get('timestamp') or int(time.time()),
+            'created_at': message_data.get('created_at') or '',
+        }
+        try:
+            requests.put(f"{base_url}/user_chats/{r_id}/{s_id}.json", json=inbox_payload, timeout=5)
+            requests.put(f"{base_url}/user_chats/{s_id}/{r_id}.json", json=inbox_payload, timeout=5)
+        except Exception as e:
+            _log.warning(f"Firebase user inbox push failed: {e}")
+    return True
 
 
-@login_required
-def chat_view(request, friend_id=None):
+def _fetch_user_conversations(user_id):
     """
-    GET /chat/ or /chat/<friend_id>/ — Full 1-on-1 DM interface.
+    Helper to fetch conversations for a user with online presence, avatar, and unread counts.
     """
-    selected_friend_id = int(friend_id) if friend_id else 0
-    return render(request, 'dashboard/chat.html', {
-        'active_page': 'chat',
-        'selected_friend_id': selected_friend_id,
-        'svg_logo': _load_svg_logo(),
-    })
-
-
-@login_required
-def api_chat_conversations(request):
-    """
-    GET /api/chat/conversations/
-    Returns conversation list for logged-in user from messages & friends tables.
-    """
-    user_id = request.user.id
     conversations = []
-
     with connection.cursor() as cur:
-        # Find all distinct partners: either from messages or from accepted friendships
         sql = """
             SELECT 
                 f.friend_id,
@@ -8727,7 +9017,7 @@ def api_chat_conversations(request):
                 WHERE receiver_id = %s AND is_read = 0 AND (is_deleted = 0 OR is_deleted IS NULL)
                 GROUP BY sender_id
             ) un ON un.sender_id = f.friend_id
-            ORDER BY COALESCE(lm.created_at, '2000-01-01') DESC
+            ORDER BY COALESCE(lm.id, 0) DESC
         """
         cur.execute(sql, [user_id, user_id, user_id, user_id, user_id, user_id, user_id, user_id, user_id, user_id])
         rows = cur.fetchall()
@@ -8767,18 +9057,45 @@ def api_chat_conversations(request):
             chat_id = f"{min(user_id, fid)}_{max(user_id, fid)}"
 
             conversations.append({
+                'user_id': fid,
                 'friend_id': fid,
                 'chat_id': chat_id,
                 'name': name,
                 'username': username,
+                'avatar': pic,
                 'picture': pic,
+                'is_online': is_online,
                 'online': is_online,
                 'last_message': last_msg,
                 'last_time': last_time.isoformat() if last_time else '',
                 'time_ago': time_ago_str,
                 'unread_count': int(r[9]),
             })
+    return conversations
 
+
+@login_required
+def chat_view(request, friend_id=None):
+    """
+    GET /chat/ or /chat/<friend_id>/ — Full 1-on-1 DM interface.
+    """
+    selected_friend_id = int(friend_id) if friend_id else 0
+    conversations = _fetch_user_conversations(request.user.id)
+    return render(request, 'dashboard/chat.html', {
+        'active_page': 'chat',
+        'selected_friend_id': selected_friend_id,
+        'conversations': conversations,
+        'svg_logo': _load_svg_logo(),
+    })
+
+
+@login_required
+def api_chat_conversations(request):
+    """
+    GET /api/chat/conversations/
+    Returns conversation list for logged-in user from messages & friends tables.
+    """
+    conversations = _fetch_user_conversations(request.user.id)
     return JsonResponse({'success': True, 'conversations': conversations})
 
 
@@ -8836,16 +9153,31 @@ def api_chat_messages(request):
             LEFT JOIN auth ra ON rm.sender_id = ra.id
             WHERE ((m.sender_id = %s AND m.receiver_id = %s) OR (m.sender_id = %s AND m.receiver_id = %s))
               AND (m.is_deleted = 0 OR m.is_deleted IS NULL)
-            ORDER BY m.created_at ASC
+            ORDER BY m.id ASC
         """, [user_id, friend_id, friend_id, user_id])
         rows = cur.fetchall()
 
-        # Mark received messages as read
+        # Mark received messages as read strictly when recipient views/opens thread
         cur.execute("""
             UPDATE messages
             SET is_read = 1, read_at = NOW()
             WHERE sender_id = %s AND receiver_id = %s AND is_read = 0
         """, [friend_id, user_id])
+        affected_count = cur.rowcount
+
+        # Clear corresponding chat_message notifications for this recipient
+        cur.execute("""
+            UPDATE notifications 
+            SET is_read = 1, is_seen = 1 
+            WHERE user_id = %s AND (actor_id = %s OR data LIKE %s) AND type = 'chat_message' AND COALESCE(is_read, 0) = 0
+        """, [user_id, friend_id, f'%"{friend_id}"%'])
+        if affected_count > 0:
+            try:
+                chat_id_fb = f"{min(user_id, friend_id)}_{max(user_id, friend_id)}"
+                base_url = os.environ.get('FIREBASE_CHAT_DB_URL', 'https://xapyx-chat-default-rtdb.firebaseio.com').rstrip('/')
+                requests.put(f"{base_url}/chats/{chat_id_fb}/read_at/{user_id}.json", json=int(timezone.now().timestamp()), timeout=2)
+            except Exception:
+                pass
 
         msg_ids = [r[0] for r in rows]
         reactions_by_msg = {}
@@ -8902,6 +9234,7 @@ def api_chat_messages(request):
             'reply_snippet': reply_data,
             'is_read': bool(r[11]),
             'created_at': created_at_dt.isoformat() if created_at_dt else '',
+            'timestamp': int(created_at_dt.timestamp()) if created_at_dt else int(now.timestamp()),
             'time': time_str,
             'time_ago': _format_time_ago(created_at_dt, now) if created_at_dt else '',
             'edited': bool(r[13]),
@@ -8913,13 +9246,19 @@ def api_chat_messages(request):
 
     chat_id = f"{min(user_id, friend_id)}_{max(user_id, friend_id)}"
 
-    return JsonResponse({
+    counts = get_sidebar_unread_counts(user_id)
+    resp = JsonResponse({
         'success': True,
         'messages': messages,
         'friend': friend_data,
         'chat_id': chat_id,
         'current_user_id': user_id,
+        'unread_count': counts['total_notifications'],
+        'chat_unread': counts['chat'],
+        'counts': counts,
     })
+    resp['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    return resp
 
 
 @login_required
@@ -9005,6 +9344,7 @@ def api_chat_send(request):
         'reply_to': reply_to_id,
         'is_read': False,
         'created_at': now_dt.isoformat(),
+        'timestamp': int(now_dt.timestamp()),
         'time': time_str,
         'time_ago': 'Just now',
         'sender_name': sender_name,
@@ -9025,8 +9365,9 @@ def api_chat_send(request):
         'duration': duration,
         'reply_to': reply_to_id,
         'timestamp': int(now_dt.timestamp()),
+        'created_at': now_dt.isoformat(),
     }
-    _push_chat_message_firebase(chat_id, firebase_payload)
+    _push_chat_message_firebase(chat_id, firebase_payload, user_id, friend_id)
 
     # In-app notification to receiver (deduped: 1 unread notification per conversation, updated in place)
     try:
@@ -9088,6 +9429,20 @@ def api_chat_send(request):
             )
     except Exception as e:
         logger.warning(f"Notification error in api_chat_send: {e}")
+
+    # Web Push dispatch to recipient's active devices
+    try:
+        from landing.push_notifications import send_web_push
+        send_web_push(
+            user_id=friend_id,
+            title=f"New message from {sender_name}",
+            body=display_content[:100] if display_content else 'Sent an attachment',
+            url=chat_key,
+            tag=f"chat_{user_id}",
+            icon=sender_pic or '/static/images/icons/icon-192x192.png'
+        )
+    except Exception as e:
+        logger.warning(f"Web Push dispatch error in api_chat_send: {e}")
 
     return JsonResponse({'success': True, 'message': message_data})
 
@@ -9374,6 +9729,12 @@ def api_chat_mark_read(request):
         """, [friend_id, user_id])
         affected = cur.rowcount
 
+        cur.execute("""
+            UPDATE notifications 
+            SET is_read = 1, is_seen = 1 
+            WHERE user_id = %s AND (actor_id = %s OR data LIKE %s) AND type = 'chat_message' AND COALESCE(is_read, 0) = 0
+        """, [user_id, friend_id, f'%"{friend_id}"%'])
+
     chat_id = f"{min(user_id, friend_id)}_{max(user_id, friend_id)}"
     base_url = os.environ.get('FIREBASE_CHAT_DB_URL', 'https://xapyx-chat-default-rtdb.firebaseio.com').rstrip('/')
     url = f"{base_url}/chats/{chat_id}/read_at/{user_id}.json"
@@ -9382,7 +9743,16 @@ def api_chat_mark_read(request):
     except Exception as e:
         logger.warning(f"Firebase read_at update error: {e}")
 
-    return JsonResponse({'success': True, 'affected': affected})
+    counts = get_sidebar_unread_counts(user_id)
+    resp = JsonResponse({
+        'success': True,
+        'affected': affected,
+        'unread_count': counts['total_notifications'],
+        'chat_unread': counts['chat'],
+        'counts': counts,
+    })
+    resp['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    return resp
 
 
 
@@ -9395,9 +9765,117 @@ def api_chat_mark_read(request):
 def chatrooms_view(request):
     """
     GET /chatrooms/ — Chat Rooms directory and management view.
+    Supplies room statistics, popular rooms, recent rooms, and user orbit profile for right-side widgets.
     """
+    user_id = request.user.id
+    now = timezone.now()
+
+    with connection.cursor() as cur:
+        # 1. Total rooms and user created rooms count
+        cur.execute("""
+            SELECT 
+                COUNT(*) AS total_rooms,
+                COALESCE(SUM(CASE WHEN creator_id = %s THEN 1 ELSE 0 END), 0) AS my_rooms_count
+            FROM chatrooms
+            WHERE (is_deleted = 0 OR is_deleted IS NULL)
+        """, [user_id])
+        stats_row = cur.fetchone()
+        total_rooms = int(stats_row[0] or 0)
+        my_rooms_count = int(stats_row[1] or 0)
+
+        # 2. Joined rooms count for current user
+        cur.execute("""
+            SELECT COUNT(*) 
+            FROM chatroom_members cm
+            INNER JOIN chatrooms c ON c.id = cm.chatroom_id
+            WHERE cm.user_id = %s AND (c.is_deleted = 0 OR c.is_deleted IS NULL)
+        """, [user_id])
+        joined_count = int(cur.fetchone()[0] or 0)
+
+        room_stats = {
+            'total_rooms': total_rooms,
+            'joined_count': joined_count,
+            'my_rooms_count': my_rooms_count,
+        }
+
+        # 3. Popular Rooms (top 5 by member count)
+        cur.execute("""
+            SELECT 
+                c.id, c.name, c.picture,
+                COALESCE(m_cnt.cnt, 0) AS member_count
+            FROM chatrooms c
+            LEFT JOIN (
+                SELECT chatroom_id, COUNT(*) AS cnt
+                FROM chatroom_members
+                GROUP BY chatroom_id
+            ) m_cnt ON m_cnt.chatroom_id = c.id
+            WHERE (c.is_deleted = 0 OR c.is_deleted IS NULL)
+            ORDER BY member_count DESC, c.id DESC
+            LIMIT 5
+        """)
+        popular_rows = cur.fetchall()
+        popular_rooms = []
+        for r in popular_rows:
+            raw_pic = r[2]
+            if raw_pic:
+                if raw_pic.startswith('http://') or raw_pic.startswith('https://') or raw_pic.startswith('/'):
+                    pic_url = raw_pic
+                elif raw_pic.startswith('uploads/'):
+                    pic_url = f"https://s3.eu-west-1.amazonaws.com/xapyx.com-media/{raw_pic}"
+                else:
+                    pic_url = _full_avatar_url(raw_pic)
+            else:
+                pic_url = '/static/images/avatars/room.png'
+            popular_rooms.append({
+                'id': r[0],
+                'name': r[1],
+                'picture': pic_url,
+                'member_count': int(r[3]),
+            })
+
+        # 4. Recent Rooms (top 4 recent by last message activity or creation)
+        cur.execute("""
+            SELECT 
+                c.id, c.name, c.picture,
+                COALESCE(
+                    (SELECT MAX(created_at) FROM chatroom_messages WHERE chatroom_id = c.id),
+                    c.created_at
+                ) AS last_active
+            FROM chatrooms c
+            WHERE (c.is_deleted = 0 OR c.is_deleted IS NULL)
+            ORDER BY last_active DESC, c.id DESC
+            LIMIT 4
+        """)
+        recent_rows = cur.fetchall()
+        recent_rooms = []
+        for r in recent_rows:
+            raw_pic = r[2]
+            if raw_pic:
+                if raw_pic.startswith('http://') or raw_pic.startswith('https://') or raw_pic.startswith('/'):
+                    pic_url = raw_pic
+                elif raw_pic.startswith('uploads/'):
+                    pic_url = f"https://s3.eu-west-1.amazonaws.com/xapyx.com-media/{raw_pic}"
+                else:
+                    pic_url = _full_avatar_url(raw_pic)
+            else:
+                pic_url = '/static/images/avatars/room.png'
+            recent_rooms.append({
+                'id': r[0],
+                'name': r[1],
+                'picture': pic_url,
+                'last_activity': _format_time_ago(r[3], now) if r[3] else 'Just now',
+            })
+
+    user = request.user
+    user_avatar = _full_avatar_url(getattr(user, 'picture', ''))
+
     return render(request, 'dashboard/chatrooms.html', {
         'active_page': 'chatrooms',
+        'room_stats': room_stats,
+        'popular_rooms': popular_rooms,
+        'recent_rooms': recent_rooms,
+        'my_rooms_count': my_rooms_count,
+        'user_avatar': user_avatar,
         'svg_logo': _load_svg_logo(),
     })
 
@@ -9412,9 +9890,12 @@ def chatroom_view(request, room_id):
     with connection.cursor() as cur:
         cur.execute("""
             SELECT c.id, c.name, c.description, c.picture, c.creator_id, c.privacy, c.member_limit,
-                   cm.is_admin, cm.user_id
+                   cm.is_admin, cm.user_id,
+                   a.name AS creator_name, a.username AS creator_username, a.picture AS creator_picture,
+                   c.created_at
             FROM chatrooms c
             LEFT JOIN chatroom_members cm ON cm.chatroom_id = c.id AND cm.user_id = %s
+            LEFT JOIN auth a ON a.id = c.creator_id
             WHERE c.id = %s AND (c.is_deleted = 0 OR c.is_deleted IS NULL)
         """, [user_id, room_id])
         room = cur.fetchone()
@@ -9439,6 +9920,12 @@ def chatroom_view(request, room_id):
         'is_admin': is_admin,
         'is_creator': is_creator,
         'creator_id': creator_id,
+        'creator_name': room[9] or room[10] or 'Room Admin',
+        'creator_username': room[10] or '',
+        'creator_picture': _full_avatar_url(room[11]),
+        'room_privacy': room[5] or 'public',
+        'member_limit': int(room[6] or 20),
+        'created_at': room[12].strftime('%b %d, %Y') if room[12] else '',
         'svg_logo': _load_svg_logo(),
     })
 
@@ -11626,3 +12113,457 @@ def api_checkers_room(request):
         return JsonResponse({'success': False, 'error': f"Unknown action: {action}"}, status=400)
 
     return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+
+
+# ==============================================================================
+# STORE / MARKETPLACE VIEWS (P2P Classifieds)
+# ==============================================================================
+
+def _store_image_url(key):
+    if not key:
+        return '/static/images/products/product.jpg'
+    key = str(key).strip()
+    if key.startswith('http://') or key.startswith('https://') or key.startswith('/static/'):
+        return key
+    clean = key if key.startswith('uploads/') else f'uploads/store/{key}'
+    return f"https://s3.eu-west-1.amazonaws.com/xapyx.com-media/{clean}"
+
+
+@login_required
+def store_view(request):
+    """
+    GET /store/ — Displays P2P marketplace catalog, category filters, and product grid.
+    """
+    category_filter = request.GET.get('category', '').strip()
+    search_query = request.GET.get('q', '').strip()
+    user_id = request.user.id
+
+    categories = []
+    products = []
+
+    with connection.cursor() as cursor:
+        # 1. Fetch categories
+        cursor.execute("SELECT id, name, image FROM product_categories ORDER BY name ASC")
+        for row in cursor.fetchall():
+            cat_img = row[2]
+            if cat_img and not (cat_img.startswith('http') or cat_img.startswith('/')):
+                cat_img = _store_image_url(cat_img)
+            categories.append({
+                'id': row[0],
+                'name': row[1],
+                'image': cat_img or '/static/images/products/product.jpg'
+            })
+
+        # 2. Fetch products (approved listings or pending/rejected belonging to this user)
+        sql = """
+            SELECT p.id, p.ad_id, p.title, p.desc, p.price, p.image, p.location, 
+                   p.category, p.contact, p.show_contact, p.created_at, p.status, p.user_id,
+                   a.username, a.name AS user_name, a.picture AS user_picture
+            FROM products p
+            LEFT JOIN auth a ON p.user_id = a.id
+            WHERE (p.status = 'approved' OR p.user_id = %s)
+        """
+        params = [user_id]
+
+        if category_filter:
+            sql += " AND p.category = %s"
+            params.append(category_filter)
+        if search_query:
+            sql += " AND (p.title LIKE %s OR p.desc LIKE %s OR p.location LIKE %s)"
+            wildcard = f"%{search_query}%"
+            params.extend([wildcard, wildcard, wildcard])
+
+        sql += " ORDER BY CASE WHEN p.status = 'approved' THEN 1 ELSE 2 END, p.created_at DESC LIMIT 60"
+        cursor.execute(sql, params)
+
+        for r in cursor.fetchall():
+            raw_images = [img.strip() for img in (r[5] or '').split(',') if img.strip()]
+            full_images = [_store_image_url(img) for img in raw_images]
+            first_image = full_images[0] if full_images else '/static/images/products/product.jpg'
+
+            raw_pic = r[15]
+            if raw_pic:
+                user_pic = raw_pic if (raw_pic.startswith('http') or raw_pic.startswith('/')) else f"https://s3.eu-west-1.amazonaws.com/xapyx.com-media/uploads/{raw_pic}"
+            else:
+                user_pic = '/static/images/avatars/default.png'
+
+            title_val = r[2] or ''
+            is_sold = title_val.startswith('[SOLD] ')
+            clean_title = title_val[7:] if is_sold else title_val
+
+            products.append({
+                'id': r[0],
+                'ad_id': r[1],
+                'title': clean_title,
+                'full_title': title_val,
+                'is_sold': is_sold,
+                'desc': r[3],
+                'price': float(r[4] or 0),
+                'images': full_images,
+                'first_image': first_image,
+                'location': r[6] or 'Location not specified',
+                'category': r[7] or 'General',
+                'contact': r[8] or '',
+                'show_contact': bool(r[9]),
+                'created_at': r[10],
+                'status': r[11],
+                'user_id': r[12],
+                'is_owner': (r[12] == user_id),
+                'username': r[13] or 'user',
+                'user_name': r[14] or r[13] or 'XAPYX Member',
+                'user_picture': user_pic
+            })
+
+    # 3. User Store History (Sold, Rejected, and Deleted products log)
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT p.id, p.ad_id, p.title, p.price, p.image, p.category, p.created_at, p.updated_at
+            FROM products p
+            WHERE p.user_id = %s AND p.title LIKE '[SOLD]%%'
+            ORDER BY COALESCE(p.updated_at, p.created_at) DESC LIMIT 20
+        """, [user_id])
+        sold_rows = cursor.fetchall()
+        my_sold_products = []
+        for r in sold_rows:
+            raw_imgs = [i.strip() for i in (r[4] or '').split(',') if i.strip()]
+            first_img = _store_image_url(raw_imgs[0]) if raw_imgs else '/static/images/products/product.jpg'
+            clean_title = (r[2] or '').replace('[SOLD] ', '').replace('[SOLD]', '').strip()
+            my_sold_products.append({
+                'id': r[0],
+                'ad_id': r[1],
+                'title': clean_title,
+                'price': float(r[3] or 0),
+                'first_image': first_img,
+                'category': r[5] or 'General',
+                'sold_at': r[7] or r[6],
+            })
+
+        cursor.execute("""
+            SELECT p.id, p.ad_id, p.title, p.price, p.image, p.category, p.created_at, p.updated_at
+            FROM products p
+            WHERE p.user_id = %s AND p.status = 'rejected'
+            ORDER BY COALESCE(p.updated_at, p.created_at) DESC LIMIT 20
+        """, [user_id])
+        rejected_rows = cursor.fetchall()
+        my_rejected_products = []
+        for r in rejected_rows:
+            raw_imgs = [i.strip() for i in (r[4] or '').split(',') if i.strip()]
+            first_img = _store_image_url(raw_imgs[0]) if raw_imgs else '/static/images/products/product.jpg'
+            my_rejected_products.append({
+                'id': r[0],
+                'ad_id': r[1],
+                'title': r[2],
+                'price': float(r[3] or 0),
+                'first_image': first_img,
+                'category': r[5] or 'General',
+                'rejected_at': r[7] or r[6],
+            })
+
+        cursor.execute("""
+            SELECT id, action, details, created_at
+            FROM admin_logs
+            WHERE action LIKE %s
+              AND (admin_id = %s OR details LIKE %s)
+            ORDER BY created_at DESC LIMIT 30
+        """, ['store_product_%', user_id, f"%@{request.user.username}%"])
+        my_history_logs = []
+        for r in cursor.fetchall():
+            my_history_logs.append({
+                'id': r[0],
+                'action': r[1],
+                'details': r[2],
+                'created_at': r[3],
+            })
+
+    context = {
+        'active_page': 'store',
+        'svg_logo': _load_svg_logo(),
+        'categories': categories,
+        'products': products,
+        'selected_category': category_filter,
+        'search_query': search_query,
+        'my_sold_products': my_sold_products,
+        'my_rejected_products': my_rejected_products,
+        'my_history_logs': my_history_logs,
+    }
+    return render(request, 'dashboard/store.html', context)
+
+
+@login_required
+def product_detail_view(request, ad_id):
+    """
+    GET /store/<ad_id>/ — Detailed view of a single listing with seller profile and related items.
+    """
+    user_id = request.user.id
+    ad_id = str(ad_id).strip()
+
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT p.id, p.ad_id, p.title, p.desc, p.price, p.image, p.location, 
+                   p.category, p.contact, p.show_contact, p.created_at, p.status, p.user_id,
+                   a.username, a.name AS poster_name, a.picture AS user_image, 
+                   a.join_date AS joined_at, a.location AS user_location
+            FROM products p 
+            LEFT JOIN auth a ON a.id = p.user_id 
+            WHERE p.ad_id = %s
+        """, [ad_id])
+        row = cursor.fetchone()
+        if not row:
+            return redirect('store')
+
+        is_owner = (row[12] == user_id)
+        status = row[11]
+
+        # Only approved items or the owner can view
+        if status != 'approved' and not is_owner and not request.user.is_staff:
+            return redirect('store')
+
+        # Seller active ads count
+        cursor.execute("SELECT COUNT(*) FROM products WHERE user_id = %s AND status = 'approved'", [row[12]])
+        total_seller_ads = cursor.fetchone()[0] or 0
+
+        # Related products in same category
+        cursor.execute("""
+            SELECT ad_id, title, price, image, location
+            FROM products
+            WHERE category = %s AND ad_id != %s AND status = 'approved' AND user_id != %s
+            ORDER BY created_at DESC LIMIT 4
+        """, [row[7], ad_id, row[12]])
+        related_products = []
+        for r in cursor.fetchall():
+            raw_imgs = [i.strip() for i in (r[3] or '').split(',') if i.strip()]
+            first_img = _store_image_url(raw_imgs[0]) if raw_imgs else '/static/images/products/product.jpg'
+            related_products.append({
+                'ad_id': r[0],
+                'title': r[1],
+                'price': float(r[2] or 0),
+                'first_image': first_img,
+                'location': r[4] or 'Not specified'
+            })
+
+    raw_images = [img.strip() for img in (row[5] or '').split(',') if img.strip()]
+    full_images = [_store_image_url(img) for img in raw_images] if raw_images else ['/static/images/products/product.jpg']
+
+    raw_user_img = row[15]
+    if raw_user_img:
+        seller_img = raw_user_img if (raw_user_img.startswith('http') or raw_user_img.startswith('/')) else f"https://s3.eu-west-1.amazonaws.com/xapyx.com-media/uploads/{raw_user_img}"
+    else:
+        seller_img = '/static/images/avatars/default.png'
+
+    title_val = row[2] or ''
+    is_sold = title_val.startswith('[SOLD] ')
+    clean_title = title_val[7:] if is_sold else title_val
+
+    product = {
+        'id': row[0],
+        'ad_id': row[1],
+        'title': clean_title,
+        'full_title': title_val,
+        'is_sold': is_sold,
+        'desc': row[3] or '',
+        'price': float(row[4] or 0),
+        'images': full_images,
+        'first_image': full_images[0],
+        'location': row[6] or 'Not specified',
+        'category': row[7] or 'General',
+        'contact': row[8] or '',
+        'show_contact': bool(row[9]),
+        'created_at': row[10],
+        'status': row[11],
+        'user_id': row[12],
+        'username': row[13] or 'seller',
+        'poster_name': row[14] or row[13] or 'Seller',
+        'user_image': seller_img,
+        'joined_at': row[16],
+        'user_location': row[17] or row[6] or 'Not specified'
+    }
+
+    context = {
+        'active_page': 'store',
+        'svg_logo': _load_svg_logo(),
+        'product': product,
+        'is_owner': is_owner,
+        'total_seller_ads': total_seller_ads,
+        'related_products': related_products,
+    }
+    return render(request, 'dashboard/view_product.html', context)
+
+
+@login_required
+@require_POST
+def api_store_create_product(request):
+    """
+    POST /api/store/create/ — Handles listing submission from #createProductModal.
+    """
+    import secrets
+    title = request.POST.get('title', '').strip()
+    desc = request.POST.get('desc', '').strip()
+    price = request.POST.get('price', '').strip()
+    category = request.POST.get('category', '').strip()
+    location = request.POST.get('location', '').strip()
+    contact = request.POST.get('contact', '').strip()
+    show_contact = 1 if request.POST.get('show_contact') in ['1', 'true', 'on', True] else 0
+
+    if not title or not desc or not price or not category or not location or not contact:
+        return JsonResponse({'success': False, 'error': 'All fields are required.'}, status=400)
+
+    try:
+        price_val = float(price)
+        if price_val <= 0:
+            return JsonResponse({'success': False, 'error': 'Price must be greater than 0.'}, status=400)
+    except (ValueError, TypeError):
+        return JsonResponse({'success': False, 'error': 'Invalid price format.'}, status=400)
+
+    clean_contact = re.sub(r'[\s\-]', '', contact)
+    if not (clean_contact.startswith('03') and len(clean_contact) == 11 and clean_contact.isdigit()):
+        if len(clean_contact) < 10:
+            return JsonResponse({'success': False, 'error': 'Please provide a valid contact number (e.g. 03XX-XXXXXXX).'}, status=400)
+
+    ad_id = 'AD' + secrets.token_hex(4).upper()
+
+    # Process uploaded images
+    uploaded_keys = []
+    files = request.FILES.getlist('images') or request.FILES.getlist('images[]')
+    for f in files[:5]:
+        key = _upload_to_s3(f, folder='uploads/store')
+        if key:
+            uploaded_keys.append(key)
+
+    image_str = ','.join(uploaded_keys)
+
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            INSERT INTO products (
+                ad_id, title, `desc`, price, image, user_id, 
+                location, category, contact, show_contact, status, created_at
+            ) VALUES (
+                %s, %s, %s, %s, %s, %s, 
+                %s, %s, %s, %s, 'pending', NOW()
+            )
+        """, [ad_id, title, desc, price_val, image_str, request.user.id, location, category, contact, show_contact])
+
+        try:
+            cursor.execute("UPDATE auth SET cell = %s WHERE id = %s AND (cell IS NULL OR cell = '')", [contact, request.user.id])
+        except Exception:
+            pass
+
+    return JsonResponse({
+        'success': True,
+        'message': 'Product submitted successfully! It will be reviewed by admin before going live.',
+        'ad_id': ad_id
+    })
+
+
+@login_required
+@require_POST
+def api_store_mark_sold(request, product_id=None, identifier=None):
+    """
+    POST /api/store/mark-sold/<product_id>/ or /api/store/product/<identifier>/sold/
+    Marks seller's listing as sold and records audit entry in admin_logs.
+    """
+    target = str(identifier or product_id or '').strip()
+    user_id = request.user.id
+
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT id, title, user_id, ad_id, price 
+            FROM products 
+            WHERE id = %s OR ad_id = %s
+        """, [int(target) if target.isdigit() else 0, target])
+        row = cursor.fetchone()
+        if not row:
+            return JsonResponse({'success': False, 'error': 'Listing not found.'}, status=404)
+
+        prod_id, title, owner_id, ad_id, price = row
+        if owner_id != user_id and not request.user.is_staff:
+            return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
+
+        title = title or ''
+        if not title.startswith('[SOLD] '):
+            new_title = f"[SOLD] {title}"
+            cursor.execute("UPDATE products SET title = %s, updated_at = NOW() WHERE id = %s", [new_title, prod_id])
+
+        ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', ''))
+        if ip and ',' in ip:
+            ip = ip.split(',')[0].strip()
+
+        details = f"Product #{prod_id} ({ad_id} - '{title}') marked as SOLD by @{request.user.username}"
+        try:
+            session = getattr(request, 'session', None) or {}
+            log_admin_id = session.get('admin_id')
+            log_admin_name = session.get('admin_name')
+            if not log_admin_id:
+                cursor.execute("SELECT id FROM admins WHERE id = %s LIMIT 1", [user_id])
+                arow = cursor.fetchone()
+                if arow:
+                    log_admin_id = arow[0]
+                    log_admin_name = getattr(request.user, 'name', None) or request.user.username
+                else:
+                    cursor.execute("SELECT id FROM admins ORDER BY id ASC LIMIT 1")
+                    first_admin = cursor.fetchone()
+                    log_admin_id = first_admin[0] if first_admin else 1
+                    log_admin_name = f"User: @{request.user.username}"
+            cursor.execute("""
+                INSERT INTO admin_logs (admin_id, admin_name, action, details, ip_address, user_agent, page_url, created_at)
+                VALUES (%s, %s, 'store_product_sold', %s, %s, %s, %s, NOW())
+            """, [log_admin_id, (log_admin_name or 'System')[:100], details, (ip or '')[:45], request.META.get('HTTP_USER_AGENT', '')[:500], (request.path if hasattr(request, 'path') else '')[:500]])
+        except Exception as log_err:
+            pass
+
+    return JsonResponse({'success': True, 'message': 'Listing marked as sold successfully!'})
+
+
+@login_required
+@require_POST
+def api_store_delete_product(request, product_id=None, identifier=None):
+    """
+    POST /api/store/delete/<product_id>/ or /api/store/product/<identifier>/delete/
+    Deletes seller's listing and records audit entry in admin_logs.
+    """
+    target = str(identifier or product_id or '').strip()
+    user_id = request.user.id
+
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT id, title, user_id, ad_id, price 
+            FROM products 
+            WHERE id = %s OR ad_id = %s
+        """, [int(target) if target.isdigit() else 0, target])
+        row = cursor.fetchone()
+        if not row:
+            return JsonResponse({'success': False, 'error': 'Listing not found.'}, status=404)
+
+        prod_id, title, owner_id, ad_id, price = row
+        if owner_id != user_id and not request.user.is_staff:
+            return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
+
+        cursor.execute("DELETE FROM products WHERE id = %s", [prod_id])
+
+        ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', ''))
+        if ip and ',' in ip:
+            ip = ip.split(',')[0].strip()
+
+        details = f"Product #{prod_id} ({ad_id} - '{title}') deleted by @{request.user.username}"
+        try:
+            session = getattr(request, 'session', None) or {}
+            log_admin_id = session.get('admin_id')
+            log_admin_name = session.get('admin_name')
+            if not log_admin_id:
+                cursor.execute("SELECT id FROM admins WHERE id = %s LIMIT 1", [user_id])
+                arow = cursor.fetchone()
+                if arow:
+                    log_admin_id = arow[0]
+                    log_admin_name = getattr(request.user, 'name', None) or request.user.username
+                else:
+                    cursor.execute("SELECT id FROM admins ORDER BY id ASC LIMIT 1")
+                    first_admin = cursor.fetchone()
+                    log_admin_id = first_admin[0] if first_admin else 1
+                    log_admin_name = f"User: @{request.user.username}"
+            cursor.execute("""
+                INSERT INTO admin_logs (admin_id, admin_name, action, details, ip_address, user_agent, page_url, created_at)
+                VALUES (%s, %s, 'store_product_delete', %s, %s, %s, %s, NOW())
+            """, [log_admin_id, (log_admin_name or 'System')[:100], details, (ip or '')[:45], request.META.get('HTTP_USER_AGENT', '')[:500], (request.path if hasattr(request, 'path') else '')[:500]])
+        except Exception as log_err:
+            pass
+
+    return JsonResponse({'success': True, 'message': 'Listing deleted successfully!'})

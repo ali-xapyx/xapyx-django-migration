@@ -21,9 +21,9 @@
     const chatSearchInput = document.getElementById('chatSearchInput');
     const chatHeader = document.getElementById('chatHeader');
     const chatAvatar = document.getElementById('chatAvatar');
-    const chatOnlineDot = document.getElementById('chatOnlineDot');
-    const chatName = document.getElementById('chatName');
-    const chatStatus = document.getElementById('chatStatus');
+    const chatOnlineDot = document.getElementById('chatHeaderDot') || document.getElementById('chatOnlineDot');
+    const chatName = document.getElementById('chatHeaderName') || document.getElementById('chatName');
+    const chatStatus = document.getElementById('chatHeaderStatus') || document.getElementById('chatStatus');
     const chatProfileLink = document.getElementById('chatProfileLink');
     const messagesContainer = document.getElementById('messagesContainer');
     const emptyStatePlaceholder = document.getElementById('emptyStatePlaceholder');
@@ -93,6 +93,7 @@
     let fbMessagesRef = null;
     let fbTypingRef = null;
     let fbReadRef = null;
+    let fbFriendPresenceRef = null;
 
     // ---- Mobile Drawer & Full-Screen Swap Helpers (FIX 1) ----
     function closeMobileThread(useHistory = true) {
@@ -104,6 +105,11 @@
         activeFriendId = null;
         activeChatId = null;
         activeFriend = null;
+
+        if (typeof syncPollingTimer !== 'undefined' && syncPollingTimer) {
+            clearInterval(syncPollingTimer);
+            syncPollingTimer = null;
+        }
 
         if (useHistory && history.state && history.state.chatThreadOpen) {
             history.back();
@@ -169,13 +175,147 @@
     }
 
     function scrollToBottom(smooth = false) {
-        if (!messagesContainer) return;
+        const chatContainer = document.getElementById('chatMessagesContainer') ||
+                              document.querySelector('.chat-messages-scroll-area') ||
+                              messagesContainer ||
+                              document.getElementById('messagesContainer') ||
+                              document.querySelector('.page-inbox-messages-container');
+        if (!chatContainer) return;
+
+        chatContainer.scrollTop = chatContainer.scrollHeight;
         requestAnimationFrame(() => {
-            messagesContainer.scrollTo({
-                top: messagesContainer.scrollHeight,
-                behavior: smooth ? 'smooth' : 'auto'
-            });
+            chatContainer.scrollTop = chatContainer.scrollHeight;
         });
+        setTimeout(() => {
+            if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
+        }, 60);
+    }
+
+    function getMsgTimestamp(msg) {
+        if (!msg) return 0;
+        if (msg.created_at) {
+            let str = String(msg.created_at).trim().replace(' ', 'T');
+            if (!str.endsWith('Z') && !str.includes('+') && !/-\d{2}:\d{2}$/.test(str)) {
+                str += 'Z';
+            }
+            const parsed = new Date(str).getTime();
+            if (!isNaN(parsed)) return Math.floor(parsed / 1000);
+        }
+        if (msg.timestamp) {
+            const ts = Number(msg.timestamp);
+            if (!isNaN(ts) && ts > 0) {
+                return ts > 10000000000 ? Math.floor(ts / 1000) : ts;
+            }
+        }
+        return 0;
+    }
+
+    function formatMessageTime(msg) {
+        if (!msg) return '';
+        let d = null;
+        if (typeof msg === 'number') {
+            const ts = msg > 10000000000 ? msg : msg * 1000;
+            d = new Date(ts);
+        } else if (msg instanceof Date) {
+            d = msg;
+        } else if (typeof msg === 'object') {
+            if (msg.created_at) {
+                let str = String(msg.created_at).trim().replace(' ', 'T');
+                if (!str.endsWith('Z') && !str.includes('+') && !/-\d{2}:\d{2}$/.test(str)) {
+                    str += 'Z';
+                }
+                const parsed = new Date(str);
+                if (!isNaN(parsed.getTime())) {
+                    d = parsed;
+                }
+            }
+            if (!d && msg.timestamp) {
+                const num = Number(msg.timestamp);
+                if (!isNaN(num) && num > 0) {
+                    const ts = num > 10000000000 ? num : num * 1000;
+                    d = new Date(ts);
+                }
+            }
+        }
+        if (d && !isNaN(d.getTime())) {
+            return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+        if (msg && typeof msg.time === 'string' && msg.time.trim()) {
+            return msg.time;
+        }
+        return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function formatRelativeTime(input) {
+        if (!input) return 'Just now';
+        let ms = 0;
+        if (typeof input === 'number') {
+            ms = input > 10000000000 ? input : input * 1000;
+        } else if (input instanceof Date) {
+            ms = input.getTime();
+        } else if (typeof input === 'string') {
+            let str = input.trim();
+            if (/^\d+$/.test(str)) {
+                const num = Number(str);
+                ms = num > 10000000000 ? num : num * 1000;
+            } else {
+                str = str.replace(' ', 'T');
+                if (!str.endsWith('Z') && !str.includes('+') && !/-\d{2}:\d{2}$/.test(str)) {
+                    str += 'Z';
+                }
+                const parsed = new Date(str).getTime();
+                ms = isNaN(parsed) ? 0 : parsed;
+            }
+        }
+        if (!ms || isNaN(ms)) return 'Just now';
+
+        const now = Date.now();
+        const diffSec = Math.max(0, Math.floor((now - ms) / 1000));
+
+        if (diffSec < 60) {
+            return 'Just now';
+        }
+        if (diffSec < 3600) {
+            return `${Math.floor(diffSec / 60)}m ago`;
+        }
+        if (diffSec < 86400) {
+            return `${Math.floor(diffSec / 3600)}h ago`;
+        }
+        if (diffSec < 604800) {
+            return `${Math.floor(diffSec / 86400)}d ago`;
+        }
+        if (diffSec < 2592000) {
+            return `${Math.floor(diffSec / 604800)}w ago`;
+        }
+        return new Date(ms).toLocaleDateString([], { month: 'short', day: 'numeric' });
+    }
+
+    function insertMessageInOrder(container, row, curTs, curId) {
+        if (curId && container.querySelector(`[data-msg-id="${curId}"]`)) {
+            return;
+        }
+        const existingRows = container.querySelectorAll('.page-inbox-msg-row');
+        if (!existingRows.length) {
+            container.appendChild(row);
+            return;
+        }
+        for (let i = existingRows.length - 1; i >= 0; i--) {
+            const exRow = existingRows[i];
+            const exId = Number(exRow.dataset.msgId) || 0;
+            const exTs = Number(exRow.dataset.timestamp) || 0;
+            if (curId && exId) {
+                if (exId <= curId) {
+                    exRow.after(row);
+                    return;
+                }
+            } else {
+                if (exTs <= curTs) {
+                    exRow.after(row);
+                    return;
+                }
+            }
+        }
+        container.prepend(row);
     }
 
     function showUploadProgress(text) {
@@ -192,6 +332,163 @@
     }
 
     // ---- Firebase RTDB ----
+    let fbUserInboxRef = null;
+
+    function attachUserInboxListener() {
+        if (!firebaseDb || !config.currentUserId) return;
+        if (fbUserInboxRef) return;
+
+        fbUserInboxRef = firebaseDb.ref('user_chats/' + config.currentUserId);
+
+        const handleInboxMessage = (snapshot) => {
+            const data = snapshot.val();
+            if (!data) return;
+
+            const senderId = Number(data.sender_id);
+            const receiverId = Number(data.receiver_id);
+            const friendId = senderId === Number(config.currentUserId) ? receiverId : senderId;
+            if (!friendId) return;
+
+            const isIncoming = senderId !== Number(config.currentUserId);
+            const content = data.content || data.last_message || '';
+
+            // Update snippet in conversation list and move to top
+            updateConvSnippet(friendId, content, data.timestamp || data.created_at);
+
+            // If this friend's conversation is currently open
+            if (activeFriendId && Number(activeFriendId) === friendId) {
+                const msgId = String(data.msg_id || data.id || '');
+                if (msgId && !knownMessageIds.has(msgId) && !messagesContainer.querySelector(`[data-msg-id="${msgId}"]`)) {
+                    knownMessageIds.add(msgId);
+                    const emptyChat = messagesContainer.querySelector('.page-inbox-empty-chat');
+                    if (emptyChat) emptyChat.remove();
+
+                    const isMe = senderId === Number(config.currentUserId);
+                    const timeStr = formatMessageTime(data);
+
+                    renderMessageRow({
+                        id: msgId,
+                        sender_id: senderId,
+                        message: content,
+                        message_type: data.message_type || 'text',
+                        media_url: data.media_url || data.s3_url || '',
+                        s3_url: data.s3_url || '',
+                        duration: data.duration || 0,
+                        reply_to: data.reply_to || null,
+                        reply_snippet: null,
+                        is_read: false,
+                        time: timeStr,
+                        timestamp: data.timestamp,
+                        created_at: data.created_at,
+                        sender_name: data.sender_name || (isMe ? 'You' : (activeFriend ? activeFriend.name : 'User')),
+                        sender_picture: isMe ? (window.XPY_CONFIG && window.XPY_CONFIG.userPicture) : (activeFriend ? activeFriend.picture : ''),
+                        reactions: []
+                    });
+                    scrollToBottom(true);
+                    if (isIncoming) {
+                        markConversationRead(activeFriendId);
+                    }
+                }
+            } else if (isIncoming) {
+                incrementUnreadBadge(friendId);
+            }
+        };
+
+        fbUserInboxRef.on('child_added', handleInboxMessage);
+        fbUserInboxRef.on('child_changed', handleInboxMessage);
+    }
+
+
+    // ---- Live Presence Indicator Management ----
+    window.updateUserPresence = function(userId, isOnline) {
+        if (!userId) return;
+        const onlineState = Boolean(isOnline);
+        
+        // Update all matching list elements
+        document.querySelectorAll(`.status-dot[data-user-id="${userId}"]`).forEach(dot => {
+            dot.classList.toggle('online', onlineState);
+            dot.classList.toggle('offline', !onlineState);
+        });
+
+        // Update header if the active conversation matches this user
+        if (typeof activeFriendId !== 'undefined' && Number(activeFriendId) === Number(userId)) {
+            if (typeof activeFriend !== 'undefined' && activeFriend) {
+                activeFriend.online = onlineState;
+                activeFriend.is_online = onlineState;
+            }
+            const chatStatusEl = document.getElementById('chatHeaderStatus') || document.getElementById('chatStatus');
+            const chatOnlineDotEl = document.getElementById('chatHeaderDot') || document.getElementById('chatOnlineDot');
+            if (chatStatusEl) {
+                chatStatusEl.textContent = onlineState ? 'Online' : 'Offline';
+            }
+            if (chatOnlineDotEl) {
+                chatOnlineDotEl.dataset.userId = userId;
+                chatOnlineDotEl.classList.toggle('online', onlineState);
+                chatOnlineDotEl.classList.toggle('offline', !onlineState);
+            }
+        }
+    };
+
+    function attachFriendPresenceListener(friendId) {
+        if (fbFriendPresenceRef) {
+            fbFriendPresenceRef.off();
+            fbFriendPresenceRef = null;
+        }
+        if (!firebaseDb || !friendId) return;
+
+        fbFriendPresenceRef = firebaseDb.ref('presence/' + friendId);
+        fbFriendPresenceRef.on('value', (snapshot) => {
+            const val = snapshot.val();
+            let isOnline = false;
+            if (val !== null && val !== undefined) {
+                isOnline = (typeof val === 'object' && val !== null) ? Boolean(val.online) : Boolean(val);
+            }
+            if (typeof window.updateUserPresence === 'function') {
+                window.updateUserPresence(friendId, isOnline);
+            }
+        });
+    }
+
+    function setupFirebasePresence() {
+        if (!firebaseDb || !config.currentUserId) return;
+        try {
+            const userPresenceRef = firebaseDb.ref('presence/' + config.currentUserId);
+            const connectedRef = firebaseDb.ref('.info/connected');
+
+            connectedRef.on('value', (snap) => {
+                if (snap.val() === true) {
+                    userPresenceRef.set({
+                        online: true,
+                        last_changed: firebase.database.ServerValue.TIMESTAMP
+                    });
+                    userPresenceRef.onDisconnect().set({
+                        online: false,
+                        last_changed: firebase.database.ServerValue.TIMESTAMP
+                    });
+                }
+            });
+
+            // Listen to global presence updates from peers
+            const allPresenceRef = firebaseDb.ref('presence');
+            allPresenceRef.on('child_added', (snap) => {
+                const uid = snap.key;
+                if (!uid || Number(uid) === Number(config.currentUserId)) return;
+                const val = snap.val();
+                const isOnline = (typeof val === 'object' && val !== null) ? Boolean(val.online) : Boolean(val);
+                window.updateUserPresence(uid, isOnline);
+            });
+            allPresenceRef.on('child_changed', (snap) => {
+                const uid = snap.key;
+                if (!uid || Number(uid) === Number(config.currentUserId)) return;
+                const val = snap.val();
+                const isOnline = (typeof val === 'object' && val !== null) ? Boolean(val.online) : Boolean(val);
+                window.updateUserPresence(uid, isOnline);
+            });
+        } catch (err) {
+            console.warn('[chat.js] setupFirebasePresence error:', err);
+        }
+    }
+
     function initFirebase() {
         try {
             if (typeof firebase === 'undefined') {
@@ -207,6 +504,11 @@
             }
             firebaseDb = firebase.database(app);
             console.log('[chat.js] Firebase RTDB initialized');
+            attachUserInboxListener();
+            setupFirebasePresence();
+            if (activeFriendId) {
+                attachFriendPresenceListener(activeFriendId);
+            }
         } catch (e) {
             console.error('[chat.js] Firebase init error:', e);
         }
@@ -216,6 +518,7 @@
         if (fbMessagesRef) { fbMessagesRef.off(); fbMessagesRef = null; }
         if (fbTypingRef) { fbTypingRef.off(); fbTypingRef = null; }
         if (fbReadRef) { fbReadRef.off(); fbReadRef = null; }
+        if (fbFriendPresenceRef) { fbFriendPresenceRef.off(); fbFriendPresenceRef = null; }
     }
 
     function attachFirebaseListeners(chatId) {
@@ -231,11 +534,11 @@
             if (!data || !data.id) return;
             const msgId = String(data.id);
 
-            if (knownMessageIds.has(msgId)) return;
+            if (knownMessageIds.has(msgId) || messagesContainer.querySelector(`[data-msg-id="${msgId}"]`)) return;
             knownMessageIds.add(msgId);
 
             const isMe = Number(data.sender_id) === Number(config.currentUserId);
-            const timeStr = data.timestamp ? new Date(data.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+            const timeStr = formatMessageTime(data);
 
             // Remove empty placeholder
             const emptyChat = messagesContainer.querySelector('.page-inbox-empty-chat');
@@ -256,6 +559,8 @@
                 reply_snippet: null,
                 is_read: false,
                 time: timeStr,
+                timestamp: data.timestamp,
+                created_at: data.created_at,
                 sender_name: data.sender_name || (isMe ? 'You' : (activeFriend ? activeFriend.name : 'User')),
                 sender_picture: isMe ? (window.XPY_CONFIG && window.XPY_CONFIG.userPicture) : (activeFriend ? activeFriend.picture : ''),
                 reactions: []
@@ -264,7 +569,7 @@
             if (isMe || wasAtBottom) {
                 scrollToBottom(true);
             }
-            updateConvSnippet(activeFriendId, data.content || '');
+            updateConvSnippet(activeFriendId, data.content || '', data.timestamp || data.created_at);
 
             if (!isMe) {
                 markConversationRead(activeFriendId);
@@ -356,7 +661,8 @@
         const lastSentRow = sentRows[sentRows.length - 1];
         const msgTs = Number(lastSentRow.dataset.timestamp || 0);
 
-        if (readAtTs >= msgTs) {
+        // Strict accuracy: only show Seen if readAtTs and msgTs are valid and recipient read timestamp is >= message timestamp
+        if (readAtTs > 0 && msgTs > 0 && readAtTs >= msgTs) {
             const seenEl = document.createElement('div');
             seenEl.className = 'chat-seen-receipt';
             seenEl.innerHTML = '<i class="fas fa-check-double me-1"></i> Seen';
@@ -403,21 +709,36 @@
         if (convCount) convCount.textContent = `${list.length} chat${list.length > 1 ? 's' : ''}`;
 
         conversationsList.innerHTML = list.map(c => {
-            const isActive = activeFriendId && Number(activeFriendId) === Number(c.friend_id);
-            const thumb = getAvatarThumb(c.picture);
+            const userId = c.user_id || c.friend_id;
+            const isActive = activeFriendId && Number(activeFriendId) === Number(userId);
+            const thumb = getAvatarThumb(c.picture || c.avatar);
             const unreadBadge = c.unread_count > 0 ? `<span class="page-inbox-conv-badge">${c.unread_count}</span>` : '';
-            const onlineDot = c.online ? '<span class="chat-online-indicator"></span>' : '';
+            const isOnline = Boolean(c.is_online !== undefined ? c.is_online : c.online);
+            const onlineClass = isOnline ? 'online' : 'offline';
+
+            let convTs = 0;
+            if (c.last_time) {
+                let lt = String(c.last_time).trim().replace(' ', 'T');
+                if (!lt.endsWith('Z') && !lt.includes('+') && !/-\d{2}:\d{2}$/.test(lt)) lt += 'Z';
+                const p = new Date(lt).getTime();
+                if (!isNaN(p)) convTs = p;
+            }
+            if (!convTs && c.timestamp) {
+                const n = Number(c.timestamp);
+                convTs = n > 10000000000 ? n : n * 1000;
+            }
+            const timeDisplay = convTs ? formatRelativeTime(convTs) : (c.time_ago || '');
 
             return `
-                <div class="page-inbox-conv-item ${isActive ? 'active' : ''}" data-friend-id="${c.friend_id}" onclick="window.__selectChat(${c.friend_id})">
-                    <div class="page-inbox-conv-avatar-wrap">
-                        <img src="${thumb}" onerror="this.onerror=null;this.src='${escapeHtml(c.picture)}'" data-full-src="${escapeHtml(c.picture || '/static/images/avatars/default.png')}" class="page-inbox-conv-avatar" alt="${escapeHtml(c.name)}">
-                        ${onlineDot}
+                <div class="page-inbox-conv-item ${isActive ? 'active' : ''}" data-friend-id="${userId}" data-timestamp="${convTs || ''}" onclick="window.__selectChat(${userId})">
+                    <div class="user-avatar-wrapper page-inbox-conv-avatar-wrap" style="position: relative; display: inline-block;">
+                        <img src="${thumb}" onerror="this.onerror=null;this.src='${escapeHtml(c.picture || c.avatar)}'" data-full-src="${escapeHtml(c.picture || c.avatar || '/static/images/avatars/default.png')}" class="chat-user-avatar page-inbox-conv-avatar" alt="${escapeHtml(c.name)}">
+                        <span class="status-dot ${onlineClass}" data-user-id="${userId}"></span>
                     </div>
                     <div class="page-inbox-conv-info">
                         <div class="page-inbox-conv-top">
                             <span class="page-inbox-conv-name">${escapeHtml(c.name)}</span>
-                            <span class="page-inbox-conv-time">${escapeHtml(c.time_ago)}</span>
+                            <span class="page-inbox-conv-time">${escapeHtml(timeDisplay)}</span>
                         </div>
                         <div class="page-inbox-conv-bottom">
                             <span class="page-inbox-conv-last-msg">${escapeHtml(c.last_message || 'No messages')}</span>
@@ -430,7 +751,29 @@
     }
 
     window.__selectChat = function (friendId) {
+        // Instant optimistic clearing of conversation unread badge on click
+        const convEl = conversationsList ? conversationsList.querySelector(`[data-friend-id="${friendId}"]`) : null;
+        if (convEl) {
+            const b = convEl.querySelector('.page-inbox-conv-badge, .unread-badge');
+            if (b) {
+                const badgeCount = parseInt(b.textContent, 10) || 1;
+                b.remove();
+                if (typeof window.updateBellBadge === 'function') {
+                    const curBell = window.notificationSystem ? window.notificationSystem.unreadCount : (parseInt(document.querySelector('.notification-badge, #notifHeaderBadge')?.textContent, 10) || 0);
+                    window.updateBellBadge(Math.max(0, curBell - badgeCount));
+                }
+            }
+            convEl.classList.remove('has-unread');
+        }
         openConversation(friendId);
+        const chatContainer = document.getElementById('chatMessagesContainer') ||
+                              document.querySelector('.chat-messages-scroll-area') ||
+                              messagesContainer ||
+                              document.getElementById('messagesContainer') ||
+                              document.querySelector('.page-inbox-messages-container');
+        if (chatContainer) {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
         if (window.innerWidth < 768) {
             closeChatSidebar();
         }
@@ -440,6 +783,30 @@
         if (!friendId) return;
         activeFriendId = Number(friendId);
         knownMessageIds.clear();
+
+        // Attach/update Firebase RTDB presence listener for active friend
+        attachFriendPresenceListener(activeFriendId);
+
+        // Instantly remove unread badge for this conversation in UI (instant feedback)
+        const convEl = conversationsList ? conversationsList.querySelector(`[data-friend-id="${friendId}"]`) : null;
+        let clearedBadgeCount = 0;
+        if (convEl) {
+            const b = convEl.querySelector('.page-inbox-conv-badge, .unread-badge');
+            if (b) {
+                clearedBadgeCount = parseInt(b.textContent, 10) || 1;
+                b.remove();
+            }
+            convEl.classList.remove('has-unread');
+        }
+
+        // Optimistically decrement top bell badge immediately
+        if (clearedBadgeCount > 0 && typeof window.updateBellBadge === 'function') {
+            const curBell = window.notificationSystem ? window.notificationSystem.unreadCount : (parseInt(document.querySelector('.notification-badge, #notifHeaderBadge')?.textContent, 10) || 0);
+            window.updateBellBadge(Math.max(0, curBell - clearedBadgeCount));
+        }
+
+        // Trigger immediate background mark read
+        markConversationRead(friendId);
 
         // FIX 1: Open mobile thread view
         const wrap = document.querySelector('.chat-wrap') || document.querySelector('.page-inbox-wrap');
@@ -483,35 +850,59 @@
             activeFriend = data.friend;
             activeChatId = data.chat_id;
 
+            // Sync authoritative unread counts from response
+            if (data.unread_count !== undefined && typeof window.updateBellBadge === 'function') {
+                window.updateBellBadge(data.unread_count);
+            }
+            if (typeof window.refreshNotifications === 'function') {
+                window.refreshNotifications();
+            }
+
             // Update Header
             if (chatHeader) chatHeader.style.display = 'flex';
             if (inputArea) inputArea.style.display = 'block';
-            if (chatName) chatName.textContent = activeFriend.name;
+            const headerNameEl = document.getElementById('chatHeaderName') || chatName;
+            if (headerNameEl) headerNameEl.textContent = activeFriend.name;
             if (chatAvatar) {
                 chatAvatar.src = getAvatarThumb(activeFriend.picture);
                 chatAvatar.dataset.fullSrc = activeFriend.picture || '';
                 chatAvatar.onerror = function () { this.onerror = null; this.src = activeFriend.picture; };
             }
-            if (chatOnlineDot) {
-                chatOnlineDot.classList.toggle('d-none', !activeFriend.online);
+            const isOnline = Boolean(activeFriend.is_online !== undefined ? activeFriend.is_online : activeFriend.online);
+            const headerDotEl = document.getElementById('chatHeaderDot') || chatOnlineDot;
+            if (headerDotEl) {
+                headerDotEl.dataset.userId = activeFriend.id;
+                headerDotEl.classList.toggle('online', isOnline);
+                headerDotEl.classList.toggle('offline', !isOnline);
+                headerDotEl.classList.remove('d-none');
             }
-            if (chatStatus) {
-                chatStatus.textContent = activeFriend.online ? 'Online' : 'Offline';
+            const headerStatusEl = document.getElementById('chatHeaderStatus') || chatStatus;
+            if (headerStatusEl) {
+                headerStatusEl.textContent = isOnline ? 'Online' : 'Offline';
             }
+            attachFriendPresenceListener(friendId);
             if (chatProfileLink) {
                 chatProfileLink.href = `/user/${encodeURIComponent(activeFriend.username || activeFriend.id)}/`;
             }
 
-            // Clear unread badge in sidebar
+            // Clear unread badge in sidebar & mark conversation as read on server and Firebase
             const convEl = conversationsList.querySelector(`[data-friend-id="${friendId}"]`);
             if (convEl) {
                 const b = convEl.querySelector('.page-inbox-conv-badge');
                 if (b) b.remove();
             }
+            markConversationRead(friendId);
 
             // Render Messages
             messagesContainer.innerHTML = '';
-            const msgs = data.messages || [];
+            const msgs = (data.messages || []).slice().sort((a, b) => {
+                const idA = Number(a.id) || 0;
+                const idB = Number(b.id) || 0;
+                if (idA && idB) return idA - idB;
+                const timeA = getMsgTimestamp(a);
+                const timeB = getMsgTimestamp(b);
+                return timeA - timeB;
+            });
             if (msgs.length === 0) {
                 messagesContainer.innerHTML = `
                     <div class="page-inbox-empty-chat">
@@ -525,11 +916,31 @@
                     knownMessageIds.add(String(m.id));
                     renderMessageRow(m);
                 });
+
+                const chatContainer = document.getElementById('chatMessagesContainer') ||
+                                      document.querySelector('.chat-messages-scroll-area') ||
+                                      messagesContainer ||
+                                      document.getElementById('messagesContainer') ||
+                                      document.querySelector('.page-inbox-messages-container');
+                if (chatContainer) {
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
                 scrollToBottom(false);
+
+                // Initial seen state check from database messages
+                const sentMsgs = msgs.filter(m => Number(m.sender_id) === Number(config.currentUserId));
+                if (sentMsgs.length > 0) {
+                    const lastSent = sentMsgs[sentMsgs.length - 1];
+                    if (lastSent.is_read) {
+                        const lastSentTs = getMsgTimestamp(lastSent);
+                        updateReadReceipts(Math.max(Number(currentLastReadTimestamp || 0), lastSentTs));
+                    }
+                }
             }
 
-            // Attach Firebase listeners
+            // Attach Firebase listeners & polling fallback
             attachFirebaseListeners(activeChatId);
+            startSyncPolling();
 
             if (messageInput) messageInput.focus();
 
@@ -546,7 +957,7 @@
         row.className = `page-inbox-msg-row ${isSent ? 'sent' : 'received'}`;
         row.dataset.msgId = msg.id;
 
-        const createdTs = msg.created_at ? Math.floor(new Date(msg.created_at).getTime() / 1000) : 0;
+        const createdTs = getMsgTimestamp(msg);
         row.dataset.timestamp = createdTs;
 
         // FIX 4 (Option A): Remove avatar on sent bubbles entirely (Insta/FB style)
@@ -632,8 +1043,9 @@
             textContentHtml = `<div class="page-inbox-msg-text mt-1">${escapeHtml(msg.message)}</div>`;
         }
 
+        const formattedTime = formatMessageTime(msg);
         const editedHtml = msg.edited ? ' <span class="chat-edited-tag">(edited)</span>' : '';
-        const timeHtml = `<div class="page-inbox-msg-time">${escapeHtml(msg.time || '')}${editedHtml}</div>`;
+        const timeHtml = `<div class="page-inbox-msg-time">${escapeHtml(formattedTime)}${editedHtml}</div>`;
 
         // Action Toolbar (Hover: React, Reply, Edit, Delete)
         const canEdit = isSent && msgType === 'text';
@@ -672,7 +1084,7 @@
         `;
 
         row.innerHTML = isSent ? bubbleWrapHtml : (avatarHtml + bubbleWrapHtml);
-        messagesContainer.appendChild(row);
+        insertMessageInOrder(messagesContainer, row, createdTs, Number(msg.id) || 0);
 
         // Render Reactions if any
         if (hasReactions) {
@@ -1015,7 +1427,7 @@
                         renderMessageRow(sendData.message);
                         scrollToBottom(true);
                     }
-                    updateConvSnippet(activeFriendId, sendData.message.message);
+                    updateConvSnippet(activeFriendId, sendData.message.message || (sendData.message.message_type === 'image' ? '📷 Photo' : sendData.message.message_type === 'video' ? '🎥 Video' : '📁 File'), sendData.message.timestamp || sendData.message.created_at);
                 } else {
                     alert(sendData.error || 'Failed to send file');
                 }
@@ -1148,7 +1560,7 @@
                         renderMessageRow(sendData.message);
                         scrollToBottom(true);
                     }
-                    updateConvSnippet(activeFriendId, '🎤 Voice message');
+                    updateConvSnippet(activeFriendId, '🎤 Voice message', sendData.message.timestamp || sendData.message.created_at);
                 } else {
                     alert(sendData.error || 'Failed to send voice note');
                 }
@@ -1267,6 +1679,9 @@
                 const msg = data.message;
                 cancelReply();
 
+                // Clear any existing Seen indicators so newly dispatched message is never shown as seen prematurely
+                messagesContainer.querySelectorAll('.chat-seen-receipt').forEach(el => el.remove());
+
                 if (!knownMessageIds.has(String(msg.id))) {
                     knownMessageIds.add(String(msg.id));
                     const emptyChat = messagesContainer.querySelector('.page-inbox-empty-chat');
@@ -1275,7 +1690,7 @@
                     renderMessageRow(msg);
                     scrollToBottom(true);
                 }
-                updateConvSnippet(activeFriendId, text);
+                updateConvSnippet(activeFriendId, text, msg.timestamp || msg.created_at);
             } else {
                 alert(data.error || 'Failed to send message');
                 messageInput.value = text;
@@ -1294,31 +1709,138 @@
         try {
             const formData = new FormData();
             formData.append('friend_id', friendId);
-            await fetch('/api/chat/read/', {
+            const res = await fetch('/api/chat/read/', {
                 method: 'POST',
                 headers: { 'X-CSRFToken': getCsrfToken() },
                 body: formData
             });
+            const data = await res.json();
+            if (data && data.success) {
+                if (data.unread_count !== undefined && typeof window.updateBellBadge === 'function') {
+                    window.updateBellBadge(data.unread_count);
+                }
+                if (typeof window.refreshNotifications === 'function') {
+                    window.refreshNotifications();
+                }
+            }
         } catch (e) {
             console.warn('markConversationRead error:', e);
         }
     }
 
-    function updateConvSnippet(friendId, text) {
-        const item = conversationsList ? conversationsList.querySelector(`[data-friend-id="${friendId}"]`) : null;
-        if (!item) return;
+    function incrementUnreadBadge(friendId) {
+        if (!conversationsList) return;
+        if (activeFriendId && Number(activeFriendId) === Number(friendId)) {
+            // Thread is actively open and focused, mark read immediately
+            markConversationRead(friendId);
+            return;
+        }
+        const item = conversationsList.querySelector(`[data-friend-id="${friendId}"]`);
+        if (!item) {
+            loadConversations();
+            return;
+        }
+        const bottom = item.querySelector('.page-inbox-conv-bottom');
+        if (!bottom) return;
+        let badge = bottom.querySelector('.page-inbox-conv-badge');
+        if (badge) {
+            const count = (parseInt(badge.textContent, 10) || 0) + 1;
+            badge.textContent = count;
+        } else {
+            badge = document.createElement('span');
+            badge.className = 'page-inbox-conv-badge';
+            badge.textContent = '1';
+            bottom.appendChild(badge);
+        }
+    }
+
+    function updateConvSnippet(friendId, text, timestamp) {
+        let item = conversationsList ? conversationsList.querySelector(`[data-friend-id="${friendId}"]`) : null;
+        if (!item) {
+            loadConversations();
+            return;
+        }
         const msgEl = item.querySelector('.page-inbox-conv-last-msg');
         if (msgEl) {
-            msgEl.textContent = text.length > 40 ? text.slice(0, 40) + '...' : text;
+            msgEl.textContent = text && text.length > 40 ? text.slice(0, 40) + '...' : (text || '');
         }
+
+        let convTs = Date.now();
+        if (timestamp) {
+            if (typeof timestamp === 'number') {
+                convTs = timestamp > 10000000000 ? timestamp : timestamp * 1000;
+            } else if (typeof timestamp === 'string') {
+                let s = timestamp.trim().replace(' ', 'T');
+                if (/^\d+$/.test(s)) {
+                    const n = Number(s);
+                    convTs = n > 10000000000 ? n : n * 1000;
+                } else {
+                    if (!s.endsWith('Z') && !s.includes('+') && !/-\d{2}:\d{2}$/.test(s)) s += 'Z';
+                    const p = new Date(s).getTime();
+                    if (!isNaN(p)) convTs = p;
+                }
+            } else if (timestamp instanceof Date) {
+                convTs = timestamp.getTime();
+            }
+        }
+        item.dataset.timestamp = String(convTs);
+
         const timeEl = item.querySelector('.page-inbox-conv-time');
         if (timeEl) {
-            timeEl.textContent = 'Just now';
+            timeEl.textContent = formatRelativeTime(convTs);
         }
         // Move to top of conversations list
         if (conversationsList && item !== conversationsList.firstElementChild) {
             conversationsList.prepend(item);
         }
+    }
+
+    function updateAllConvRelativeTimes() {
+        if (!conversationsList) return;
+        conversationsList.querySelectorAll('.page-inbox-conv-item').forEach(item => {
+            const ts = Number(item.dataset.timestamp);
+            if (ts && !isNaN(ts)) {
+                const timeEl = item.querySelector('.page-inbox-conv-time');
+                if (timeEl) {
+                    timeEl.textContent = formatRelativeTime(ts);
+                }
+            }
+        });
+    }
+
+    let relativeTimeTicker = setInterval(updateAllConvRelativeTimes, 30000);
+
+    let syncPollingTimer = null;
+    function startSyncPolling() {
+        if (syncPollingTimer) clearInterval(syncPollingTimer);
+        syncPollingTimer = setInterval(async () => {
+            if (!activeFriendId || document.hidden) return;
+            try {
+                const res = await fetch(`/api/chat/messages/?friend_id=${activeFriendId}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.success && Array.isArray(data.messages)) {
+                    let hasNew = false;
+                    data.messages.forEach(m => {
+                        const mId = String(m.id);
+                        if (!knownMessageIds.has(mId) && !messagesContainer.querySelector(`[data-msg-id="${mId}"]`)) {
+                            knownMessageIds.add(mId);
+                            const emptyChat = messagesContainer.querySelector('.page-inbox-empty-chat');
+                            if (emptyChat) emptyChat.remove();
+                            renderMessageRow(m);
+                            hasNew = true;
+                        }
+                    });
+                    if (hasNew) {
+                        scrollToBottom(true);
+                    }
+                }
+            } catch (e) {
+                // Fail silently on polling error
+            }
+        }, 4000);
     }
 
     // ---- Event Listeners ----

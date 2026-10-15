@@ -4,7 +4,7 @@
 {% block title %}Support Center | XAPYX{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/support.css' %}?v=7">
+<link rel="stylesheet" href="{% static 'css/support.css' %}?v=9">
 {% endblock %}
 
 {% block content %}
@@ -34,8 +34,9 @@
                   <i class="bi bi-headset"></i>
                   <h4 class="empty-state-title">Welcome to Support</h4>
                   <p class="empty-state-text">Select a ticket from the list or create a new one</p>
-                  <button class="btn btn-primary btn-sm mt-2" type="button" onclick="supportApp.openNewTicketModal()">
-                    <i class="bi bi-plus-circle me-1"></i> Create New Ticket
+                  <button class="btn support-create-ticket-btn mt-3" type="button" onclick="supportApp.openNewTicketModal()">
+                    <i class="bi bi-plus-circle-fill"></i>
+                    <span>Create New Ticket</span>
                   </button>
                 </div>
               </div>
@@ -81,6 +82,10 @@
                     <div class="chats-subtitle">How can we help you?</div>
                   </div>
                 </div>
+                <button class="btn support-header-create-btn" type="button" onclick="supportApp.openNewTicketModal()" title="Create New Ticket">
+                  <i class="bi bi-plus-lg"></i>
+                  <span class="header-btn-text">New Ticket</span>
+                </button>
               </div>
 
               <div class="chats-search">
@@ -94,11 +99,15 @@
                 </div>
               </div>
 
-              <div class="chats-footer">
-                <button class="btn btn-primary w-100" type="button" onclick="supportApp.openNewTicketModal()">
-                  <i class="bi bi-plus-circle me-2"></i> New Support Ticket
+              <div class="chats-footer support-create-ticket-btn-static d-none d-md-block">
+                <button class="btn support-create-ticket-btn w-100" type="button" onclick="supportApp.openNewTicketModal()">
+                  <i class="bi bi-plus-circle-fill"></i>
+                  <span>Create New Ticket</span>
                 </button>
               </div>
+              <button class="support-fab-btn" type="button" onclick="supportApp.openNewTicketModal()" aria-label="Create New Ticket" title="Create New Ticket">
+                <i class="bi bi-plus-lg"></i>
+              </button>
             </div>
           </div>
         </div>
@@ -114,14 +123,14 @@
      ============================================================ -->
 
 <!-- New Ticket Modal -->
-<div class="modal fade" id="newTicketModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
+<div class="modal fade" id="newTicketModal" tabindex="-1" aria-labelledby="newTicketModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Create Support Ticket</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <h5 class="modal-title" id="newTicketModalLabel"><i class="bi bi-plus-circle-fill me-2 text-primary"></i>Create Support Ticket</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body" style="max-height: 85vh; overflow-y: auto;">
         <div class="form-group mb-3">
           <label for="ticketType" class="form-label">Issue Type</label>
           <select class="form-select" id="ticketType" required>
@@ -142,10 +151,10 @@
           <textarea class="form-control" id="ticketMessage" rows="4" placeholder="Please describe your issue..." required></textarea>
         </div>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" onclick="supportApp.createNewTicket()">
-          <i class="bi bi-send me-1"></i> Create Ticket
+      <div class="modal-footer" style="padding-bottom: calc(20px + env(safe-area-inset-bottom, 16px));">
+        <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn support-create-ticket-btn px-4" onclick="supportApp.createNewTicket()">
+          <i class="bi bi-send-fill me-1"></i> Create Ticket
         </button>
       </div>
     </div>
@@ -174,5 +183,5 @@ window.SUPPORT_CONFIG = {
   userPicture: "{{ user_picture }}",
 };
 </script>
-<script src="{% static 'js/support.js' %}?v=7"></script>
+<script src="{% static 'js/support.js' %}?v=8"></script>
 {% endblock %}

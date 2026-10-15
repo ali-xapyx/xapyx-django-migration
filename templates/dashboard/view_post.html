@@ -4,7 +4,7 @@
 {% block title %}View Post | XAPYX{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/view_post.css' %}?v=1">
+<link rel="stylesheet" href="{% static 'css/view_post.css' %}?v=2">
 {% endblock %}
 
 {% block content %}
@@ -200,6 +200,7 @@
         if (typeof setupPostViewTracking === 'function') setupPostViewTracking();
         if (typeof applyAllAmbientBackgrounds === 'function') {
           setTimeout(applyAllAmbientBackgrounds, 250);
+          setTimeout(applyAllAmbientBackgrounds, 750);
         }
       })
       .catch(function (err) {

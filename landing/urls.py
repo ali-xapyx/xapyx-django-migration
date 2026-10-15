@@ -23,6 +23,7 @@ urlpatterns = [
 
     #Feed Page
     path('feed/', views.feed_view, name='feed'),
+    path('dashboard/', views.feed_view, name='dashboard'),
     path('notifications/', views.notifications_page, name='notifications_page'),
 
     # Authentication pages
@@ -57,6 +58,7 @@ urlpatterns = [
 
     #Api notifications
     path('api/notifications/count/', views.api_notifications_count, name='api_notifications_count'),
+    path('api/sidebar/counts/', views.api_sidebar_counts, name='api_sidebar_counts'),
     path('api/notifications/delete/', views.api_notifications_delete, name='api_notifications_delete'),
     path('api/notifications/mark-read/<int:notif_id>/', views.api_notifications_mark_read, name='api_notifications_mark_read'),
     path('api/notifications/read-all/', views.api_notifications_read_all, name='api_notifications_read_all'),
@@ -235,6 +237,15 @@ urlpatterns = [
     path('api/games/track-play/', views.api_games_track_play, name='api_games_track_play'),
     path('api/games/save-score/', views.api_games_save_score, name='api_games_save_score'),
 
+    # Store / Marketplace
+    path('store/', views.store_view, name='store'),
+    path('store/<str:ad_id>/', views.product_detail_view, name='product_detail'),
+    path('api/store/create/', views.api_store_create_product, name='api_store_create_product'),
+    path('api/store/mark-sold/<int:product_id>/', views.api_store_mark_sold, name='api_store_mark_sold'),
+    path('api/store/delete/<int:product_id>/', views.api_store_delete_product, name='api_store_delete_product'),
+    path('api/store/product/<str:identifier>/sold/', views.api_store_mark_sold, name='api_store_product_sold'),
+    path('api/store/product/<str:identifier>/delete/', views.api_store_delete_product, name='api_store_product_delete'),
+
     # Admin Portal (Task 23 Phase 1)
     path('portal-admin/', admin_views.admin_login_view, name='portal_admin_root'),
     path('portal-admin/login/', admin_views.admin_login_view, name='portal_admin_login'),
@@ -248,10 +259,14 @@ urlpatterns = [
     path('portal-admin/settings/', admin_views.admin_profile_settings_view, name='portal_admin_settings'),
     path('portal-admin/reports/', admin_views.admin_reports_view, name='portal_admin_reports'),
     path('portal-admin/logs/', admin_views.admin_logs_view, name='portal_admin_logs'),
-    path('portal-admin/store/', admin_views.admin_store_placeholder_view, name='portal_admin_store'),
+    path('portal-admin/store/', admin_views.admin_store_view, name='portal_admin_store'),
+    path('portal-admin/store/approve/<int:product_id>/', admin_views.admin_store_approve_view, name='portal_admin_store_approve'),
+    path('portal-admin/store/reject/<int:product_id>/', admin_views.admin_store_reject_view, name='portal_admin_store_reject'),
+    path('portal-admin/store/delete/<int:product_id>/', admin_views.admin_store_delete_view, name='portal_admin_store_delete'),
 
-    #sw
+    # Web Push & Service Worker
     path('sw.js', views.serve_sw, name='serve_sw'),
+    path('api/save-push-subscription/', views.api_save_push_subscription, name='api_save_push_subscription'),
 
    
 ]

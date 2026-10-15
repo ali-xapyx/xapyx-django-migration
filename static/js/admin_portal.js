@@ -98,7 +98,10 @@
                     if (t.status === 'open') statusPill = '<span class="admsup-pill pill-open">Open</span>';
                     else if (t.status === 'in_progress') statusPill = '<span class="admsup-pill pill-in-progress">In Progress</span>';
                     else if (t.status === 'resolved') statusPill = '<span class="admsup-pill pill-resolved">Resolved</span>';
-                    else if (t.urgency === 'critical' || t.status === 'critical') statusPill = '<span class="admsup-pill pill-critical">Critical</span>';
+                    else if (t.status === 'pending') statusPill = '<span class="admsup-pill pill-pending">Pending</span>';
+                    else if (t.status === 'closed') statusPill = '<span class="admsup-pill pill-closed">Closed</span>';
+                    const urg = (t.urgency || 'medium').toLowerCase();
+                    const urgencyDot = `<span class="admsup-urgency-dot urgency-${escapeHtml(urg)} ms-1">${escapeHtml(urg.charAt(0).toUpperCase() + urg.slice(1))}</span>`;
 
                     const shortDate = escapeHtml((t.created_at || '').split(' ')[0] || t.created_at || '');
 
@@ -113,7 +116,7 @@
                                 <div class="small fw-semibold" style="color: var(--admsup-text-secondary);">${escapeHtml(t.user_name || 'Unknown')}</div>
                                 ${t.user_email ? `<div style="font-size: 0.72rem; color: var(--admsup-text-muted);">${escapeHtml(t.user_email)}</div>` : ''}
                             </td>
-                            <td>${statusPill}</td>
+                            <td>${statusPill} ${urgencyDot}</td>
                             <td class="small" style="color: var(--admsup-text-muted); white-space: nowrap;">${shortDate}</td>
                         </tr>
                     `;

@@ -8,9 +8,12 @@
   "theme_color": "#000000",
   "orientation": "portrait-primary",
   "scope": "/",
-  "categories": ["social", "entertainment", "utilities"],
+  "categories": [
+    "social",
+    "entertainment",
+    "utilities"
+  ],
   "prefer_related_applications": false,
-
   "icons": [
     {
       "src": "/static/images/icons/icon-192x192.png",
@@ -25,7 +28,6 @@
       "purpose": "any maskable"
     }
   ],
-
   "screenshots": [
     {
       "src": "/static/images/screenshots/mobile-screenshot.png",
@@ -41,5 +43,6 @@
       "form_factor": "wide",
       "label": "XAPYX Desktop App"
     }
-  ]
+  ],
+  "gcm_sender_id": "151754965872"
 }

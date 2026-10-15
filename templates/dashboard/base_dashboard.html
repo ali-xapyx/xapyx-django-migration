@@ -16,6 +16,7 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="{% static 'images/icons/xapyx_icon.png' %}">
+  <link rel="manifest" href="{% static 'manifest.json' %}">
 
   {% comment %} Firebase {% endcomment %}
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
@@ -66,7 +67,7 @@
 </script>
 
   <!-- Dashboard CSS -->
-  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=21">
+  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=28">
 
   {% block extra_css %}{% endblock %}
 </head>
@@ -91,15 +92,18 @@
       <div class="notification-wrapper">
         <div class="notification-trigger" id="notificationTrigger">
           <i class="fas fa-bell"></i>
-          <span class="notification-badge" style="display:none;">0</span>
+          <span class="notification-badge" style="{% if sidebar_counts.total_notifications > 0 %}display:flex;{% else %}display:none;{% endif %}">{% if sidebar_counts.total_notifications > 99 %}99+{% else %}{{ sidebar_counts.total_notifications|default:0 }}{% endif %}</span>
         </div>
         <div class="notification-panel" id="notificationPanel">
           <div class="notification-header">
             <div class="d-flex align-items-center justify-content-between w-100">
               <h6 class="mb-0 fw-bold">Notifications</h6>
+              <button type="button" class="btn btn-sm btn-link text-decoration-none p-0 notif-mark-all-btn" id="markAllNotificationsBtn" title="Mark all as read">
+                <i class="fas fa-check-double me-1"></i>Mark all read
+              </button>
             </div>
-            <div class="mt-2">
-              <a href="/notifications/">See all →</a>
+            <div class="mt-2 d-flex justify-content-end">
+              <a href="/notifications/" class="small text-decoration-none">See all →</a>
             </div>
           </div>
           <div class="notification-list" id="notificationList">
@@ -156,35 +160,39 @@
         </div>
       </div>
 
-      <!-- Profile Mini + Dropdown -->
-      <div class="profile-mini" id="profileMini">
-        {% if request.user.picture %}
-          <img src="https://s3.eu-west-1.amazonaws.com/xapyx.com-media/uploads/{{ request.user.picture }}"
-               alt="{{ request.user.name }}"
-               class="avatar-mini-img" width="36" height="36"
-               data-default-avatar="{% static 'images/avatars/default.png' %}">
-        {% else %}
-          <img src="{% static 'images/avatars/default.png' %}"
-               alt="{{ request.user.name }}"
-               class="avatar-mini-img" width="36" height="36">
-        {% endif %}
-        <span>{{ request.user.name|default:request.user.username }} ▾</span>
-      </div>
-      <div id="profileDropdown" class="profile-dropdown">
-        <div class="profile-info">
-          <div class="fw-semibold">{{ request.user.name|default:request.user.username }}</div>
-          <small class="text-muted">@{{ request.user.username }}</small>
+      <!-- Profile Mini + Dropdown Wrapper -->
+      <div class="profile-menu-wrapper" id="profileMenuWrapper">
+        <div class="profile-mini" id="profileMini" role="button" aria-haspopup="true" aria-expanded="false" title="Account menu">
+          {% if request.user.picture %}
+            <img src="https://s3.eu-west-1.amazonaws.com/xapyx.com-media/uploads/{{ request.user.picture }}"
+                 alt="{{ request.user.name }}"
+                 class="avatar-mini-img" width="36" height="36"
+                 data-default-avatar="{% static 'images/avatars/default.png' %}">
+          {% else %}
+            <img src="{% static 'images/avatars/default.png' %}"
+                 alt="{{ request.user.name }}"
+                 class="avatar-mini-img" width="36" height="36">
+          {% endif %}
+          <span>{{ request.user.name|default:request.user.username }} ▾</span>
         </div>
-        <a class="dropdown-item" href="/user/{{ request.user.username }}/">
-          <i class="fas fa-user-circle"></i> My Profile
-        </a>  
-        <div class="dropdown-divider"></div>
-        <a class="dropdown-item text-danger" href="#" onclick="document.getElementById('logoutForm').submit(); return false;">
-          <i class="fas fa-sign-out-alt"></i> Logout
-        </a>
-        <form id="logoutForm" action="{% url 'logout' %}" method="POST" style="display:none;">
-          {% csrf_token %}
-        </form>
+        <div id="profileDropdown" class="profile-dropdown">
+          <div class="profile-info">
+            <div class="fw-semibold text-truncate">{{ request.user.name|default:request.user.username }}</div>
+            <small class="text-muted text-truncate d-block">@{{ request.user.username }}</small>
+          </div>
+          <div class="profile-dropdown-links">
+            <a class="dropdown-item" href="/user/{{ request.user.username }}/">
+              <i class="fas fa-user-circle"></i> <span>My Profile</span>
+            </a>  
+            <div class="dropdown-divider"></div>
+            <a class="dropdown-item text-danger" href="#" onclick="document.getElementById('logoutForm').submit(); return false;">
+              <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+            </a>
+          </div>
+          <form id="logoutForm" action="{% url 'logout' %}" method="POST" style="display:none;">
+            {% csrf_token %}
+          </form>
+        </div>
       </div>
     </div>
   </header>
@@ -228,25 +236,28 @@
           <a href="/friends/" class="nav-link">
             <span class="nav-icon"><i class="fas fa-users"></i></span>
             <span>Friends</span>
-            <span class="badge-nav" id="friendsNavBadge" style="display:none;">0</span>
+
           </a>
         </li>
         <li class="nav-item {% if active_page == 'shoutbox' %}active{% endif %}">
           <a href="/shoutbox/" class="nav-link">
             <span class="nav-icon"><i class="fas fa-bullhorn"></i></span>
             <span>Shout Box</span>
+
           </a>
         </li>
         <li class="nav-item {% if active_page == 'chat' %}active{% endif %}">
           <a href="/chat/" class="nav-link">
             <span class="nav-icon"><i class="fas fa-comment-dots"></i></span>
             <span>Chat</span>
+            <span class="badge-nav sidebar-badge danger" id="chatNavBadge" style="{% if sidebar_counts.chat > 0 and active_page != 'chat' %}display:inline-flex;{% else %}display:none;{% endif %}">{% if sidebar_counts.chat > 9 %}9+{% else %}{{ sidebar_counts.chat|default:0 }}{% endif %}</span>
           </a>
         </li>
         <li class="nav-item {% if active_page == 'chatrooms' %}active{% endif %}">
           <a href="/chatrooms/" class="nav-link">
             <span class="nav-icon"><i class="fas fa-comments"></i></span>
             <span>Chat Rooms</span>
+
           </a>
         </li>
         <li class="nav-item {% if active_page == 'roulette' %}active{% endif %}">
@@ -259,12 +270,20 @@
           <a href="/groups/" class="nav-link">
             <span class="nav-icon"><i class="fas fa-layer-group"></i></span>
             <span>Groups</span>
+
           </a>
         </li>
         <li class="nav-item {% if active_page == 'pages' %}active{% endif %}">
           <a href="/pages/" class="nav-link">
             <span class="nav-icon"><i class="fas fa-file-alt"></i></span>
             <span>Pages</span>
+
+          </a>
+        </li>
+        <li class="nav-item {% if active_page == 'store' %}active{% endif %}">
+          <a href="/store/" class="nav-link">
+            <span class="nav-icon"><i class="fas fa-store"></i></span>
+            <span>Store</span>
           </a>
         </li>
         <li class="nav-item {% if active_page == 'games' %}active{% endif %}">
@@ -330,6 +349,7 @@
   <a href="/chat/" class="mobile-nav-item {% if active_page == 'chat' %}active{% endif %}">
     <i class="bi bi-chat-dots"></i>
     <span>Chat</span>
+    <span class="mobile-badge" id="chatMobileBadge" style="{% if sidebar_counts.chat > 0 and active_page != 'chat' %}display:flex;{% else %}display:none;{% endif %}">{% if sidebar_counts.chat > 9 %}9+{% else %}{{ sidebar_counts.chat|default:0 }}{% endif %}</span>
   </a>
   <button type="button" class="mobile-nav-item" id="mobileNavMenu" aria-label="Menu">
     <i class="bi bi-list"></i>

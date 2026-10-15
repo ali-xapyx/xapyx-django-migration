@@ -33,6 +33,7 @@
             this.firebaseListeners = {};
             this.pendingMedia = [];
             this.activeStatusFilter = 'all';
+            this.activePriorityFilter = 'all';
             this.searchTimer = null;
 
             this.initFirebase();
@@ -66,11 +67,17 @@
                 }
             });
 
-            // Filter dropdown
+            // Filter dropdowns
             const statusFilter = document.getElementById('admsupStatusFilter');
             statusFilter?.addEventListener('change', (e) => {
                 this.activeStatusFilter = e.target.value;
                 this.syncFilterTabsUI(this.activeStatusFilter);
+                this.loadTickets();
+            });
+
+            const priorityFilter = document.getElementById('admsupPriorityFilter');
+            priorityFilter?.addEventListener('change', (e) => {
+                this.activePriorityFilter = e.target.value;
                 this.loadTickets();
             });
 
@@ -112,7 +119,12 @@
                 }
             });
 
-            // Status change on active ticket
+            // Priority and Status change on active ticket
+            const urgencySelect = document.getElementById('admsupTicketUrgency');
+            urgencySelect?.addEventListener('change', (e) => {
+                this.updateTicketUrgency(e.target.value);
+            });
+
             const statusSelect = document.getElementById('admsupTicketStatus');
             statusSelect?.addEventListener('change', (e) => {
                 this.updateTicketStatus(e.target.value);
@@ -223,6 +235,7 @@
                 const data = await this.apiPost({
                     action: 'get_all_tickets',
                     status: this.activeStatusFilter,
+                    priority: this.activePriorityFilter,
                     search: searchVal
                 });
 
@@ -346,6 +359,9 @@
 
                     const statusSelect = document.getElementById('admsupTicketStatus');
                     if (statusSelect) statusSelect.value = t.status || 'open';
+
+                    const urgencySelect = document.getElementById('admsupTicketUrgency');
+                    if (urgencySelect) urgencySelect.value = (t.urgency || 'medium').toLowerCase();
                 }
 
                 await this.loadTicketMessages(ticketId);
@@ -710,6 +726,67 @@
                 }
             } catch (err) {
                 console.error('[AdminSupport] Status update error:', err);
+            }
+        }
+
+        async updateTicketUrgency(newUrgency) {
+            if (!this.currentTicketId) return;
+            const selectEl = document.getElementById('admsupTicketUrgency');
+            const prevUrgency = this.currentTicketData?.urgency || 'medium';
+            try {
+                const res = await this.apiPost({
+                    action: 'update_ticket_urgency',
+                    ticket_id: this.currentTicketId,
+                    urgency: newUrgency,
+                    priority: newUrgency
+                });
+
+                if (res && res.success) {
+                    const finalUrgency = res.new_urgency || newUrgency;
+                    if (this.currentTicketData) {
+                        this.currentTicketData.urgency = finalUrgency;
+                    }
+                    if (selectEl) {
+                        selectEl.value = finalUrgency;
+                    }
+                    try {
+                        if (this.db && this.currentUserData?.id && this.currentFirebaseTicketId) {
+                            await this.db.ref(`users/${this.currentUserData.id}/tickets/${this.currentFirebaseTicketId}`).update({
+                                urgency: finalUrgency,
+                                last_updated: Date.now()
+                            });
+                        }
+                    } catch (fbErr) {
+                        console.warn('[AdminSupport] Firebase urgency update warning:', fbErr);
+                    }
+                    const metaEl = document.getElementById('admsupTicketMeta');
+                    if (metaEl && this.currentTicketData) {
+                        metaEl.innerHTML = `
+                            <span class="admsup-status-badge admsup-status-${this.escapeHtml(this.currentTicketData.status)} me-2">${this.escapeHtml(this.formatStatusLabel(this.currentTicketData.status))}</span>
+                            <span class="admsup-urgency-dot urgency-${this.escapeHtml(finalUrgency)} me-2">${this.escapeHtml(this.formatStatusLabel(finalUrgency))} Priority</span>
+                            <span>Created: ${this.escapeHtml(this.currentTicketData.created_at)}</span>
+                        `;
+                    }
+                    // Update urgency dot on active item in sidebar immediately
+                    const activeItem = document.querySelector(`.admsup-ticket-item[data-ticket-id="${this.currentTicketId}"]`);
+                    if (activeItem) {
+                        const dot = activeItem.querySelector('.admsup-urgency-dot');
+                        if (dot) {
+                            dot.className = `admsup-urgency-dot urgency-${this.escapeHtml(finalUrgency)}`;
+                            dot.textContent = this.formatStatusLabel(finalUrgency);
+                        }
+                    }
+                    if (res.metrics) {
+                        this.updateMetricsCounters(res.metrics);
+                    }
+                    this.loadTickets(true);
+                } else {
+                    console.error('[AdminSupport] Priority update rejected:', res ? res.error : 'Unknown error');
+                    if (selectEl) selectEl.value = prevUrgency;
+                }
+            } catch (err) {
+                console.error('[AdminSupport] Priority update error:', err);
+                if (selectEl) selectEl.value = prevUrgency;
             }
         }
 

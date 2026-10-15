@@ -1,0 +1,439 @@
+/* ============================================================
+   CHAT ROOMS & CHAT INBOX STYLING (Light Mode & Mobile Responsive)
+   ============================================================ */
+
+/* Mobile Horizontal Padding */
+@media (max-width: 767.98px) {
+    .chatrooms-inner,
+    .chatrooms-dashboard-main,
+    .chatrooms-container,
+    .rooms-grid,
+    .chatrooms-header-wrap,
+    .chatrooms-nav-bar,
+    .chatrooms-grid-container {
+        padding-left: 14px !important;
+        padding-right: 14px !important;
+        box-sizing: border-box !important;
+    }
+}
+
+/* Light Mode Overrides for Chat Rooms Directory */
+[data-theme="light"] .chatrooms-page-title,
+html[data-theme="light"] .chatrooms-page-title {
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .chatrooms-page-subtitle,
+html[data-theme="light"] .chatrooms-page-subtitle {
+    color: #64748b !important;
+}
+
+[data-theme="light"] .chatrooms-nav-bar,
+html[data-theme="light"] .chatrooms-nav-bar {
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .chatrooms-tab-btn,
+html[data-theme="light"] .chatrooms-tab-btn {
+    color: #64748b !important;
+}
+
+[data-theme="light"] .chatrooms-tab-btn:hover,
+html[data-theme="light"] .chatrooms-tab-btn:hover {
+    color: #0f172a !important;
+    background: #f1f5f9 !important;
+}
+
+[data-theme="light"] .chatrooms-tab-btn.active,
+html[data-theme="light"] .chatrooms-tab-btn.active {
+    color: #ffffff !important;
+    background: var(--xpy-primary, #ff8c00) !important;
+}
+
+[data-theme="light"] .chatrooms-search-box .form-control,
+html[data-theme="light"] .chatrooms-search-box .form-control {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .chatrooms-search-box .form-control:focus,
+html[data-theme="light"] .chatrooms-search-box .form-control:focus {
+    border-color: var(--xpy-primary, #ff8c00) !important;
+    box-shadow: 0 0 0 2px rgba(255, 140, 0, 0.15) !important;
+}
+
+[data-theme="light"] .chatrooms-search-box .search-icon,
+html[data-theme="light"] .chatrooms-search-box .search-icon {
+    color: #94a3b8 !important;
+}
+
+[data-theme="light"] .chatrooms-select-box .form-select,
+html[data-theme="light"] .chatrooms-select-box .form-select {
+    background-color: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .chatroom-card,
+html[data-theme="light"] .chatroom-card {
+    background: #ffffff !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="light"] .chatroom-card:hover,
+html[data-theme="light"] .chatroom-card:hover {
+    border-color: rgba(255, 140, 0, 0.4) !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme="light"] .chatroom-card-header,
+html[data-theme="light"] .chatroom-card-header {
+    background: linear-gradient(135deg, rgba(255, 140, 0, 0.12) 0%, rgba(139, 92, 246, 0.12) 100%) !important;
+}
+
+[data-theme="light"] .chatroom-card-title,
+html[data-theme="light"] .chatroom-card-title {
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .chatroom-card-desc,
+html[data-theme="light"] .chatroom-card-desc {
+    color: #64748b !important;
+}
+
+[data-theme="light"] .chatroom-card-meta,
+html[data-theme="light"] .chatroom-card-meta {
+    border-top: 1px solid #f1f5f9 !important;
+    color: #64748b !important;
+}
+
+[data-theme="light"] .chatroom-card-footer,
+html[data-theme="light"] .chatroom-card-footer {
+    background: #f8fafc !important;
+    border-top: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .chatrooms-widgets .widget-card,
+html[data-theme="light"] .chatrooms-widgets .widget-card {
+    background: #ffffff !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    color: #0f172a !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="light"] .chatrooms-widgets h6,
+html[data-theme="light"] .chatrooms-widgets h6 {
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .chatrooms-modal .modal-content,
+html[data-theme="light"] .chatrooms-modal .modal-content {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #0f172a !important;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.12) !important;
+}
+
+[data-theme="light"] .chatrooms-modal .modal-header,
+html[data-theme="light"] .chatrooms-modal .modal-header {
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .chatrooms-modal .modal-footer,
+html[data-theme="light"] .chatrooms-modal .modal-footer {
+    border-top: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .chatrooms-modal .form-control,
+[data-theme="light"] .chatrooms-modal .form-select,
+html[data-theme="light"] .chatrooms-modal .form-control,
+html[data-theme="light"] .chatrooms-modal .form-select {
+    background: #f8fafc !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+/* ------------------------------------------------------------
+   ACTIVE CHAT ROOM / CHAT INBOX LIGHT MODE OVERRIDES
+   ------------------------------------------------------------ */
+[data-theme="light"] .chatroom-chat-wrap,
+html[data-theme="light"] .chatroom-chat-wrap {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 4px 25px rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-theme="light"] .chatroom-members-sidebar,
+html[data-theme="light"] .chatroom-members-sidebar {
+    background: #f8fafc !important;
+    border-right: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .chatroom-sidebar-header,
+html[data-theme="light"] .chatroom-sidebar-header {
+    background: #f8fafc !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .chatroom-sidebar-title,
+html[data-theme="light"] .chatroom-sidebar-title {
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .chatroom-member-count-badge,
+html[data-theme="light"] .chatroom-member-count-badge {
+    background: rgba(255, 140, 0, 0.12) !important;
+    color: var(--xpy-primary, #ff8c00) !important;
+}
+
+[data-theme="light"] .chatroom-room-info-card,
+html[data-theme="light"] .chatroom-room-info-card {
+    background: #f1f5f9 !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .chatroom-room-info-card a,
+[data-theme="light"] .chatroom-room-info-card a.text-light,
+html[data-theme="light"] .chatroom-room-info-card a,
+html[data-theme="light"] .chatroom-room-info-card a.text-light {
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .chatroom-member-item,
+html[data-theme="light"] .chatroom-member-item {
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .chatroom-member-item:hover,
+html[data-theme="light"] .chatroom-member-item:hover {
+    background: #e2e8f0 !important;
+}
+
+[data-theme="light"] .chatroom-member-item.me,
+html[data-theme="light"] .chatroom-member-item.me {
+    background: rgba(255, 140, 0, 0.08) !important;
+}
+
+[data-theme="light"] .chatroom-member-name,
+html[data-theme="light"] .chatroom-member-name {
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .chatroom-member-uname,
+html[data-theme="light"] .chatroom-member-uname {
+    color: #64748b !important;
+}
+
+[data-theme="light"] .chatroom-member-status-dot,
+html[data-theme="light"] .chatroom-member-status-dot {
+    border-color: #f8fafc !important;
+}
+
+[data-theme="light"] .chatroom-main-panel,
+html[data-theme="light"] .chatroom-main-panel {
+    background: #ffffff !important;
+}
+
+[data-theme="light"] .chatroom-header,
+html[data-theme="light"] .chatroom-header {
+    background: #ffffff !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .chatroom-header-name,
+html[data-theme="light"] .chatroom-header-name {
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .chatroom-header-meta,
+[data-theme="light"] .chatroom-header-meta span,
+html[data-theme="light"] .chatroom-header-meta,
+html[data-theme="light"] .chatroom-header-meta span {
+    color: #64748b !important;
+}
+
+[data-theme="light"] .btn-chatroom-back,
+[data-theme="light"] .chatroom-toggle-members-btn,
+html[data-theme="light"] .btn-chatroom-back,
+html[data-theme="light"] .chatroom-toggle-members-btn {
+    color: #64748b !important;
+}
+
+[data-theme="light"] .btn-chatroom-back:hover,
+[data-theme="light"] .chatroom-toggle-members-btn:hover,
+html[data-theme="light"] .btn-chatroom-back:hover,
+html[data-theme="light"] .chatroom-toggle-members-btn:hover {
+    color: var(--xpy-primary, #ff8c00) !important;
+    background: #f1f5f9 !important;
+}
+
+[data-theme="light"] .chatroom-messages-container,
+html[data-theme="light"] .chatroom-messages-container {
+    background: #f8fafc !important;
+}
+
+/* Distinct Message Bubbles in Light Mode */
+[data-theme="light"] .chatroom-bubble.sent,
+html[data-theme="light"] .chatroom-bubble.sent {
+    background: var(--xpy-primary, #ff8c00) !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 8px rgba(255, 140, 0, 0.25) !important;
+}
+
+[data-theme="light"] .chatroom-bubble.sent .chatroom-msg-text,
+html[data-theme="light"] .chatroom-bubble.sent .chatroom-msg-text {
+    color: #ffffff !important;
+}
+
+[data-theme="light"] .chatroom-bubble.sent .chatroom-msg-time,
+html[data-theme="light"] .chatroom-bubble.sent .chatroom-msg-time {
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+
+[data-theme="light"] .chatroom-bubble.received,
+html[data-theme="light"] .chatroom-bubble.received {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #0f172a !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="light"] .chatroom-bubble.received .chatroom-msg-text,
+html[data-theme="light"] .chatroom-bubble.received .chatroom-msg-text {
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .chatroom-bubble.received .chatroom-msg-time,
+html[data-theme="light"] .chatroom-bubble.received .chatroom-msg-time {
+    color: #64748b !important;
+}
+
+[data-theme="light"] .chatroom-msg-sender-name,
+html[data-theme="light"] .chatroom-msg-sender-name {
+    color: var(--xpy-primary, #ff8c00) !important;
+}
+
+[data-theme="light"] .chatroom-mention,
+html[data-theme="light"] .chatroom-mention {
+    color: #0284c7 !important;
+    background: #e0f2fe !important;
+}
+
+[data-theme="light"] .chatroom-msg-actions,
+html[data-theme="light"] .chatroom-msg-actions {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme="light"] .chatroom-msg-action-btn,
+html[data-theme="light"] .chatroom-msg-action-btn {
+    color: #64748b !important;
+}
+
+[data-theme="light"] .chatroom-msg-action-btn:hover,
+html[data-theme="light"] .chatroom-msg-action-btn:hover {
+    color: var(--xpy-primary, #ff8c00) !important;
+    background: #f1f5f9 !important;
+}
+
+[data-theme="light"] .chatroom-typing-indicator,
+html[data-theme="light"] .chatroom-typing-indicator {
+    color: #64748b !important;
+}
+
+[data-theme="light"] .chatroom-mention-dropdown,
+html[data-theme="light"] .chatroom-mention-dropdown {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-theme="light"] .chatroom-mention-item:hover,
+html[data-theme="light"] .chatroom-mention-item:hover {
+    background: #f1f5f9 !important;
+}
+
+[data-theme="light"] .chatroom-mention-item .mention-name,
+html[data-theme="light"] .chatroom-mention-item .mention-name {
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .chatroom-mention-item .mention-uname,
+html[data-theme="light"] .chatroom-mention-item .mention-uname {
+    color: #64748b !important;
+}
+
+[data-theme="light"] .chatroom-input-area,
+html[data-theme="light"] .chatroom-input-area {
+    background: #ffffff !important;
+    border-top: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .chatroom-edit-bar,
+html[data-theme="light"] .chatroom-edit-bar {
+    background: #f1f5f9 !important;
+    border-left: 3px solid var(--xpy-primary, #ff8c00) !important;
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .chatroom-textarea,
+html[data-theme="light"] .chatroom-textarea {
+    background: #f8fafc !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .chatroom-textarea:focus,
+html[data-theme="light"] .chatroom-textarea:focus {
+    border-color: var(--xpy-primary, #ff8c00) !important;
+    background: #ffffff !important;
+}
+
+[data-theme="light"] .chatroom-textarea::placeholder,
+html[data-theme="light"] .chatroom-textarea::placeholder {
+    color: #94a3b8 !important;
+}
+
+
+/* Status Dot Live Online Presence Indicator */
+.user-avatar-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.chat-user-avatar {
+    display: block;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.status-dot {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid var(--xpy-card-bg, #12122a);
+    background-color: #94a3b8;
+    transition: background-color 0.2s ease;
+    z-index: 2;
+}
+
+.status-dot.online {
+    background-color: #22c55e;
+    box-shadow: 0 0 4px rgba(34, 197, 94, 0.4);
+}
+
+.status-dot.offline {
+    background-color: #94a3b8;
+    box-shadow: none;
+}
+
+[data-theme="light"] .status-dot,
+html[data-theme="light"] .status-dot {
+    border-color: #ffffff;
+}

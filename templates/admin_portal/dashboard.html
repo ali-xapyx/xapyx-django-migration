@@ -127,11 +127,14 @@
                 <span class="admsup-pill pill-in-progress">In Progress</span>
                 {% elif ticket.status == 'resolved' %}
                 <span class="admsup-pill pill-resolved">Resolved</span>
-                {% elif ticket.urgency == 'critical' or ticket.status == 'critical' %}
-                <span class="admsup-pill pill-critical">Critical</span>
+                {% elif ticket.status == 'pending' %}
+                <span class="admsup-pill pill-pending">Pending</span>
+                {% elif ticket.status == 'closed' %}
+                <span class="admsup-pill pill-closed">Closed</span>
                 {% else %}
                 <span class="admsup-pill pill-default">{{ ticket.status|capfirst }}</span>
                 {% endif %}
+                <span class="admsup-urgency-dot urgency-{{ ticket.urgency|default:'medium'|lower }} ms-1">{{ ticket.urgency|default:'medium'|capfirst }}</span>
               </td>
               <td class="small" style="color: var(--admsup-text-muted); white-space: nowrap;">
                 {{ ticket.created_at|date:"M d"|default:ticket.created_at }}

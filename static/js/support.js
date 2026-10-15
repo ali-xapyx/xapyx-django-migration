@@ -185,8 +185,8 @@ function toast(msg, type) {
           + '<i class="bi bi-ticket"></i>'
           + '<h5 class="empty-chats-title">No tickets yet</h5>'
           + '<p class="empty-chats-text">Create your first support ticket</p>'
-          + '<button class="btn btn-primary btn-sm" onclick="supportApp.openNewTicketModal()">'
-          + '<i class="bi bi-plus-circle me-1"></i> New Ticket</button>'
+          + '<button class="btn support-create-ticket-btn" onclick="supportApp.openNewTicketModal()">'
+          + '<i class="bi bi-plus-circle-fill me-1"></i> Create New Ticket</button>'
           + '</div>';
         return;
       }
@@ -252,6 +252,8 @@ function toast(msg, type) {
         const chat = document.getElementById('chatContainer');
         if (list) list.classList.add('hidden');
         if (chat) chat.classList.add('active');
+        const fab = document.querySelector('.support-fab-btn');
+        if (fab) fab.style.display = 'none';
       }
       const empty = document.getElementById('emptyChatState');
       if (empty) empty.style.display = 'none';
@@ -263,6 +265,8 @@ function toast(msg, type) {
       const chat = document.getElementById('chatContainer');
       if (list) list.classList.remove('hidden');
       if (chat) chat.classList.remove('active');
+      const fab = document.querySelector('.support-fab-btn');
+      if (fab) fab.style.display = '';
       this.currentTicketId = null;
       this.currentTicketData = null;
       this.currentMySQLId = null;

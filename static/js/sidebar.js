@@ -266,28 +266,73 @@ window.resetTheme = function() {
 // DELETE NOTIFICATION
 // ===========================================
 
-window.handleNotificationClick = async function(notificationId, targetUrl, event) {
-    if (event) event.preventDefault();
-    const csrfMatch = document.cookie.split('; ').find(c => c.startsWith('csrftoken='));
-    const csrfToken = csrfMatch ? csrfMatch.split('=')[1] : '';
 
-    try {
-        if (notificationId) {
-            const resp = await fetch('/api/notifications/mark-read/' + notificationId + '/', {
-                method: 'POST',
-                headers: { 'X-CSRFToken': csrfToken }
-            });
-            const data = await resp.json();
-            if (data.success && window.notificationSystem) {
-                window.notificationSystem.unreadCount = data.unread_count !== undefined ? data.unread_count : Math.max(0, window.notificationSystem.unreadCount - 1);
-                window.notificationSystem.updateBadge();
-            }
-        }
-    } catch (err) {
-        console.warn('mark-read on click error:', err);
-    } finally {
-        window.location.href = targetUrl || '/feed/';
+// ===========================================
+// AUTHORITATIVE BELL BADGE & STATE CONTROLLER
+// ===========================================
+window.updateBellBadge = function(count) {
+    const val = Math.max(0, parseInt(count, 10) || 0);
+    if (window.notificationSystem) {
+        window.notificationSystem.unreadCount = val;
     }
+    const badges = document.querySelectorAll('.notification-badge, #notifHeaderBadge');
+    badges.forEach(badge => {
+        if (val > 0) {
+            badge.textContent = val > 99 ? '99+' : String(val);
+            badge.style.display = 'flex';
+            badge.classList.remove('d-none');
+        } else {
+            badge.textContent = '0';
+            badge.style.display = 'none';
+            badge.classList.add('d-none');
+        }
+    });
+    const statEl = document.getElementById('statNotifUnread');
+    if (statEl) statEl.textContent = String(val);
+};
+
+window.handleNotificationClick = function(notificationId, targetUrl, event) {
+    if (event) {
+        if (event.target && event.target.closest && event.target.closest('.notification-delete')) {
+            return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    const destUrl = targetUrl || '/feed/';
+
+    if (notificationId) {
+        // Optimistic UI updates
+        const item = document.querySelector(`.notification-item[data-id="${notificationId}"]`);
+        if (item && item.classList.contains('unread')) {
+            item.classList.remove('unread');
+            item.classList.add('read');
+            const dot = item.querySelector('.notification-dot');
+            if (dot) dot.remove();
+
+            const cur = window.notificationSystem ? window.notificationSystem.unreadCount : 0;
+            window.updateBellBadge(Math.max(0, cur - 1));
+        }
+
+        const csrfMatch = document.cookie.split('; ').find(c => c.startsWith('csrftoken='));
+        const csrfToken = csrfMatch ? csrfMatch.split('=')[1] : '';
+
+        try {
+            fetch('/api/notifications/mark-read/' + notificationId + '/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken },
+                keepalive: true
+            }).then(r => r.json()).then(data => {
+                if (data && data.success && data.unread_count !== undefined) {
+                    window.updateBellBadge(data.unread_count);
+                }
+            }).catch(() => {});
+        } catch (e) {}
+    }
+
+    setTimeout(() => {
+        window.location.href = destUrl;
+    }, 60);
 };
 
 window.deleteNotification = async function(notificationId, event, button) {
@@ -321,9 +366,11 @@ window.deleteNotification = async function(notificationId, event, button) {
             notificationItem.style.opacity = '0';
             notificationItem.style.transform = 'translateX(20px)';
 
+            const isUnread = notificationItem.classList.contains('unread');
+
             setTimeout(() => {
                 if (notificationItem.parentNode) notificationItem.remove();
-                if (window.notificationSystem) {
+                if (window.notificationSystem && isUnread) {
                     window.notificationSystem.unreadCount = Math.max(0, window.notificationSystem.unreadCount - 1);
                     window.notificationSystem.updateBadge();
                 }
@@ -353,16 +400,35 @@ window.deleteNotification = async function(notificationId, event, button) {
 function setupProfileDropdown() {
     const profileMini = document.getElementById('profileMini');
     const profileDropdown = document.getElementById('profileDropdown');
+    const profileWrapper = document.getElementById('profileMenuWrapper');
 
     if (profileMini && profileDropdown) {
         profileMini.addEventListener('click', (e) => {
             e.stopPropagation();
-            profileDropdown.classList.toggle('show');
+            const isOpen = profileDropdown.classList.contains('show');
+            
+            // Close other top popups
+            document.getElementById('notificationPanel')?.classList.remove('show');
+            document.getElementById('themePickerPopup')?.classList.remove('show');
+
+            if (isOpen) {
+                profileDropdown.classList.remove('show');
+                profileMini.setAttribute('aria-expanded', 'false');
+            } else {
+                profileDropdown.classList.add('show');
+                profileMini.setAttribute('aria-expanded', 'true');
+            }
         });
 
         document.addEventListener('click', (e) => {
-            if (!profileMini.contains(e.target) && !profileDropdown.contains(e.target)) {
+            if (profileWrapper) {
+                if (!profileWrapper.contains(e.target)) {
+                    profileDropdown.classList.remove('show');
+                    profileMini.setAttribute('aria-expanded', 'false');
+                }
+            } else if (!profileMini.contains(e.target) && !profileDropdown.contains(e.target)) {
                 profileDropdown.classList.remove('show');
+                profileMini.setAttribute('aria-expanded', 'false');
             }
         });
     }
@@ -424,6 +490,8 @@ class NotificationSystem {
         this.notificationTrigger = document.getElementById('notificationTrigger');
         this.notificationList = document.getElementById('notificationList');
         this.notificationBadge = document.querySelector('.notification-badge');
+        this.markAllBtn = document.getElementById('markAllNotificationsBtn');
+        this.lastMarkAllAt = 0;
         this.firebaseListeners = [];
         this.cleanup = this.cleanup.bind(this);
 
@@ -434,12 +502,91 @@ class NotificationSystem {
     async init() {
         this.setupEventListeners();
         this.setupFirebaseListeners();
-        // Fallback: if Firebase is not connected within 1.5s, fetch initial notifications via HTTP
-        setTimeout(() => {
-            if (!this.firebaseConnected) {
-                this.loadInitialNotifications();
+        // Load initial notifications immediately so dropdown is never blank
+        this.loadInitialNotifications();
+        this.initPushNotifications();
+    }
+
+    async initPushNotifications() {
+        if (!('serviceWorker' in navigator)) return;
+
+        try {
+            // Register root Service Worker for full-site scope
+            const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+            console.log('✅ [WebPush] Service Worker registered with scope:', registration.scope);
+
+            if ('Notification' in window && 'PushManager' in window) {
+                if (Notification.permission === 'granted') {
+                    await this.syncPushSubscription(registration);
+                } else if (Notification.permission === 'default') {
+                    console.log('🔔 [WebPush] Push notification permission is default');
+                }
             }
-        }, 1500);
+        } catch (error) {
+            console.warn('⚠️ [WebPush] Service Worker registration error:', error);
+        }
+    }
+
+    async syncPushSubscription(registration) {
+        if (!registration) {
+            registration = await navigator.serviceWorker.ready;
+        }
+        if (!registration || !registration.pushManager) return null;
+
+        try {
+            // Fetch VAPID public key from backend
+            const res = await fetch('/api/save-push-subscription/', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const data = await res.json();
+            if (!data.success || !data.public_key) {
+                console.warn('[WebPush] Could not obtain VAPID public key:', data);
+                return null;
+            }
+
+            const vapidKey = data.public_key;
+            const appKey = this.urlBase64ToUint8Array(vapidKey);
+
+            let sub = await registration.pushManager.getSubscription();
+            if (!sub) {
+                sub = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: appKey
+                });
+            }
+
+            // Sync subscription to backend via raw SQL endpoint
+            const csrfToken = this.getCsrfToken();
+            await fetch('/api/save-push-subscription/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify(sub.toJSON())
+            });
+            console.log('✅ [WebPush] Push subscription synced to backend.');
+            return sub;
+        } catch (e) {
+            console.warn('⚠️ [WebPush] Sync subscription error:', e);
+            return null;
+        }
+    }
+
+    urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    }
+
+    getCsrfToken() {
+        const cookie = document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('csrftoken='));
+        return cookie ? decodeURIComponent(cookie.split('=')[1]) : '';
     }
 
     setupFirebaseListeners() {
@@ -509,13 +656,18 @@ class NotificationSystem {
                     notification.title = prefix + (cleanT ? ' ' + cleanT : '');
                 }
 
-                this.unreadCount++;
-                this.lastChildAddedAt = Date.now();
-                this.updateBadge();
-
-                if (this.notificationPanel?.classList.contains('show')) {
-                    this.markAllAsRead();
+                const isUnread = !notification.is_read;
+                const nType = String(notification.type || '').toLowerCase();
+                if (nType === 'message' || nType === 'chat_message' || nType.startsWith('chat_')) {
+                    if (isUnread && window.handleNotificationSidebarBadge) {
+                        window.handleNotificationSidebarBadge(notification);
+                    }
                 } else {
+                    if (isUnread) {
+                        this.unreadCount++;
+                        this.lastChildAddedAt = Date.now();
+                        window.updateBellBadge(this.unreadCount);
+                    }
                     this.addNotificationToPanel(notification);
                 }
             });
@@ -524,11 +676,11 @@ class NotificationSystem {
 
             const unreadRef = ref(db, `unread_counts/${this.userId}`);
             const valueListener = onValue(unreadRef, (snapshot) => {
-                if (Date.now() - this.lastChildAddedAt < 5000) return;  // guard
+                if (Date.now() - this.lastChildAddedAt < 5000) return;
+                if (Date.now() - (this.lastMarkAllAt || 0) < 10000) return;
                 const count = snapshot.val();
                 if (count !== null && count !== this.unreadCount) {
-                    this.unreadCount = count;
-                    this.updateBadge();
+                    window.updateBellBadge(count);
                 }
             });
 
@@ -539,7 +691,17 @@ class NotificationSystem {
     }
 
     markAllAsRead() {
-        if (this.unreadCount === 0) return;
+        window.updateBellBadge(0);
+        this.lastMarkAllAt = Date.now();
+
+        if (this.notificationList) {
+            this.notificationList.querySelectorAll('.notification-item').forEach(item => {
+                item.classList.remove('unread');
+                item.classList.add('read');
+                const dot = item.querySelector('.notification-dot');
+                if (dot) dot.remove();
+            });
+        }
 
         const csrfMatch = document.cookie.split('; ').find(c => c.startsWith('csrftoken='));
         const csrfToken = csrfMatch ? csrfMatch.split('=')[1] : '';
@@ -547,21 +709,13 @@ class NotificationSystem {
         fetch('/api/notifications/read-all/', {
             method: 'POST',
             headers: { 'X-CSRFToken': csrfToken },
+            keepalive: true
         })
         .then(r => r.json())
         .then(d => {
-            if (d.success) {
-                this.unreadCount = 0;
-                this.updateBadge();
-
-                if (this.notificationList) {
-                    this.notificationList.querySelectorAll('.notification-item').forEach(item => {
-                        item.classList.remove('unread');
-                        item.classList.add('read');
-                        const dot = item.querySelector('.notification-dot');
-                        if (dot) dot.remove();
-                    });
-                }
+            if (d && d.success) {
+                window.updateBellBadge(0);
+                window.dispatchEvent(new CustomEvent('notificationsRead'));
             }
         })
         .catch(err => console.error('Mark all read failed:', err));
@@ -569,12 +723,14 @@ class NotificationSystem {
 
     async loadInitialNotifications() {
         try {
-            const response = await fetch('/api/notifications/list/');
+            const response = await fetch('/api/notifications/list/', {
+                credentials: 'same-origin',
+                cache: 'no-store'
+            });
             const data = await response.json();
             if (!data.success) return;
 
-            this.unreadCount = data.unread_count || 0;
-            this.updateBadge();
+            window.updateBellBadge(data.unread_count || 0);
 
             if (!this.notificationList) return;
             this.notificationList.innerHTML = '';
@@ -584,6 +740,7 @@ class NotificationSystem {
                 return;
             }
 
+            this.initialLoaded = true;
             // Reverse so that when each item is prepended, the newest ends up on top
             data.notifications.slice().reverse().forEach((n) => {
                 this.addNotificationToPanel({
@@ -606,14 +763,7 @@ class NotificationSystem {
     }
 
     updateBadge() {
-        if (this.notificationBadge) {
-            if (this.unreadCount > 0) {
-                this.notificationBadge.textContent = this.unreadCount > 99 ? '99+' : this.unreadCount;
-                this.notificationBadge.style.display = 'flex';
-            } else {
-                this.notificationBadge.style.display = 'none';
-            }
-        }
+        window.updateBellBadge(this.unreadCount);
     }
 
         /* Map legacy PHP notification links → Django URLs and sanitize */
@@ -726,9 +876,23 @@ class NotificationSystem {
 
     setupEventListeners() {
         if (this.notificationTrigger && this.notificationPanel) {
+            if (this.markAllBtn) {
+                this.markAllBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    this.markAllAsRead();
+                });
+            }
+
             this.notificationTrigger.addEventListener('click', (e) => {
                 e.stopPropagation();
                 e.preventDefault();
+
+                if ('Notification' in window && Notification.permission === 'default') {
+                    Notification.requestPermission().then(permission => {
+                        console.log('🔔 [FCM] Bell-click permission status:', permission);
+                    }).catch(err => console.warn(err));
+                }
 
                 if (this.notificationPanel.classList.contains('show')) {
                     this.notificationPanel.classList.remove('show');
@@ -736,11 +900,9 @@ class NotificationSystem {
                     document.getElementById('profileDropdown')?.classList.remove('show');
                     document.getElementById('themePickerPopup')?.classList.remove('show');
                     this.notificationPanel.classList.add('show');
-                    // Option A: If Firebase is disconnected, fall back to HTTP list
-                    if (!this.firebaseConnected) {
+                    if (!this.initialLoaded || !this.notificationList || this.notificationList.children.length === 0 || this.notificationList.querySelector('.notification-item.empty')) {
                         this.loadInitialNotifications();
                     }
-                    setTimeout(() => this.markAllAsRead(), 100);
                 }
             });
 
@@ -1333,6 +1495,45 @@ function setupNavigation() {
 document.addEventListener('DOMContentLoaded', function() {
     createStars();
 
+    // Register Service Worker for Web Push notifications
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .then(function(reg) {
+                console.log('✅ [WebPush] Service Worker registered:', reg.scope);
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    if (window.sidebarNotifications && window.sidebarNotifications.syncPushSubscription) {
+                        window.sidebarNotifications.syncPushSubscription(reg);
+                    }
+                }
+            })
+            .catch(function(err) {
+                console.warn('[WebPush] Service Worker registration failed:', err);
+            });
+    }
+
+    // Global helper for user-initiated push notification permission requests
+    window.requestPushNotifications = async function() {
+        if (!('Notification' in window)) {
+            alert('This browser does not support desktop notifications.');
+            return false;
+        }
+        try {
+            const perm = await Notification.requestPermission();
+            console.log('🔔 [WebPush] Permission status:', perm);
+            if (perm === 'granted') {
+                const reg = await navigator.serviceWorker.ready;
+                if (window.sidebarNotifications && window.sidebarNotifications.syncPushSubscription) {
+                    await window.sidebarNotifications.syncPushSubscription(reg);
+                }
+                return true;
+            }
+            return false;
+        } catch (err) {
+            console.warn('⚠️ [WebPush] Error requesting notification permission:', err);
+            return false;
+        }
+    };
+
     try {
         window.themeManager = new ThemeManager();
     } catch (e) { console.error('Theme error:', e); }
@@ -1410,74 +1611,211 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 // ============================================================
-// FRIENDS SIDEBAR + MOBILE NAV BADGES
+// REAL-TIME SIDEBAR BADGES SYSTEM (Messages, Groups, Pages, Chatrooms, Shoutbox, Friends)
 // ============================================================
-// ── Friends sidebar + mobile nav badges ─────────────────────
-function applyFriendsBadge(pending) {
-    const desktopBadge = document.getElementById('friendsNavBadge');
-    const mobileBadge  = document.getElementById('friendsMobileBadge');
-    if (!desktopBadge && !mobileBadge) return;
-
-    if (pending > 0) {
-        const label = pending > 9 ? '9+' : pending;
-        if (desktopBadge) { desktopBadge.textContent = label; desktopBadge.style.display = 'inline-flex'; }
-        if (mobileBadge)  { mobileBadge.textContent  = label; mobileBadge.style.display  = 'flex'; }
-    } else {
-        if (desktopBadge) desktopBadge.style.display = 'none';
-        if (mobileBadge)  mobileBadge.style.display  = 'none';
+const SIDEBAR_BADGE_CONFIG = {
+    chat: {
+        desktopId: 'chatNavBadge',
+        mobileId: 'chatMobileBadge',
+        path: '/chat',
+        max: 9,
+        displayMax: '9+'
     }
+};
+
+const currentSidebarCounts = {
+    chat: 0
+};
+
+function isCurrentSection(pathPrefix) {
+    if (!pathPrefix) return false;
+    const cur = window.location.pathname;
+    return cur === pathPrefix || cur.indexOf(pathPrefix + '/') === 0;
 }
 
-// When friends.js broadcasts, update badges (no fetch needed)
-window.addEventListener('friendsCountsUpdated', function(e) {
-    applyFriendsBadge(e.detail.pending);
-});
+function updateSidebarBadge(section, rawCount) {
+    const config = SIDEBAR_BADGE_CONFIG[section];
+    if (!config) return;
 
-// Fallback: on non-friends pages, fetch counts ourselves
-async function fetchFriendsBadgeIfNeeded() {
-    // On any /friends path, friends.js broadcasts — skip our own fetch
-    if (window.location.pathname.indexOf('/friends') === 0) {
+    // Clear badge if user is currently visiting that section
+    if (isCurrentSection(config.path)) {
+        currentSidebarCounts[section] = 0;
+        const desktop = document.getElementById(config.desktopId);
+        if (desktop) desktop.style.display = 'none';
+        if (config.mobileId) {
+            const mobile = document.getElementById(config.mobileId);
+            if (mobile) mobile.style.display = 'none';
+        }
         return;
     }
 
-    const desktopBadge = document.getElementById('friendsNavBadge');
-    const mobileBadge  = document.getElementById('friendsMobileBadge');
-    if (!desktopBadge && !mobileBadge) return;
+    const count = Math.max(0, parseInt(rawCount) || 0);
+    currentSidebarCounts[section] = count;
 
-    try {
-        const r = await fetch('/api/friends/counts/');
-        const d = await r.json();
-        if (!d.success) return;
-        applyFriendsBadge(d.pending);
-    } catch (err) { /* silent */ }
+    const label = count > config.max ? config.displayMax : String(count);
+    const desktopEl = document.getElementById(config.desktopId);
+    if (desktopEl) {
+        if (count > 0) {
+            desktopEl.textContent = label;
+            desktopEl.style.display = 'inline-flex';
+        } else {
+            desktopEl.style.display = 'none';
+        }
+    }
+
+    if (config.mobileId) {
+        const mobileEl = document.getElementById(config.mobileId);
+        if (mobileEl) {
+            if (count > 0) {
+                mobileEl.textContent = label;
+                mobileEl.style.display = 'flex';
+            } else {
+                mobileEl.style.display = 'none';
+            }
+        }
+    }
 }
 
-window.updateFriendsBadge = fetchFriendsBadgeIfNeeded;
+function incrementSidebarBadge(section, delta = 1) {
+    const config = SIDEBAR_BADGE_CONFIG[section];
+    if (!config) return;
+
+    if (isCurrentSection(config.path)) {
+        currentSidebarCounts[section] = 0;
+        updateSidebarBadge(section, 0);
+        return;
+    }
+
+    const next = (currentSidebarCounts[section] || 0) + delta;
+    updateSidebarBadge(section, next);
+}
+
+function applySidebarCounts(countsObj) {
+    if (!countsObj) return;
+    for (const key of Object.keys(SIDEBAR_BADGE_CONFIG)) {
+        if (countsObj[key] !== undefined) {
+            updateSidebarBadge(key, countsObj[key]);
+        }
+    }
+}
+
+async function fetchSidebarCounts() {
+    if (document.hidden) return;
+
+    try {
+        const res = await fetch('/api/sidebar/counts/', { credentials: 'same-origin' });
+        const data = await res.json();
+        if (data && data.success) {
+            applySidebarCounts(data.counts || data);
+        }
+    } catch (e) {
+        /* silent fallback */
+    }
+}
+
+function handleNotificationSidebarBadge(notification) {
+    if (!notification) return;
+    const type = String(notification.type || '').toLowerCase();
+
+    // Badges strictly for direct Chat/Messages (general notifications use notification-badge in header)
+    if (type === 'message' || type === 'chat_message' || type.startsWith('chat_')) {
+        incrementSidebarBadge('chat');
+    }
+}
+
+// Global hooks for other modules
+window.updateSidebarBadge = updateSidebarBadge;
+window.incrementSidebarBadge = incrementSidebarBadge;
+window.refreshSidebarBadges = fetchSidebarCounts;
+window.handleNotificationSidebarBadge = handleNotificationSidebarBadge;
+window.applyFriendsBadge = function(pending) {
+    updateSidebarBadge('friends', pending);
+};
+window.updateFriendsBadge = fetchSidebarCounts;
+
+// Cross-module event listeners
+window.addEventListener('friendsCountsUpdated', function(e) {
+    if (e.detail && e.detail.pending !== undefined) {
+        updateSidebarBadge('friends', e.detail.pending);
+    }
+});
+
+window.addEventListener('chatMessagesRead', function() {
+    updateSidebarBadge('chat', 0);
+});
+
+window.addEventListener('pageInboxRead', function() {
+    updateSidebarBadge('pages', 0);
+});
+
+window.addEventListener('groupNotificationsRead', function() {
+    updateSidebarBadge('groups', 0);
+});
+
+window.addEventListener('chatroomMessagesRead', function() {
+    updateSidebarBadge('chatrooms', 0);
+});
+
+window.addEventListener('shoutboxMentionsRead', function() {
+    updateSidebarBadge('shoutbox', 0);
+});
 
 // ===========================================
-// NOTIFICATION COUNT POLLING (fallback for Firebase)
+// NOTIFICATION & SIDEBAR BADGE POLLING
 // ===========================================
 async function pollNotificationCount() {
+    if (document.hidden) return;
+
     try {
-        const r = await fetch('/api/notifications/count/', { credentials: 'same-origin' });
+        const r = await fetch('/api/notifications/count/', {
+            credentials: 'same-origin',
+            cache: 'no-store'
+        });
         const d = await r.json();
         if (!d.success) return;
-        const badge = document.querySelector('.notification-badge');
-        if (!badge) return;
-        if (d.unread_count > 0) {
-            badge.textContent = d.unread_count > 99 ? '99+' : d.unread_count;
-            badge.style.display = 'flex';
-        } else {
-            badge.style.display = 'none';
+
+        window.updateBellBadge(d.unread_count);
+
+        if (d.counts) {
+            applySidebarCounts(d.counts);
         }
     } catch (e) { /* silent */ }
 }
 window.refreshNotifications = pollNotificationCount;
 
 document.addEventListener('DOMContentLoaded', function() {
-    fetchFriendsBadgeIfNeeded();
-    setInterval(fetchFriendsBadgeIfNeeded, 30000);
+    // Clear badges for whichever section is active on current page
+    for (const [section, config] of Object.entries(SIDEBAR_BADGE_CONFIG)) {
+        if (isCurrentSection(config.path)) {
+            updateSidebarBadge(section, 0);
+        }
+    }
+
+    // Initial sidebar counts fetch
+    fetchSidebarCounts();
+    setInterval(fetchSidebarCounts, 30000);
+
+    // Initial notifications poll
     pollNotificationCount();
     setInterval(pollNotificationCount, 20000);
+
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) {
+            pollNotificationCount();
+            fetchSidebarCounts();
+        }
+    });
 });
 
+
+window.requestDesktopNotificationPermission = async function() {
+    if (!('Notification' in window)) return 'unsupported';
+    try {
+        const permission = await Notification.requestPermission();
+        console.log('🔔 [FCM] User requested notification permission:', permission);
+        return permission;
+    } catch (e) {
+        console.warn('Permission request error:', e);
+        return 'denied';
+    }
+};

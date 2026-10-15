@@ -3,7 +3,7 @@
 <html lang="en" data-bs-theme="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Admin Sign In | XAPYX Portal</title>
   <link rel="icon" type="image/png" href="{% static 'images/favicon.png' %}">
 
@@ -12,15 +12,26 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
   <style>
+    html, body {
+      max-width: 100vw;
+      overflow-x: hidden;
+      -webkit-text-size-adjust: 100%;
+    }
     body {
       background-color: var(--xpy-bg, #0b0f19);
       color: var(--xpy-text, #f8fafc);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       min-height: 100vh;
+      min-height: 100dvh;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 1.5rem;
+      padding: 1.5rem 1rem;
+      padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 20px));
+      padding-left: calc(1rem + env(safe-area-inset-left, 0px));
+      padding-right: calc(1rem + env(safe-area-inset-right, 0px));
+      padding-top: calc(1.5rem + env(safe-area-inset-top, 0px));
+      box-sizing: border-box;
     }
     .admin-login-card {
       width: 100%;
@@ -30,6 +41,17 @@
       border-radius: 16px;
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
       padding: 2.25rem 2rem;
+      min-width: 0;
+      box-sizing: border-box;
+    }
+    @media (max-width: 767.98px) {
+      .admin-login-card {
+        padding: 1.75rem 1.25rem;
+      }
+      .form-control,
+      input:not([type="checkbox"]):not([type="radio"]) {
+        font-size: 16px !important;
+      }
     }
     .brand-icon {
       width: 56px;

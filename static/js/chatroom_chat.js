@@ -1,3 +1,16 @@
+
+    // Presence handler fallback for chatroom member lists
+    if (typeof window.updateUserPresence !== 'function') {
+        window.updateUserPresence = function(userId, isOnline) {
+            if (!userId) return;
+            const onlineState = Boolean(isOnline);
+            document.querySelectorAll(`.status-dot[data-user-id="${userId}"]`).forEach(dot => {
+                dot.classList.toggle('online', onlineState);
+                dot.classList.toggle('offline', !onlineState);
+            });
+        };
+    }
+
 /**
  * chatroom_chat.js — Live Chat Room Messaging & Moderation (Task 18 Phase 4)
  */
@@ -104,6 +117,37 @@
                 behavior: smooth ? 'smooth' : 'auto'
             });
         });
+    }
+
+    function getMsgTimestamp(msg) {
+        if (!msg) return 0;
+        if (msg.created_at) {
+            const parsed = new Date(msg.created_at).getTime();
+            if (!isNaN(parsed)) return Math.floor(parsed / 1000);
+        }
+        if (msg.timestamp) {
+            const ts = Number(msg.timestamp);
+            return ts > 10000000000 ? Math.floor(ts / 1000) : ts;
+        }
+        return 0;
+    }
+
+    function insertMessageInOrder(container, row, curTs, curId) {
+        const existingRows = container.querySelectorAll('.chatroom-msg-row');
+        if (!existingRows.length) {
+            container.appendChild(row);
+            return;
+        }
+        for (let i = existingRows.length - 1; i >= 0; i--) {
+            const exRow = existingRows[i];
+            const exTs = Number(exRow.dataset.timestamp) || 0;
+            const exId = Number(exRow.dataset.msgId) || 0;
+            if (exTs < curTs || (exTs === curTs && exId <= curId)) {
+                exRow.after(row);
+                return;
+            }
+        }
+        container.prepend(row);
     }
 
     // Format text with highlighted @mentions
@@ -285,9 +329,9 @@
 
             return `
                 <div class="chatroom-member-item ${m.is_me ? 'me' : ''}" data-user-id="${m.user_id}">
-                    <div class="chatroom-member-avatar-wrap">
-                        <img src="${avatarThumb}" onerror="this.onerror=null;this.src='/static/images/avatars/default.png'" data-full-src="${escapeHtml(m.picture || '/static/images/avatars/default.png')}" class="chatroom-member-avatar" alt="">
-                        <span class="chatroom-member-status-dot ${onlineClass}"></span>
+                    <div class="user-avatar-wrapper chatroom-member-avatar-wrap" style="position: relative; display: inline-block;">
+                        <img src="${avatarThumb}" onerror="this.onerror=null;this.src='/static/images/avatars/default.png'" data-full-src="${escapeHtml(m.picture || '/static/images/avatars/default.png')}" class="chat-user-avatar chatroom-member-avatar" alt="">
+                        <span class="status-dot chatroom-member-status-dot ${onlineClass}" data-user-id="${m.user_id}"></span>
                     </div>
                     <div class="chatroom-member-info">
                         <div class="chatroom-member-name-wrap">
@@ -316,7 +360,12 @@
             }
 
             chatroomMessagesContainer.innerHTML = '';
-            const msgs = data.messages || [];
+            const msgs = (data.messages || []).slice().sort((a, b) => {
+                const timeA = getMsgTimestamp(a);
+                const timeB = getMsgTimestamp(b);
+                if (timeA !== timeB) return timeA - timeB;
+                return (Number(a.id) || 0) - (Number(b.id) || 0);
+            });
 
             if (msgs.length === 0) {
                 chatroomMessagesContainer.innerHTML = `
@@ -344,7 +393,9 @@
         const isSent = Boolean(msg.is_me);
         const row = document.createElement('div');
         row.className = `chatroom-msg-row ${isSent ? 'sent' : 'received'}`;
-        row.dataset.msgId = msg.id;
+        row.dataset.msgId = msg.id || '';
+        const createdTs = getMsgTimestamp(msg);
+        row.dataset.timestamp = createdTs;
 
         const avatarThumb = getAvatarThumb(msg.sender_picture);
         const avatarHtml = `
@@ -395,7 +446,7 @@
         `;
 
         row.innerHTML = isSent ? (bubbleHtml + avatarHtml) : (avatarHtml + bubbleHtml);
-        chatroomMessagesContainer.appendChild(row);
+        insertMessageInOrder(chatroomMessagesContainer, row, createdTs, Number(msg.id) || 0);
     }
 
     // ---- Send & Edit Message ----

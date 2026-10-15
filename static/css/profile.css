@@ -108,6 +108,7 @@ body {
   border-left: 1px solid var(--xpy-border);
   padding: 20px 16px 40px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   z-index: 1045;
 }
 .profile-widgets::-webkit-scrollbar { width: 4px; }
@@ -343,6 +344,7 @@ body {
   opacity: 0;
   transition: all 0.3s ease;
   cursor: pointer;
+  -webkit-backdrop-filter: blur(2px);
   backdrop-filter: blur(2px);
 }
 .profile-pic-overlay:hover { opacity: 1; }
@@ -420,6 +422,7 @@ body {
     flex: 0 0 auto; min-width: 72px; padding: 8px 6px;
     text-align: center;
     background: var(--xpy-card-bg);
+    -webkit-backdrop-filter: blur(20px);
     backdrop-filter: blur(20px);
     border-radius: var(--xpy-radius-sm);
     border: 1px solid var(--xpy-border);
@@ -473,6 +476,7 @@ body {
 /* Info box — about card */
 .xapyx-info-box {
   background: var(--xpy-card-bg);
+  -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   border-radius: var(--xpy-radius);
   border: 1px solid var(--xpy-border);
@@ -562,6 +566,7 @@ body {
 .xapyx-create-post-section { margin-bottom: 20px; animation: fadeIn 0.5s ease; }
 .xapyx-create-post-card {
   background: var(--xpy-card-bg);
+  -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   border-radius: var(--xpy-radius);
   padding: 20px;
@@ -845,6 +850,7 @@ body {
 .post-menu-dropdown {
   position: absolute; right: 0; top: 100%;
   background: var(--xpy-card-bg);
+  -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   border: 1px solid var(--xpy-border);
   border-radius: var(--xpy-radius-sm);
@@ -990,6 +996,7 @@ body {
   cursor: pointer;
   z-index: 2;
   transition: all 0.3s ease;
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
 }
 .xapyx-slider-prev:hover, .xapyx-slider-next:hover {
@@ -1170,6 +1177,7 @@ body {
 .xapyx-comments-container {
   max-height: 350px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 16px 20px;
 }
 @media (max-width: 767px) { .xapyx-comments-container { padding: 12px 14px; } }
@@ -1279,6 +1287,7 @@ body {
   text-align: center;
   padding: 50px 20px;
   background: var(--xpy-card-bg);
+  -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   border-radius: var(--xpy-radius);
   border: 1px solid var(--xpy-border);
@@ -1334,12 +1343,14 @@ body {
 .mentions-dropdown {
   position: fixed;
   background: var(--xpy-card-bg);
+  -webkit-backdrop-filter: blur(24px);
   backdrop-filter: blur(24px);
   border: 1px solid var(--xpy-border);
   border-radius: var(--xpy-radius-sm);
   box-shadow: 0 8px 32px rgba(0,0,0,0.5);
   max-height: 220px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   z-index: 99999;
   display: none;
   min-width: 240px;
@@ -1369,6 +1380,7 @@ body {
 .custom-confirm-overlay {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.7);
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   z-index: 9998;
   display: none;
@@ -1379,6 +1391,7 @@ body {
   top: 50%; left: 50%;
   transform: translate(-50%, -50%) scale(0.9);
   background: var(--xpy-card-bg);
+  -webkit-backdrop-filter: blur(30px);
   backdrop-filter: blur(30px);
   border-radius: var(--xpy-radius);
   padding: 28px;
@@ -1461,6 +1474,7 @@ body {
   box-shadow: 0 8px 32px rgba(0,0,0,0.4);
   border-radius: var(--xpy-radius-sm);
   padding: 14px 20px;
+  -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   border: 1px solid var(--xpy-border);
   border-left: 4px solid;
@@ -1485,6 +1499,7 @@ body {
 .modal-backdrop { z-index: 1140 !important; }
 .modal-content {
   background: var(--xpy-card-bg);
+  -webkit-backdrop-filter: blur(30px);
   backdrop-filter: blur(30px);
   color: var(--xpy-text);
   border: 1px solid var(--xpy-border);

@@ -388,6 +388,52 @@ function setupInfiniteScroll() {
 }
 
 // ============================================================
+// SKELETON PLACEHOLDERS FOR PAGINATION
+// ============================================================
+function renderPostSkeleton() {
+    return '<div class="post-card-vertical post-skeleton" aria-hidden="true">' +
+        '<div class="post-header">' +
+            '<div class="post-author d-flex align-items-center gap-2">' +
+                '<div class="skeleton-shimmer skeleton-avatar"></div>' +
+                '<div class="post-author-info" style="flex:1;">' +
+                    '<div class="skeleton-shimmer skeleton-line skeleton-title"></div>' +
+                    '<div class="skeleton-shimmer skeleton-line skeleton-subtitle"></div>' +
+                '</div>' +
+            '</div>' +
+        '</div>' +
+        '<div class="post-content" style="padding: 12px 0 8px;">' +
+            '<div class="skeleton-shimmer skeleton-line" style="width: 92%;"></div>' +
+            '<div class="skeleton-shimmer skeleton-line" style="width: 68%;"></div>' +
+        '</div>' +
+        '<div class="skeleton-shimmer skeleton-media"></div>' +
+        '<div class="post-footer d-flex justify-content-between pt-2">' +
+            '<div class="skeleton-shimmer skeleton-action-btn"></div>' +
+            '<div class="skeleton-shimmer skeleton-action-btn"></div>' +
+            '<div class="skeleton-shimmer skeleton-action-btn"></div>' +
+            '<div class="skeleton-shimmer skeleton-action-btn"></div>' +
+        '</div>' +
+    '</div>';
+}
+
+function appendPostSkeletons(container, count) {
+    if (!container) return;
+    count = count || 2;
+    var html = '';
+    for (var i = 0; i < count; i++) {
+        html += renderPostSkeleton();
+    }
+    container.insertAdjacentHTML('beforeend', html);
+}
+
+function removePostSkeletons(container) {
+    if (!container) return;
+    var skeletons = container.querySelectorAll('.post-skeleton');
+    skeletons.forEach(function(sk) {
+        sk.remove();
+    });
+}
+
+// ============================================================
 // LOAD POSTS
 // ============================================================
 async function loadPosts(reset) {
@@ -401,7 +447,8 @@ async function loadPosts(reset) {
         nextCursor = null;
         hasMorePosts = true;
         totalPostsCount = 0;
-        container.innerHTML = '<div class="feed-skeleton"><div class="skeleton-post"><div class="skeleton-avatar"></div><div class="skeleton-content"><div class="skeleton-line"></div><div class="skeleton-line short"></div></div></div><div class="skeleton-post"><div class="skeleton-avatar"></div><div class="skeleton-content"><div class="skeleton-line"></div><div class="skeleton-line short"></div></div></div></div>';
+        container.innerHTML = '';
+        appendPostSkeletons(container, 3);
     }
     if (!hasMorePosts && !reset) return;
     isLoading = true;
@@ -409,6 +456,7 @@ async function loadPosts(reset) {
         var userUrl = '/api/posts/' + (nextCursor ? '?cursor=' + encodeURIComponent(nextCursor) : '');
         var userResp = await fetch(userUrl);
         var userData = await userResp.json();
+        removePostSkeletons(container);
         if (reset) container.innerHTML = '';
         var allPosts = [];
         if (userData.success && userData.posts) allPosts.push.apply(allPosts, userData.posts);
@@ -440,6 +488,7 @@ async function loadPosts(reset) {
             hasMorePosts = false;
         }
     } catch (error) {
+        removePostSkeletons(container);
         console.error('Error loading posts:', error);
         if (reset && container) {
             container.innerHTML = '<div class="empty-state"><i class="bi bi-exclamation-triangle"></i><h5>Error loading posts</h5><p>Failed to load posts. Please try again.</p><button class="btn btn-sm btn-primary mt-2" onclick="location.reload()">Try Again</button></div>';
@@ -453,11 +502,9 @@ async function loadMorePosts() {
     if (isLoading || !hasMorePosts) return;
     var container = document.getElementById('feedContainer');
 
-    var loading = document.createElement('div');
-    loading.id = 'infiniteScrollLoading';
-    loading.className = 'text-center py-3';
-    loading.innerHTML = '<div class="spinner-border spinner-border-sm text-primary"></div> Loading more posts...';
-    container.appendChild(loading);
+    var loading = document.getElementById('infiniteScrollLoading');
+    if (loading) loading.remove();
+    appendPostSkeletons(container, 2);
     await loadPosts(false);
 }
 
@@ -894,7 +941,8 @@ function createPostElement(post) {
             post.media.map(function(m, idx) {
                 return '<div class="slider-item ' + (m.type === 'video' ? 'has-video ' : '') + (idx === 0 ? 'active' : '') + '" data-index="' + idx + '">' +
                     (m.type === 'image'
-                        ? '<img src="' + (m.thumbnail_url || m.url) + '" width="800" height="600" loading="lazy" decoding="async" onload="if(this.naturalWidth>=this.naturalHeight)this.classList.add(\'landscape\')" onerror="this.onerror=null;this.src=\'' + m.url + '\'" onclick="openMediaLightbox(\'' + (m.url || '').replace(/'/g, "\\'") + '\')">'
+                        ? '<img class="post-media-blur-bg" src="' + (m.thumbnail_url || m.url) + '" alt="" aria-hidden="true">' +
+                          '<img src="' + (m.thumbnail_url || m.url) + '" class="post-image slider-image" width="800" height="600" loading="lazy" decoding="async" onload="if(this.naturalWidth>=this.naturalHeight)this.classList.add(\'landscape\')" onerror="this.onerror=null;this.src=\'' + m.url + '\'" onclick="openMediaLightbox(\'' + (m.url || '').replace(/'/g, "\\'") + '\')">'
                         : '<video controls preload="metadata" muted playsinline loop autoplay onclick="toggleVideoSound(this, event)"><source src="' + m.url + '" type="' + (m.mime_type || 'video/mp4') + '"></video>') +
                     '</div>';
             }).join('') +
@@ -959,13 +1007,13 @@ function createPostElement(post) {
 
     var commentsHtml = '<div class="comments-section-expandable" id="comments-' + post.id + '"><div class="comments-container" id="comments-container-' + post.id + '"><div class="no-comments">No comments yet. Be the first!</div></div><div class="comment-form-expandable"><input type="text" class="comment-input-expandable" placeholder="Write a comment..." id="comment-input-' + post.id + '" oninput="handleCommentInputForPost(' + post.id + ', event, \'' + (post.source || 'user') + '\')"><button class="comment-submit-btn" onclick="submitComment(' + post.id + ', \'' + (post.source || 'user') + '\')">Post</button></div></div>';
 
-    var onDetailPage = document.body.dataset.page === 'view_post';
-    var statsTop = '<div class="post-stats-top" style="gap:12px;"'
-    + (onDetailPage ? ' style="cursor:default;gap:12px;"' : ' onclick="viewPost(' + post.id + ', \'' + (post.source || 'user') + '\')"')
+    var onDetailPage = document.body.dataset.page === 'view_post' || window.location.pathname.startsWith('/post/');
+    var statsTop = '<div class="post-stats-top"'
+    + (onDetailPage ? ' style="cursor:default;"' : ' onclick="viewPost(' + post.id + ', \'' + (post.source || 'user') + '\')"')
     + '>'
     + (onDetailPage
         ? ''
-        : '<span style="color:var(--xpy-primary);font-weight:600;font-size:0.8rem;margin-right:auto;">View post <i class="bi bi-arrow-right-short"></i></span>')
+        : '<span class="post-view-link" style="color:var(--xpy-primary);font-weight:600;font-size:0.8rem;">View post <i class="bi bi-arrow-right-short"></i></span>')
     + '<span class="post-views-count"><i class="bi bi-eye"></i> ' + (post.views || 0) + '</span>'
     + '</div>';
 
@@ -1003,6 +1051,36 @@ async function confirmDeletePost(postId) {
 }
 
 async function deletePost(postId) {
+    var el = document.querySelector('.post-card-vertical[data-post-id="' + postId + '"]') || document.querySelector('[data-post-id="' + postId + '"]');
+    var isViewPostPage = Boolean(document.getElementById('vpPostContainer') || window.location.pathname.startsWith('/post/'));
+
+    // Decrement visible post counter if present (e.g. sidebar stats grid)
+    var postStatEl = null;
+    document.querySelectorAll('.stat-item').forEach(function(item) {
+        var label = item.querySelector('.stat-label');
+        if (label && label.textContent.trim().toLowerCase() === 'posts') {
+            postStatEl = item.querySelector('.stat-number');
+        }
+    });
+    var prevStatCount = postStatEl ? (parseInt(postStatEl.textContent || '0', 10) || 0) : null;
+    if (postStatEl && prevStatCount !== null) {
+        postStatEl.textContent = Math.max(0, prevStatCount - 1);
+    }
+
+    // 0ms Optimistic UI collapse / hide
+    var prevDisplay = '';
+    if (el) {
+        prevDisplay = el.style.display;
+        el.style.transition = 'all 0.2s ease';
+        el.style.opacity = '0';
+        el.style.transform = 'scale(0.96)';
+        setTimeout(function() {
+            if (el && el.style.opacity === '0') {
+                el.style.display = 'none';
+            }
+        }, 200);
+    }
+
     try {
         var response = await fetch('/api/posts/delete/', {
             method: 'POST',
@@ -1014,13 +1092,39 @@ async function deletePost(postId) {
         });
         var data = await response.json();
         if (data.success) {
-            var el = document.querySelector('.post-card-vertical[data-post-id="' + postId + '"]');
             if (el) el.remove();
             showAlert('Post deleted successfully', 'success');
+            if (isViewPostPage) {
+                setTimeout(function() {
+                    window.location.href = '/feed/';
+                }, 300);
+            }
         } else {
+            // Rollback on API failure
+            if (el) {
+                el.style.display = prevDisplay;
+                setTimeout(function() {
+                    el.style.opacity = '1';
+                    el.style.transform = '';
+                }, 10);
+            }
+            if (postStatEl && prevStatCount !== null) {
+                postStatEl.textContent = prevStatCount;
+            }
             showAlert(data.error || 'Failed to delete post', 'error');
         }
     } catch (error) {
+        // Rollback on network failure
+        if (el) {
+            el.style.display = prevDisplay;
+            setTimeout(function() {
+                el.style.opacity = '1';
+                el.style.transform = '';
+            }, 10);
+        }
+        if (postStatEl && prevStatCount !== null) {
+            postStatEl.textContent = prevStatCount;
+        }
         showAlert('Failed to delete post', 'error');
     }
 }
@@ -1144,6 +1248,8 @@ async function reactPost(postId, reaction, btn, type) {
     function renderReactionState(isLiked, isDisliked, countLikes, countDislikes) {
         if (likeCountEl) likeCountEl.textContent = countLikes;
         if (dislikeCountEl) dislikeCountEl.textContent = countDislikes;
+        var widgetLikes = document.getElementById('widgetLikes');
+        if (widgetLikes) widgetLikes.textContent = countLikes;
 
         if (isLiked) {
             likeBtn.classList.add('active');
@@ -1282,37 +1388,104 @@ async function submitComment(postId, type) {
         return;
     }
     var mentions = extractMentions(content);
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    var savedContent = content;
+    input.value = '';
+
+    // Snapshot comment count
+    var el = document.querySelector('.post-card-vertical[data-post-id="' + postId + '"]');
+    var countEl = el ? el.querySelector('.comment-btn .action-count') : null;
+    var prevCount = countEl ? parseInt(countEl.textContent || '0', 10) : 0;
+    if (countEl) countEl.textContent = prevCount + 1;
+    var widgetComments = document.getElementById('widgetComments');
+    if (widgetComments) widgetComments.textContent = prevCount + 1;
+    var widgetComments = document.getElementById('widgetComments');
+    if (widgetComments) widgetComments.textContent = prevCount + 1;
+
+    // Optimistic comment DOM insertion
+    var container = document.getElementById('comments-container-' + postId);
+    var noComments = container ? container.querySelector('.no-comments') : null;
+    var wasNoComments = Boolean(noComments);
+    if (noComments) noComments.style.display = 'none';
+
+    var currentUserId = (window.XPY_CONFIG && window.XPY_CONFIG.userId) || null;
+    var currentUserPic = (function() {
+        var a = document.querySelector('.avatar-mini-img, .avatar-img, .header-avatar');
+        return a ? (a.getAttribute('src') || '') : '/static/images/avatars/default.png';
+    })();
+    var currentUserName = (function() {
+        var n = document.querySelector('.user-info h4, .profile-mini-name');
+        return n ? n.textContent.trim() : ((window.XPY_CONFIG && window.XPY_CONFIG.username) || 'You');
+    })();
+
+    var tempId = 'temp-' + Date.now();
+    var optimisticComment = {
+        id: tempId,
+        author: {
+            id: currentUserId,
+            name: currentUserName,
+            username: (window.XPY_CONFIG && window.XPY_CONFIG.username) || currentUserName,
+            picture: currentUserPic
+        },
+        content: savedContent,
+        time_ago: 'Just now'
+    };
+
+    var tempEl = createCommentElement(optimisticComment, type);
+    tempEl.style.opacity = '0.65';
+    tempEl.style.transition = 'opacity 0.2s ease';
+    tempEl.dataset.isOptimistic = 'true';
+    if (container) {
+        container.appendChild(tempEl);
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    }
+
     try {
         var response = await fetch('/api/posts/comments/add/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
-            body: JSON.stringify({ post_id: postId, content: content, mentions: mentions, type: type })
+            body: JSON.stringify({ post_id: postId, content: savedContent, mentions: mentions, type: type })
         });
         var data = await response.json();
         if (data.success) {
-            input.value = '';
-            var container = document.getElementById('comments-container-' + postId);
-            if (container) {
-                var noComments = container.querySelector('.no-comments');
-                if (noComments) noComments.remove();
-                container.appendChild(createCommentElement(data.comment, type));
+            if (tempEl && tempEl.parentNode) {
+                tempEl.style.opacity = '1';
+                tempEl.dataset.commentId = data.comment.id;
+                delete tempEl.dataset.isOptimistic;
+                var delBtn = tempEl.querySelector('.comment-delete-btn');
+                if (delBtn) {
+                    delBtn.setAttribute('onclick', 'deleteComment(' + data.comment.id + ', ' + postId + ', \'' + type + '\')');
+                }
             }
-            var el = document.querySelector('.post-card-vertical[data-post-id="' + postId + '"]');
-            if (el) {
-                var count = el.querySelector('.comment-btn .action-count');
-                if (count) count.textContent = parseInt(count.textContent) + 1;
+            if (wasNoComments && noComments) {
+                noComments.remove();
             }
             showAlert('Comment posted successfully!', 'success');
         } else {
+            if (tempEl && tempEl.parentNode) tempEl.remove();
+            if (wasNoComments && noComments) noComments.style.display = '';
+            if (countEl) countEl.textContent = prevCount;
+            var widgetComments = document.getElementById('widgetComments');
+            if (widgetComments) widgetComments.textContent = prevCount;
+            input.value = savedContent;
             showAlert(data.error || 'Failed to post comment', 'error');
         }
     } catch (error) {
+        if (tempEl && tempEl.parentNode) tempEl.remove();
+        if (wasNoComments && noComments) noComments.style.display = '';
+        if (countEl) countEl.textContent = prevCount;
+        var widgetComments = document.getElementById('widgetComments');
+        if (widgetComments) widgetComments.textContent = prevCount;
+        input.value = savedContent;
         showAlert('Failed to post comment', 'error');
     } finally {
-        btn.disabled = false;
-        btn.innerHTML = 'Post';
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = 'Post';
+        }
         input.focus();
     }
 }
@@ -1333,7 +1506,12 @@ async function deleteComment(commentId, postId, type) {
                 var postEl = document.querySelector('.post-card-vertical[data-post-id="' + postId + '"]');
                 if (postEl) {
                     var count = postEl.querySelector('.comment-btn .action-count');
-                    if (count) count.textContent = Math.max(0, parseInt(count.textContent) - 1);
+                    if (count) {
+                        var newC = Math.max(0, parseInt(count.textContent) - 1);
+                        count.textContent = newC;
+                        var widgetComments = document.getElementById('widgetComments');
+                        if (widgetComments) widgetComments.textContent = newC;
+                    }
                 }
             }
             showAlert('Comment deleted', 'success');

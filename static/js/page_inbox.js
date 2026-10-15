@@ -109,6 +109,37 @@
             .replace(/'/g, '&#39;');
     }
 
+    function getMsgTimestamp(msg) {
+        if (!msg) return 0;
+        if (msg.created_at) {
+            const parsed = new Date(msg.created_at).getTime();
+            if (!isNaN(parsed)) return Math.floor(parsed / 1000);
+        }
+        if (msg.timestamp) {
+            const ts = Number(msg.timestamp);
+            return ts > 10000000000 ? Math.floor(ts / 1000) : ts;
+        }
+        return 0;
+    }
+
+    function insertMessageInOrder(container, row, curTs, curId) {
+        const existingRows = container.querySelectorAll('.page-inbox-msg-row');
+        if (!existingRows.length) {
+            container.appendChild(row);
+            return;
+        }
+        for (let i = existingRows.length - 1; i >= 0; i--) {
+            const exRow = existingRows[i];
+            const exTs = Number(exRow.dataset.timestamp) || 0;
+            const exId = Number(exRow.dataset.msgId) || 0;
+            if (exTs < curTs || (exTs === curTs && exId <= curId)) {
+                exRow.after(row);
+                return;
+            }
+        }
+        container.prepend(row);
+    }
+
     // Initialize Firebase
     function initFirebase() {
         const pagesFirebaseConfig = {
@@ -148,7 +179,14 @@
         }
     }
 
-    // Mobile Sidebar controls
+    // Mobile Sidebar & Master-Detail controls
+    window.closeMobileChat = function () {
+        const wrap = document.querySelector('.page-inbox-wrap');
+        if (wrap) wrap.classList.remove('mobile-chat-active');
+        state.activeConvId = null;
+        renderConversationsList();
+    };
+
     window.openPageInboxSidebar = function () {
         if (elements.sidebar) elements.sidebar.classList.add('open');
         if (elements.backdrop) elements.backdrop.classList.add('show');
@@ -257,6 +295,10 @@
         state.activeConvId = convId;
         state.renderedMsgIds.clear();
 
+        // On mobile, switch view to active chat panel
+        const wrap = document.querySelector('.page-inbox-wrap');
+        if (wrap) wrap.classList.add('mobile-chat-active');
+
         // Close mobile drawer on selection
         if (window.innerWidth < 768) {
             window.closePageInboxSidebar();
@@ -314,7 +356,12 @@
             }
 
             elements.messagesContainer.innerHTML = '';
-            const messages = data.messages || [];
+            const messages = (data.messages || []).slice().sort((a, b) => {
+                const timeA = getMsgTimestamp(a);
+                const timeB = getMsgTimestamp(b);
+                if (timeA !== timeB) return timeA - timeB;
+                return (Number(a.id) || 0) - (Number(b.id) || 0);
+            });
             messages.forEach(msg => appendMessageToChat(msg, false));
             scrollToBottom();
 
@@ -370,6 +417,9 @@
         const row = document.createElement('div');
         row.className = `page-inbox-msg-row ${isMe ? 'sent' : 'received'}`;
         if (!animate) row.style.animation = 'none';
+        row.dataset.msgId = msgId || '';
+        const createdTs = getMsgTimestamp(msg);
+        row.dataset.timestamp = createdTs;
 
         row.innerHTML = `
             <div class="page-inbox-msg-avatar-wrap">
@@ -385,7 +435,7 @@
             </div>
         `;
 
-        elements.messagesContainer.appendChild(row);
+        insertMessageInOrder(elements.messagesContainer, row, createdTs, Number(msg.id) || 0);
     }
 
     function scrollToBottom() {
@@ -617,6 +667,7 @@
     window.PageInbox = {
         selectConversation: (id) => openConversation(id, true),
         sendMessage,
+        closeMobileChat: window.closeMobileChat,
         openSidebar: window.openPageInboxSidebar,
         closeSidebar: window.closePageInboxSidebar
     };

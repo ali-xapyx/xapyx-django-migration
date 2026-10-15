@@ -1,0 +1,386 @@
+{% extends "dashboard/base_dashboard.html" %}
+{% load static %}
+
+{% block title %}{{ product.title }} | XAPYX Store{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/store.css' %}?v=2">
+{% endblock %}
+
+{% block content %}
+<div id="dashboardContainer" class="no-right-widgets">
+  <div class="dashboard-inner">
+    <div class="dashboard-flex">
+      <div class="dashboard-main">
+        <div class="pd-container">
+
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb small">
+      <li class="breadcrumb-item"><a href="/store/" class="text-decoration-none"><i class="bi bi-shop me-1"></i>Store</a></li>
+      <li class="breadcrumb-item"><a href="/store/?category={{ product.category|urlencode }}" class="text-decoration-none">{{ product.category }}</a></li>
+      <li class="breadcrumb-item active text-truncate" style="max-width: 320px;" aria-current="page">{{ product.title }}</li>
+    </ol>
+  </nav>
+
+  <!-- Status Alert for Pending/Rejected/Sold listings -->
+  {% if product.is_sold %}
+    <div class="alert alert-secondary d-flex align-items-center gap-2 mb-4" role="alert" style="background: rgba(148, 163, 184, 0.15); border: 1px solid rgba(148, 163, 184, 0.3); color: #cbd5e1;">
+      <i class="bi bi-tag-fill fs-4 text-warning"></i>
+      <div>
+        This listing has been marked as <strong>SOLD OUT</strong>.
+      </div>
+    </div>
+  {% elif is_owner and product.status != 'approved' %}
+    <div class="alert alert-warning d-flex align-items-center gap-2 mb-4" role="alert">
+      <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+      <div>
+        This listing is currently <strong>{{ product.status|title }}</strong>. Only you and administrators can view it until it is approved.
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="row g-4">
+    <!-- Left Column: Media & Product Details -->
+    <div class="col-lg-8">
+      
+      <!-- Gallery Card -->
+      <div class="pd-card">
+        <div class="pd-gallery-main">
+          <img src="{{ product.first_image }}" id="pdMainImage" alt="{{ product.title }}" onerror="this.onerror=null;this.src='/static/images/products/product.jpg';">
+        </div>
+
+        {% if product.images|length > 1 %}
+          <div class="d-flex flex-wrap gap-2">
+            {% for img in product.images %}
+              <div class="pd-thumb-item {% if forloop.first %}active{% endif %}" onclick="selectProductImage('{{ img }}', this)">
+                <img src="{{ img }}" alt="Thumbnail {{ forloop.counter }}" onerror="this.onerror=null;this.src='/static/images/products/product.jpg';">
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Product Description & Specs Card -->
+      <div class="pd-card">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+          <span class="badge bg-primary bg-opacity-25 text-primary fw-semibold px-3 py-2 rounded-pill">
+            {{ product.category }}
+          </span>
+          <span class="text-muted small">
+            <i class="bi bi-clock me-1"></i> Listed {{ product.created_at|date:"F d, Y" }}
+          </span>
+        </div>
+
+        <h2 class="fw-bold mb-2">{{ product.title }}</h2>
+
+        <div class="d-flex align-items-center gap-3 text-muted small mb-3">
+          <span><i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ product.location }}</span>
+          <span>&bull;</span>
+          <span><i class="bi bi-upc-scan me-1"></i>Ad ID: {{ product.ad_id }}</span>
+        </div>
+
+        <div class="border-top border-bottom py-3 my-3">
+          <div class="text-muted small mb-1">Asking Price</div>
+          <div class="display-6 fw-bold text-primary">PKR {{ product.price|floatformat:0 }}</div>
+        </div>
+
+        <div class="mt-4">
+          <h5 class="fw-bold mb-3"><i class="bi bi-card-text text-primary me-2"></i>Item Description</h5>
+          <div class="pd-desc-text">
+            {{ product.desc }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Safety Tips Card -->
+      <div class="safety-card mb-4">
+        <h6 class="fw-bold mb-2 d-flex align-items-center gap-2">
+          <i class="bi bi-shield-check text-primary fs-5"></i>
+          <span>XAPYX Marketplace Safety Tips</span>
+        </h6>
+        <div class="row g-2 small text-muted mt-1">
+          <div class="col-md-6 d-flex align-items-start gap-2">
+            <i class="bi bi-check2 text-success mt-1"></i>
+            <span>Meet in well-lit public places (e.g. coffee shop, mall).</span>
+          </div>
+          <div class="col-md-6 d-flex align-items-start gap-2">
+            <i class="bi bi-check2 text-success mt-1"></i>
+            <span>Inspect the physical item thoroughly before paying.</span>
+          </div>
+          <div class="col-md-6 d-flex align-items-start gap-2">
+            <i class="bi bi-check2 text-success mt-1"></i>
+            <span>Never send advance bank or mobile wallet transfers.</span>
+          </div>
+          <div class="col-md-6 d-flex align-items-start gap-2">
+            <i class="bi bi-check2 text-success mt-1"></i>
+            <span>Communicate through XAPYX Chat to keep records.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Related Products -->
+      {% if related_products %}
+        <div class="mt-4">
+          <h5 class="fw-bold mb-3"><i class="bi bi-grid text-primary me-2"></i>Similar Listings in {{ product.category }}</h5>
+          <div class="row g-3 row-cols-2 row-cols-sm-4">
+            {% for rel in related_products %}
+              <div class="col">
+                <a href="/store/{{ rel.ad_id }}/" class="related-card h-100">
+                  <div style="aspect-ratio: 4/3; overflow: hidden; background: #0f131d;">
+                    <img src="{{ rel.first_image }}" style="width: 100%; height: 100%; object-fit: cover;" alt="{{ rel.title }}" onerror="this.onerror=null;this.src='/static/images/products/product.jpg';">
+                  </div>
+                  <div class="p-2">
+                    <div class="text-primary fw-bold small">PKR {{ rel.price|floatformat:0 }}</div>
+                    <div class="small fw-semibold text-truncate" title="{{ rel.title }}">{{ rel.title }}</div>
+                    <div class="text-muted extra-small" style="font-size: 0.75rem;"><i class="bi bi-geo-alt me-1"></i>{{ rel.location }}</div>
+                  </div>
+                </a>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+
+    </div>
+
+    <!-- Right Column: Seller Profile & CTAs -->
+    <div class="col-lg-4">
+      <div class="sticky-seller-card">
+        
+        <!-- Seller Info Card -->
+        <div class="pd-card">
+          <h5 class="fw-bold mb-3 pb-2 border-bottom">Seller Information</h5>
+
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <img src="{{ product.user_image }}" alt="{{ product.poster_name }}" class="seller-avatar" onerror="this.onerror=null;this.src='/static/images/avatars/default.png';">
+            <div>
+              <h5 class="fw-bold mb-0">{{ product.poster_name }}</h5>
+              <div class="text-muted small">@{{ product.username }}</div>
+            </div>
+          </div>
+
+          <div class="small text-muted mb-3 d-flex flex-column gap-2">
+            <div><i class="bi bi-calendar3 me-2 text-primary"></i>Member since {{ product.joined_at|date:"F Y"|default:"Recently" }}</div>
+            <div><i class="bi bi-bag-check me-2 text-primary"></i>{{ total_seller_ads }} active marketplace listing{{ total_seller_ads|pluralize }}</div>
+            <div><i class="bi bi-geo-alt me-2 text-danger"></i>{{ product.user_location }}</div>
+          </div>
+
+          <a href="/user/{{ product.user_id }}/" class="btn btn-outline-secondary btn-sm w-100 mb-3">
+            <i class="bi bi-person me-1"></i> View Full Profile
+          </a>
+
+          <!-- Primary Action Buttons -->
+          <div class="d-flex flex-column gap-2 pt-2 border-top">
+            {% if not is_owner %}
+              <!-- Chat with Seller Button -->
+              <a href="/chat/{{ product.user_id }}/" class="btn btn-primary w-100 py-2 d-flex align-items-center justify-content-center gap-2 fw-semibold">
+                <i class="bi bi-chat-dots-fill"></i>
+                <span>Chat with Seller</span>
+              </a>
+
+              <!-- Contact Toggle Button -->
+              {% if product.contact and product.show_contact %}
+                <button type="button" class="btn btn-outline-light w-100 py-2 d-flex align-items-center justify-content-center gap-2" id="btnShowContact" onclick="toggleContactNumber()">
+                  <i class="bi bi-telephone-fill"></i>
+                  <span id="contactBtnText">Show Phone Number</span>
+                </button>
+                <div id="contactNumberCard" class="p-2 text-center rounded border contact-number-card fw-bold d-none mt-1">
+                  <i class="bi bi-telephone-outbound me-2 text-success"></i>
+                  <a href="tel:{{ product.contact }}" class="text-decoration-none">{{ product.contact }}</a>
+                </div>
+              {% else %}
+                <div class="text-muted small text-center mt-1">
+                  <i class="bi bi-chat-text me-1"></i> Seller preferred contact via Chat
+                </div>
+              {% endif %}
+
+            {% else %}
+              <!-- Owner State -->
+              <div class="alert alert-info py-2 text-center small mb-2">
+                <i class="bi bi-check-circle me-1"></i> You listed this item
+              </div>
+              {% if product.status == 'approved' %}
+              <div class="d-flex flex-column gap-2 mb-2">
+                {% if not product.is_sold %}
+                <button type="button" class="btn btn-outline-success py-2 d-flex align-items-center justify-content-center gap-2 fw-semibold" onclick="openMarkSoldModal({{ product.id }}, '{{ product.title|escapejs }}')">
+                  <i class="bi bi-check2-circle"></i>
+                  <span>Mark as Sold</span>
+                </button>
+                {% else %}
+                <div class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 py-2 fs-6 text-center">
+                  <i class="bi bi-check-all me-1"></i> Sold Listing
+                </div>
+                {% endif %}
+                <button type="button" class="btn btn-outline-danger py-2 d-flex align-items-center justify-content-center gap-2 fw-semibold" onclick="openDeleteProductModal({{ product.id }}, '{{ product.title|escapejs }}')">
+                  <i class="bi bi-trash3"></i>
+                  <span>Delete Listing</span>
+                </button>
+              </div>
+              {% endif %}
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Back to Marketplace button -->
+        <a href="/store/" class="btn btn-outline-secondary w-100 py-2 d-flex align-items-center justify-content-center gap-2">
+          <i class="bi bi-arrow-left"></i>
+          <span>Back to Marketplace</span>
+        </a>
+
+      </div>
+    </div>
+  </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MARK AS SOLD CONFIRMATION MODAL -->
+<div class="modal fade" id="markSoldModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content store-modal">
+      <div class="modal-header border-bottom" style="border-color: var(--xpy-border) !important;">
+        <h5 class="modal-title fw-bold d-flex align-items-center gap-2 text-success">
+          <i class="bi bi-check2-circle"></i>
+          <span>Mark Listing as Sold</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4 text-center">
+        <div class="mb-3">
+          <i class="bi bi-bag-check-fill text-success" style="font-size: 3rem;"></i>
+        </div>
+        <h6 class="fw-semibold mb-2">Confirm status change?</h6>
+        <p class="text-muted small mb-0">
+          Are you sure you want to mark <strong id="markSoldProductTitle"></strong> as sold?
+        </p>
+      </div>
+      <div class="modal-footer border-top d-flex gap-2" style="border-color: var(--xpy-border) !important;">
+        <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-success flex-fill fw-semibold" id="confirmMarkSoldBtn">
+          <i class="bi bi-check-lg me-1"></i> Mark as Sold
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE LISTING CONFIRMATION MODAL -->
+<div class="modal fade" id="deleteProductModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content store-modal">
+      <div class="modal-header border-bottom" style="border-color: var(--xpy-border) !important;">
+        <h5 class="modal-title fw-bold d-flex align-items-center gap-2 text-danger">
+          <i class="bi bi-trash3-fill"></i>
+          <span>Delete Listing</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4 text-center">
+        <div class="mb-3">
+          <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 3rem;"></i>
+        </div>
+        <h6 class="fw-semibold mb-2">Are you sure you want to delete this listing?</h6>
+        <p class="text-muted small mb-0">
+          This will permanently remove <strong id="deleteProductTitle"></strong>.
+        </p>
+      </div>
+      <div class="modal-footer border-top d-flex gap-2" style="border-color: var(--xpy-border) !important;">
+        <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger flex-fill fw-semibold" id="confirmDeleteProductBtn">
+          <i class="bi bi-trash3 me-1"></i> Delete Listing
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function selectProductImage(url, thumbEl) {
+    const mainImg = document.getElementById('pdMainImage');
+    if (mainImg) {
+        mainImg.src = url;
+    }
+    document.querySelectorAll('.pd-thumb-item').forEach(el => el.classList.remove('active'));
+    if (thumbEl) {
+        thumbEl.classList.add('active');
+    }
+}
+
+function toggleContactNumber() {
+    const card = document.getElementById('contactNumberCard');
+    const btnText = document.getElementById('contactBtnText');
+    if (card) {
+        if (card.classList.contains('d-none')) {
+            card.classList.remove('d-none');
+            btnText.textContent = 'Hide Phone Number';
+        } else {
+            card.classList.add('d-none');
+            btnText.textContent = 'Show Phone Number';
+        }
+    }
+}
+
+let currentSellerProductId = null;
+function openMarkSoldModal(productId, title) {
+    currentSellerProductId = productId;
+    const t = document.getElementById('markSoldProductTitle');
+    if (t) t.textContent = title;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('markSoldModal')).show();
+}
+function openDeleteProductModal(productId, title) {
+    currentSellerProductId = productId;
+    const t = document.getElementById('deleteProductTitle');
+    if (t) t.textContent = title;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteProductModal')).show();
+}
+function getCsrfToken() {
+    const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]*)/);
+    return match ? decodeURIComponent(match[1]) : (document.querySelector('[name=csrfmiddlewaretoken]')?.value || '');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const sBtn = document.getElementById('confirmMarkSoldBtn');
+    if (sBtn) {
+        sBtn.addEventListener('click', function() {
+            if (!currentSellerProductId) return;
+            sBtn.disabled = true;
+            fetch(`/api/store/mark-sold/${currentSellerProductId}/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCsrfToken(), 'X-Requested-With': 'XMLHttpRequest' }
+            }).then(r => r.json()).then(data => {
+                if (data.success) location.reload();
+                else { alert(data.error || 'Failed to mark as sold.'); sBtn.disabled = false; }
+            }).catch(err => {
+                alert('Request failed. Please try again.');
+                sBtn.disabled = false;
+            });
+        });
+    }
+    const dBtn = document.getElementById('confirmDeleteProductBtn');
+    if (dBtn) {
+        dBtn.addEventListener('click', function() {
+            if (!currentSellerProductId) return;
+            dBtn.disabled = true;
+            fetch(`/api/store/delete/${currentSellerProductId}/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCsrfToken(), 'X-Requested-With': 'XMLHttpRequest' }
+            }).then(r => r.json()).then(data => {
+                if (data.success) window.location.href = '/store/';
+                else { alert(data.error || 'Failed to delete listing.'); dBtn.disabled = false; }
+            }).catch(err => {
+                alert('Request failed. Please try again.');
+                dBtn.disabled = false;
+            });
+        });
+    }
+});
+
+</script>
+{% endblock %}

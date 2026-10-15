@@ -249,6 +249,7 @@
             border-left: 1px solid var(--xpy-border);
             padding: 20px 16px 30px;
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
             z-index: 1045;
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
@@ -1168,6 +1169,7 @@
             right: 0;
             bottom: 0;
             background: rgba(0,0,0,0.7);
+            -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
             z-index: 999998;
             display: none;
@@ -1183,6 +1185,7 @@
             left: 50%;
             transform: translate(-50%, -50%) scale(0.9);
             background: var(--xpy-card-bg);
+            -webkit-backdrop-filter: blur(30px);
             backdrop-filter: blur(30px);
             border-radius: var(--xpy-radius);
             padding: 28px;
@@ -1292,6 +1295,7 @@
 
         .toast-notification {
             background: var(--xpy-card-bg);
+            -webkit-backdrop-filter: blur(20px);
             backdrop-filter: blur(20px);
             border: 1px solid var(--xpy-border);
             border-radius: var(--xpy-radius-sm);

@@ -5,6 +5,7 @@
 /* ---------- Page header ---------- */
 .grp-page-header {
   background: var(--xpy-card-bg);
+  -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   border-radius: var(--xpy-radius);
   padding: 20px 24px;
@@ -128,6 +129,7 @@
 /* ---------- Filter + search ---------- */
 .grp-filter-section {
   background: var(--xpy-card-bg);
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   border: 1px solid var(--xpy-border);
   border-radius: var(--xpy-radius);
@@ -229,6 +231,7 @@
 /* ---------- Group card ---------- */
 .grp-card {
   background: var(--xpy-card-bg);
+  -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
   border: 1px solid var(--xpy-border);
   border-radius: var(--xpy-radius);
@@ -274,6 +277,7 @@
   border-radius: 30px;
   font-size: 0.65rem;
   font-weight: 600;
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(255,255,255,0.15);
   z-index: 2;
@@ -294,6 +298,7 @@
   font-weight: 600;
   background: rgba(245, 158, 11, 0.85);
   color: white;
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(255,255,255,0.15);
   z-index: 2;
@@ -852,6 +857,7 @@ html[data-theme="light"] .modal-footer .btn-secondary {
   .modal-dialog-scrollable .modal-body {
     max-height: none !important;
     overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
     flex: 1 1 auto !important;
   }
   .modal-footer {
@@ -926,6 +932,7 @@ html[data-theme="light"] .grp-upload i {
   #grpPendingModal .modal-body {
     flex: 1 1 auto !important;
     overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
     max-height: none !important;
   }
 }
@@ -1006,6 +1013,7 @@ html[data-theme="light"] .grp-upload i {
 /* ---------- Desktop header ---------- */
 .gv-header {
   background: var(--xpy-card-bg);
+  -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   border-radius: var(--xpy-radius);
   margin-bottom: 20px;
@@ -1074,6 +1082,7 @@ html[data-theme="light"] .grp-upload i {
   text-transform: uppercase;
   letter-spacing: 0.3px;
   background: rgba(0,0,0,0.4);
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
   border: 1px solid rgba(255,255,255,0.15);
   color: white;
@@ -1382,6 +1391,7 @@ html[data-theme="light"] .grp-upload i {
   gap: 4px;
   max-height: 300px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .gv-member-item {
   display: flex;

@@ -4,6 +4,48 @@
 {% block title %}Feed | XAPYX{% endblock %}
 
 {% block extra_css %}
+<style>
+  .post-media,
+  .post-image-container,
+  .post-media-slider,
+  .slider-container,
+  .slider-item,
+  .xapyx-slider-item {
+    position: relative;
+    overflow: hidden;
+  }
+  .post-media-blur-bg,
+  .slider-blur-bg,
+  .post-blur-bg,
+  .post-image-blur-bg {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    filter: blur(25px) brightness(0.5) !important;
+    -webkit-filter: blur(25px) brightness(0.5) !important;
+    opacity: 0.6 !important;
+    pointer-events: none !important;
+    z-index: 1 !important;
+    transform: scale(1.15) !important;
+  }
+  .post-image,
+  .slider-image,
+  .slider-item img:not(.post-media-blur-bg):not(.slider-blur-bg):not(.post-blur-bg):not(.post-image-blur-bg),
+  .xapyx-slider-item img:not(.post-media-blur-bg):not(.slider-blur-bg):not(.post-blur-bg):not(.post-image-blur-bg),
+  .post-media img:not(.post-media-blur-bg):not(.slider-blur-bg):not(.post-blur-bg):not(.post-image-blur-bg),
+  .post-image-container img:not(.post-media-blur-bg):not(.slider-blur-bg):not(.post-blur-bg):not(.post-image-blur-bg) {
+    position: relative !important;
+    z-index: 2 !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: 550px !important;
+    object-fit: contain !important;
+    display: block !important;
+    margin: 0 auto !important;
+  }
+</style>
 {% endblock %}
 
 {% block content %}

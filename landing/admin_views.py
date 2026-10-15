@@ -56,23 +56,39 @@ def _verify_admin_password(plain_password, password_hash):
 
 
 def _get_base_metrics():
-    tickets_total = SupportTicket.objects.count()
-    tickets_open = SupportTicket.objects.filter(status='open').count()
-    tickets_in_progress = SupportTicket.objects.filter(status='in_progress').count()
-    tickets_pending = SupportTicket.objects.filter(status='pending').count()
-    tickets_resolved = SupportTicket.objects.filter(status='resolved').count()
-    tickets_closed = SupportTicket.objects.filter(status='closed').count()
-    tickets_critical = SupportTicket.objects.filter(urgency='critical').count()
-    users_total = Auth.objects.count()
+    with connection.cursor() as cur:
+        cur.execute("""
+            SELECT
+                COUNT(*),
+                SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END),
+                SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END),
+                SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END),
+                SUM(CASE WHEN status = 'resolved' THEN 1 ELSE 0 END),
+                SUM(CASE WHEN status = 'closed' THEN 1 ELSE 0 END),
+                SUM(CASE WHEN urgency = 'critical' THEN 1 ELSE 0 END),
+                SUM(CASE WHEN urgency = 'high' THEN 1 ELSE 0 END),
+                SUM(CASE WHEN urgency = 'medium' THEN 1 ELSE 0 END),
+                SUM(CASE WHEN urgency = 'low' THEN 1 ELSE 0 END)
+            FROM support_tickets
+        """)
+        row = cur.fetchone() or (0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+
+        cur.execute("SELECT COUNT(*) FROM auth")
+        u_row = cur.fetchone()
+        users_total = u_row[0] if u_row else 0
+
     return {
-        'tickets_total': tickets_total,
-        'tickets_open': tickets_open,
-        'tickets_in_progress': tickets_in_progress,
-        'tickets_pending': tickets_pending,
-        'tickets_resolved': tickets_resolved,
-        'tickets_closed': tickets_closed,
-        'tickets_critical': tickets_critical,
-        'users_total': users_total,
+        'tickets_total': int(row[0] or 0),
+        'tickets_open': int(row[1] or 0),
+        'tickets_in_progress': int(row[2] or 0),
+        'tickets_pending': int(row[3] or 0),
+        'tickets_resolved': int(row[4] or 0),
+        'tickets_closed': int(row[5] or 0),
+        'tickets_critical': int(row[6] or 0),
+        'tickets_high': int(row[7] or 0),
+        'tickets_medium': int(row[8] or 0),
+        'tickets_low': int(row[9] or 0),
+        'users_total': int(users_total or 0),
     }
 
 
@@ -161,6 +177,7 @@ def admin_dashboard(request):
     latest_users = Auth.objects.order_by('-created_at')[:5]
 
     context = {
+        'active_page': 'dashboard',
         'admin_name': request.session.get('admin_name', 'Admin'),
         'admin_role': request.session.get('admin_role', 'admin'),
         'admin_email': request.session.get('admin_email', ''),
@@ -263,6 +280,7 @@ def admin_support_view(request):
         })
 
     context = {
+        'active_page': 'support',
         'admin_id': request.session.get('admin_id'),
         'admin_name': request.session.get('admin_name', 'Admin'),
         'admin_role': request.session.get('admin_role', 'admin'),
@@ -296,6 +314,7 @@ def api_admin_support(request):
     try:
         if action == 'get_all_tickets':
             status_filter = (request.POST.get('status') or request.GET.get('status') or 'all').strip()
+            priority_filter = (request.POST.get('priority') or request.GET.get('priority') or request.POST.get('urgency') or request.GET.get('urgency') or 'all').strip()
             search_q = (request.POST.get('search') or request.GET.get('search') or '').strip()
             try:
                 limit = int(request.POST.get('limit') or request.GET.get('limit') or 100)
@@ -307,12 +326,17 @@ def api_admin_support(request):
             params = []
 
             if status_filter and status_filter != 'all':
-                if status_filter == 'critical':
+                if status_filter in ('critical', 'high', 'medium', 'low'):
                     where_clauses.append("st.urgency = %s")
-                    params.append('critical')
+                    params.append(status_filter)
                 else:
                     where_clauses.append("st.status = %s")
                     params.append(status_filter)
+
+            if priority_filter and priority_filter != 'all':
+                if priority_filter in ('critical', 'high', 'medium', 'low'):
+                    where_clauses.append("st.urgency = %s")
+                    params.append(priority_filter)
 
             if search_q:
                 where_clauses.append(
@@ -540,6 +564,18 @@ def api_admin_support(request):
                 except Exception:
                     pass
 
+                try:
+                    from landing.push_notifications import send_web_push
+                    send_web_push(
+                        user_id=target_user_id,
+                        title='Support Team Replied',
+                        body=f'{ticket_subject}: {message[:100]}',
+                        url='/support/',
+                        tag=f'support_{ticket_id}'
+                    )
+                except Exception:
+                    pass
+
             return JsonResponse({
                 'success': True,
                 'message_id': message_id,
@@ -559,16 +595,53 @@ def api_admin_support(request):
                 return JsonResponse({'success': False, 'error': 'Invalid ticket ID or status'}, status=400)
 
             with connection.cursor() as cur:
+                cur.execute("SELECT user_id, subject FROM support_tickets WHERE id = %s", [ticket_id])
+                _t = cur.fetchone()
                 cur.execute("""
                     UPDATE support_tickets
                     SET status = %s, updated_at = NOW()
                     WHERE id = %s
                 """, [new_status, ticket_id])
 
+            if _t and _t[0]:
+                try:
+                    from landing.push_notifications import send_web_push
+                    send_web_push(
+                        user_id=_t[0],
+                        title='Support Ticket Updated',
+                        body=f"Your ticket '{_t[1] or ticket_id}' status is now {new_status.replace('_', ' ').capitalize()}.",
+                        url='/support/',
+                        tag=f'support_{ticket_id}'
+                    )
+                except Exception:
+                    pass
+
             return JsonResponse({
                 'success': True,
                 'message': 'Status updated successfully',
                 'new_status': new_status,
+                'metrics': _get_base_metrics(),
+            })
+
+        elif action in ('update_ticket_urgency', 'update_ticket_priority', 'update_ticket_criticality'):
+            ticket_id = int(request.POST.get('ticket_id') or 0)
+            new_urgency = (request.POST.get('urgency') or request.POST.get('priority') or request.POST.get('criticality') or '').strip().lower()
+            valid_urgencies = {'low', 'medium', 'high', 'critical'}
+
+            if not ticket_id or new_urgency not in valid_urgencies:
+                return JsonResponse({'success': False, 'error': 'Invalid ticket ID or priority/urgency'}, status=400)
+
+            with connection.cursor() as cur:
+                cur.execute("""
+                    UPDATE support_tickets
+                    SET urgency = %s, updated_at = NOW()
+                    WHERE id = %s
+                """, [new_urgency, ticket_id])
+
+            return JsonResponse({
+                'success': True,
+                'message': 'Priority updated successfully',
+                'new_urgency': new_urgency,
                 'metrics': _get_base_metrics(),
             })
 
@@ -793,6 +866,8 @@ def admin_users_view(request):
     total_pages = max(1, (total_filtered + per_page - 1) // per_page)
 
     context = {
+        'active_page': 'dashboard',
+        'active_page': 'users',
         'admin_name': request.session.get('admin_name', 'Admin'),
         'admin_role': request.session.get('admin_role', 'admin'),
         'admin_email': request.session.get('admin_email', ''),
@@ -976,6 +1051,7 @@ def admin_reports_view(request):
             pass
 
     context = {
+        'active_page': 'dashboard',
         'admin_name': request.session.get('admin_name', 'Admin'),
         'admin_role': request.session.get('admin_role', 'admin'),
         'admin_email': request.session.get('admin_email', ''),
@@ -1012,6 +1088,7 @@ def admin_logs_view(request):
         distinct_actions = [r[0] for r in cur.fetchall() if r[0]]
 
     context = {
+        'active_page': 'dashboard',
         'admin_name': request.session.get('admin_name', 'Admin'),
         'admin_role': request.session.get('admin_role', 'admin'),
         'admin_email': request.session.get('admin_email', ''),
@@ -1024,30 +1101,318 @@ def admin_logs_view(request):
     return render(request, 'admin_portal/logs.html', context)
 
 
+def _store_image_url(key):
+    if not key:
+        return '/static/images/products/product.jpg'
+    key = str(key).strip()
+    if key.startswith('http://') or key.startswith('https://') or key.startswith('/static/'):
+        return key
+    clean = key if key.startswith('uploads/') else f'uploads/store/{key}'
+    return f"https://s3.eu-west-1.amazonaws.com/xapyx.com-media/{clean}"
+
+
+DEFAULT_STORE_CATEGORIES = ['Electronics', 'Sports', 'Books', 'Fashion', 'Home', 'Vehicles']
+
+
 @admin_required
-def admin_store_placeholder_view(request):
+def admin_store_view(request):
     """
-    GET /portal-admin/store/ -- Clean Store overview page showing live product/category counts.
+    GET/POST /portal-admin/store/ -- Store & Marketplace moderation, inventory review, and category management.
     """
-    products_count = 0
-    categories_count = 0
+    msg = None
+    err = None
+
+    # Handle POST Actions (approve, reject, delete, add_category, delete_category)
+    if request.method == 'POST':
+        action = (request.POST.get('action') or '').strip()
+
+        if action == 'approve':
+            product_id = request.POST.get('product_id')
+            if product_id:
+                with connection.cursor() as cur:
+                    cur.execute("UPDATE products SET status = 'approved', updated_at = NOW() WHERE id = %s", [product_id])
+                _log_admin_action(request, 'store_product_approve', f"Approved product #{product_id}")
+                msg = f"Product #{product_id} approved successfully."
+            else:
+                err = "Product ID is required."
+
+        elif action == 'reject':
+            product_id = request.POST.get('product_id')
+            if product_id:
+                with connection.cursor() as cur:
+                    cur.execute("UPDATE products SET status = 'rejected', updated_at = NOW() WHERE id = %s", [product_id])
+                _log_admin_action(request, 'store_product_reject', f"Rejected product #{product_id}")
+                msg = f"Product #{product_id} has been marked as rejected."
+            else:
+                err = "Product ID is required."
+
+        elif action == 'delete':
+            product_id = request.POST.get('product_id')
+            if product_id:
+                with connection.cursor() as cur:
+                    cur.execute("DELETE FROM products WHERE id = %s", [product_id])
+                _log_admin_action(request, 'store_product_delete', f"Deleted product #{product_id}")
+                msg = f"Product #{product_id} deleted permanently."
+            else:
+                err = "Product ID is required."
+
+        elif action == 'add_category':
+            cat_name = (request.POST.get('category_name') or request.POST.get('name') or '').strip()
+            if cat_name:
+                with connection.cursor() as cur:
+                    cur.execute("SELECT id FROM product_categories WHERE LOWER(name) = LOWER(%s)", [cat_name])
+                    if cur.fetchone():
+                        err = f"Category '{cat_name}' already exists."
+                    else:
+                        cat_img = '/static/images/products/product.jpg'
+                        if 'category_image' in request.FILES:
+                            file = request.FILES['category_image']
+                            key = _upload_to_s3(file, folder='uploads/store/categories')
+                            if key:
+                                cat_img = key
+                        cur.execute("INSERT INTO product_categories (name, image) VALUES (%s, %s)", [cat_name, cat_img])
+                        _log_admin_action(request, 'store_category_add', f"Added category '{cat_name}'")
+                        msg = f"Category '{cat_name}' added successfully."
+            else:
+                err = "Category name cannot be empty."
+
+        elif action == 'delete_category':
+            cat_id = request.POST.get('category_id')
+            if cat_id:
+                with connection.cursor() as cur:
+                    cur.execute("DELETE FROM product_categories WHERE id = %s", [cat_id])
+                _log_admin_action(request, 'store_category_delete', f"Deleted category #{cat_id}")
+                msg = f"Category #{cat_id} deleted."
+            else:
+                err = "Category ID is required."
+
+        else:
+            err = f"Unknown action: {action}"
+
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('Accept', ''):
+            return JsonResponse({'success': True if not err else False, 'message': msg, 'error': err})
+
+    # Filters & Pagination
+    search_q = (request.GET.get('q') or '').strip()
+    status_filter = (request.GET.get('status') or 'all').strip()
+    category_filter = (request.GET.get('category') or 'all').strip()
+
+    try:
+        page = max(1, int(request.GET.get('page') or 1))
+    except (TypeError, ValueError):
+        page = 1
+    per_page = 20
+    offset = (page - 1) * per_page
+
+    where_clauses = ["1=1"]
+    params = []
+
+    if search_q:
+        where_clauses.append("(p.title LIKE %s OR p.desc LIKE %s OR p.location LIKE %s OR a.username LIKE %s OR CAST(p.id AS CHAR) LIKE %s OR p.ad_id LIKE %s)")
+        like_q = f"%{search_q}%"
+        params.extend([like_q, like_q, like_q, like_q, like_q, like_q])
+
+    if status_filter and status_filter != 'all':
+        if status_filter == 'sold':
+            where_clauses.append("p.title LIKE %s")
+            params.append('[SOLD]%')
+        else:
+            where_clauses.append("p.status = %s")
+            params.append(status_filter)
+
+    if category_filter and category_filter != 'all':
+        where_clauses.append("p.category = %s")
+        params.append(category_filter)
+
+    where_sql = " AND ".join(where_clauses)
+
     with connection.cursor() as cur:
-        for tbl, attr in [('store_products', 'p'), ('store_categories', 'c')]:
-            try:
-                cur.execute(f"SELECT COUNT(*) FROM {tbl}")
-                if attr == 'p':
-                    products_count = cur.fetchone()[0] or 0
-                else:
-                    categories_count = cur.fetchone()[0] or 0
-            except Exception:
-                pass
+        # Pre-seed categories if empty
+        cur.execute("SELECT COUNT(*) FROM product_categories")
+        cat_count_row = cur.fetchone()
+        if not cat_count_row or cat_count_row[0] == 0:
+            for def_cat in DEFAULT_STORE_CATEGORIES:
+                cur.execute("INSERT IGNORE INTO product_categories (name, image) VALUES (%s, %s)",
+                            [def_cat, '/static/images/products/product.jpg'])
+
+        # Aggregate counts
+        cur.execute("SELECT COUNT(*) FROM products")
+        products_count = cur.fetchone()[0] or 0
+
+        cur.execute("SELECT COUNT(*) FROM product_categories")
+        categories_count = cur.fetchone()[0] or 0
+
+        cur.execute("SELECT COUNT(*) FROM products WHERE status = 'pending'")
+        pending_count = cur.fetchone()[0] or 0
+
+        cur.execute("SELECT COUNT(*) FROM products WHERE status = 'approved'")
+        approved_count = cur.fetchone()[0] or 0
+
+        cur.execute("SELECT COUNT(*) FROM products WHERE status = 'rejected'")
+        rejected_count = cur.fetchone()[0] or 0
+
+        cur.execute("SELECT COUNT(*) FROM products WHERE title LIKE '[SOLD]%'")
+        sold_count = cur.fetchone()[0] or 0
+
+        # Filtered total
+        cur.execute(f"""
+            SELECT COUNT(*)
+            FROM products p
+            LEFT JOIN auth a ON p.user_id = a.id
+            WHERE {where_sql}
+        """, params)
+        total_filtered = cur.fetchone()[0] or 0
+
+        # Paginated product list
+        cur.execute(f"""
+            SELECT p.id, p.ad_id, p.title, p.price, p.location, p.category, p.status, p.image,
+                   p.created_at, p.updated_at, p.user_id, a.username, a.name AS user_name, a.picture AS user_picture
+            FROM products p
+            LEFT JOIN auth a ON p.user_id = a.id
+            WHERE {where_sql}
+            ORDER BY (p.status = 'pending') DESC, p.created_at DESC
+            LIMIT %s OFFSET %s
+        """, params + [per_page, offset])
+
+        products_list = []
+        for r in cur.fetchall():
+            raw_images = [img.strip() for img in (r[7] or '').split(',') if img.strip()]
+            first_img = _store_image_url(raw_images[0] if raw_images else '')
+
+            raw_pic = r[13]
+            if raw_pic:
+                user_pic = raw_pic if (raw_pic.startswith('http') or raw_pic.startswith('/')) else f"https://s3.eu-west-1.amazonaws.com/xapyx.com-media/uploads/{raw_pic}"
+            else:
+                user_pic = '/static/images/avatars/default.png'
+
+            t_val = r[2] or ''
+            is_sold = t_val.startswith('[SOLD] ')
+            c_title = t_val[7:] if is_sold else t_val
+
+            products_list.append({
+                'id': r[0],
+                'ad_id': r[1],
+                'title': c_title,
+                'full_title': t_val,
+                'is_sold': is_sold,
+                'price': float(r[3] or 0),
+                'location': r[4] or 'Unspecified',
+                'category': r[5] or 'General',
+                'status': r[6] or 'pending',
+                'first_image': first_img,
+                'created_at': r[8],
+                'updated_at': r[9],
+                'user_id': r[10],
+                'username': r[11] or f'user_{r[10]}',
+                'user_name': r[12] or r[11] or 'Unknown',
+                'user_picture': user_pic,
+            })
+
+        # Category list with product count
+        cur.execute("""
+            SELECT pc.id, pc.name, pc.image,
+                   (SELECT COUNT(*) FROM products p WHERE p.category = pc.name) AS product_count
+            FROM product_categories pc
+            ORDER BY pc.name ASC
+        """)
+        categories_list = []
+        for crow in cur.fetchall():
+            c_img = crow[2]
+            if c_img and not (c_img.startswith('http') or c_img.startswith('/')):
+                c_img = _store_image_url(c_img)
+            categories_list.append({
+                'id': crow[0],
+                'name': crow[1],
+                'image': c_img or '/static/images/products/product.jpg',
+                'product_count': crow[3] or 0
+            })
+
+    total_pages = max(1, (total_filtered + per_page - 1) // per_page)
+    has_next = page < total_pages
+    has_prev = page > 1
+
+    # Fetch store audit logs
+    with connection.cursor() as cur:
+        cur.execute("""
+            SELECT id, admin_id, admin_name, action, details, ip_address, created_at
+            FROM admin_logs
+            WHERE action LIKE 'store_product_%' OR action LIKE 'store_category_%'
+            ORDER BY created_at DESC LIMIT 50
+        """)
+        store_audit_logs = []
+        for arow in cur.fetchall():
+            store_audit_logs.append({
+                'id': arow[0],
+                'admin_id': arow[1],
+                'admin_name': arow[2] or 'System',
+                'action': arow[3],
+                'details': arow[4] or '',
+                'ip_address': arow[5] or '',
+                'created_at': arow[6],
+            })
 
     context = {
+        'active_page': 'dashboard',
         'admin_name': request.session.get('admin_name', 'Admin'),
         'admin_role': request.session.get('admin_role', 'admin'),
         'admin_email': request.session.get('admin_email', ''),
         'metrics': _get_base_metrics(),
         'products_count': products_count,
         'categories_count': categories_count,
+        'pending_count': pending_count,
+        'approved_count': approved_count,
+        'rejected_count': rejected_count,
+        'sold_count': sold_count,
+        'store_audit_logs': store_audit_logs,
+        'products_list': products_list,
+        'categories_list': categories_list,
+        'total_filtered': total_filtered,
+        'page': page,
+        'total_pages': total_pages,
+        'has_next': has_next,
+        'has_prev': has_prev,
+        'search_q': search_q,
+        'status_filter': status_filter,
+        'category_filter': category_filter,
+        'msg': msg,
+        'err': err,
     }
     return render(request, 'admin_portal/store.html', context)
+
+
+@admin_required
+def admin_store_approve_view(request, product_id):
+    if request.method == 'POST':
+        with connection.cursor() as cur:
+            cur.execute("UPDATE products SET status = 'approved', updated_at = NOW() WHERE id = %s", [product_id])
+        _log_admin_action(request, 'store_product_approve', f"Approved product #{product_id}")
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': True, 'message': f"Product #{product_id} approved."})
+    return redirect('/portal-admin/store/')
+
+
+@admin_required
+def admin_store_reject_view(request, product_id):
+    if request.method == 'POST':
+        with connection.cursor() as cur:
+            cur.execute("UPDATE products SET status = 'rejected', updated_at = NOW() WHERE id = %s", [product_id])
+        _log_admin_action(request, 'store_product_reject', f"Rejected product #{product_id}")
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': True, 'message': f"Product #{product_id} rejected."})
+    return redirect('/portal-admin/store/')
+
+
+@admin_required
+def admin_store_delete_view(request, product_id):
+    if request.method == 'POST':
+        with connection.cursor() as cur:
+            cur.execute("DELETE FROM products WHERE id = %s", [product_id])
+        _log_admin_action(request, 'store_product_delete', f"Deleted product #{product_id}")
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': True, 'message': f"Product #{product_id} deleted."})
+    return redirect('/portal-admin/store/')
+
+
+# Backward-compatible alias
+admin_store_placeholder_view = admin_store_view
+

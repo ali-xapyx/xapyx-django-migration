@@ -61,7 +61,7 @@ def _refresh_unread(user_id):
         with connection.cursor() as cur:
             cur.execute(
                 "SELECT COUNT(*) FROM notifications "
-                "WHERE user_id = %s AND is_read = 0 "
+                "WHERE user_id = %s AND COALESCE(is_read, 0) = 0 "
                 "AND (expires_at IS NULL OR expires_at > NOW())",
                 [user_id]
             )

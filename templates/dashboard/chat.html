@@ -4,7 +4,7 @@
 {% block title %}Chat | XAPYX{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=11">
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=13">
 {% endblock %}
 
 {% block content %}
@@ -49,10 +49,33 @@
 
             <!-- Conversations Scrollable List -->
             <div class="page-inbox-conv-list" id="conversationsList">
+              {% if conversations %}
+                {% for chat in conversations %}
+                <div class="page-inbox-conv-item {% if chat.friend_id == selected_friend_id %}active{% endif %}" data-friend-id="{{ chat.user_id }}" onclick="window.__selectChat({{ chat.user_id }})">
+                  <div class="user-avatar-wrapper" style="position: relative; display: inline-block;">
+                    <img src="{{ chat.avatar }}" alt="{{ chat.name }}" class="chat-user-avatar page-inbox-conv-avatar" onerror="this.src='/static/images/avatars/default.png'">
+                    <span class="status-dot {% if chat.is_online %}online{% else %}offline{% endif %}" data-user-id="{{ chat.user_id }}"></span>
+                  </div>
+                  <div class="page-inbox-conv-info">
+                    <div class="page-inbox-conv-top">
+                      <span class="page-inbox-conv-name">{{ chat.name }}</span>
+                      <span class="page-inbox-conv-time">{{ chat.time_ago }}</span>
+                    </div>
+                    <div class="page-inbox-conv-bottom">
+                      <span class="page-inbox-conv-last-msg">{{ chat.last_message }}</span>
+                      {% if chat.unread_count %}
+                      <span class="page-inbox-conv-badge">{{ chat.unread_count }}</span>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+              {% else %}
               <div class="page-inbox-loading py-5 text-center">
                 <i class="fas fa-spinner fa-spin fa-2x"></i>
                 <p class="mt-2 text-muted">Loading chats...</p>
               </div>
+              {% endif %}
             </div>
 
           </aside>
@@ -69,14 +92,14 @@
                 <button type="button" class="page-inbox-toggle-btn d-none" onclick="openChatSidebar()" aria-label="Open conversation list">
                   <i class="fas fa-bars"></i>
                 </button>
-                <div class="page-inbox-header-avatar-wrap position-relative">
-                  <img id="chatAvatar" class="page-inbox-header-avatar" src="{% static 'images/avatars/default.png' %}" alt="Avatar">
-                  <span id="chatOnlineDot" class="chat-online-indicator d-none"></span>
+                <div class="user-avatar-wrapper page-inbox-header-avatar-wrap position-relative" style="position: relative; display: inline-block;">
+                  <img id="chatAvatar" class="chat-user-avatar page-inbox-header-avatar" src="{% static 'images/avatars/default.png' %}" alt="Avatar">
+                  <span id="chatHeaderDot" class="status-dot offline" data-user-id=""></span>
                 </div>
-                <div class="page-inbox-header-info">
-                  <h3 id="chatName" class="page-inbox-header-name">Conversation</h3>
+                <div class="page-inbox-header-info chat-header-user-info">
+                  <span id="chatHeaderName" class="page-inbox-header-name chat-header-name h3 mb-0">Conversation</span>
                   <div class="page-inbox-header-meta">
-                    <span id="chatStatus" class="page-inbox-header-status text-muted">Active</span>
+                    <span id="chatHeaderStatus" class="page-inbox-header-status chat-header-status text-muted">Offline</span>
                   </div>
                 </div>
               </div>
@@ -205,5 +228,5 @@
 <!-- Firebase RTDB SDK for real-time DM listeners -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-<script src="{% static 'js/chat.js' %}?v=3"></script>
+<script src="{% static 'js/chat.js' %}?v=4"></script>
 {% endblock %}

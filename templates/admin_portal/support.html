@@ -31,6 +31,7 @@
     grid-template-columns: 370px 1fr;
     gap: 0;
     height: calc(100vh - 255px);
+    height: calc(100dvh - 255px);
     min-height: 560px;
     background: var(--admsup-card-bg);
     border: 1px solid var(--admsup-border);
@@ -90,6 +91,7 @@
   .admsup-tickets-list {
     flex: 1;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     padding: 0.75rem;
   }
 
@@ -154,15 +156,25 @@
   .admsup-status-pending { background: #f3e8ff; color: #6b21a8; }
 
   .admsup-urgency-dot {
-    font-size: 0.68rem;
-    font-weight: 600;
-    padding: 0.12rem 0.45rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.16rem 0.55rem;
     border-radius: 6px;
+    letter-spacing: 0.3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    text-transform: capitalize;
   }
-  .urgency-critical { background: #fee2e2; color: #991b1b; }
-  .urgency-high { background: #ffedd5; color: #9a3412; }
-  .urgency-medium { background: var(--admsup-surface-3); color: var(--admsup-text-secondary); }
-  .urgency-low { background: var(--admsup-surface-2); color: var(--admsup-text-muted); }
+  .urgency-critical { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+  .urgency-high { background: #ffedd5; color: #c2410c; border: 1px solid #fdba74; }
+  .urgency-medium { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+  .urgency-low { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+
+  body.admin-dark .urgency-critical { background: rgba(239, 68, 68, 0.2); color: #f87171; border-color: rgba(239, 68, 68, 0.4); }
+  body.admin-dark .urgency-high { background: rgba(249, 115, 22, 0.2); color: #fb923c; border-color: rgba(249, 115, 22, 0.4); }
+  body.admin-dark .urgency-medium { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border-color: rgba(59, 130, 246, 0.35); }
+  body.admin-dark .urgency-low { background: rgba(148, 163, 184, 0.18); color: #94a3b8; border-color: rgba(148, 163, 184, 0.28); }
 
   /* Right Chat Area */
   .admsup-chat-area {
@@ -204,6 +216,7 @@
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     overflow-x: hidden;
     padding: 1.25rem;
     background: var(--admsup-surface-2);
@@ -377,11 +390,44 @@
     display: flex;
   }
 
+  /* Support Ticket Modal Mobile Fix */
+  .modal-dialog {
+    max-height: 90vh;
+  }
+  .modal-content {
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .modal-body {
+    max-height: 85vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .modal-footer {
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 16px)) !important;
+  }
+  @media (max-width: 767.98px) {
+    .modal-dialog {
+      max-height: 85vh;
+      margin: 12px auto;
+      width: calc(100% - 24px);
+    }
+    .modal-content {
+      max-height: 85vh;
+    }
+    .modal-body {
+      max-height: calc(85vh - 125px) !important;
+      overflow-y: auto !important;
+    }
+  }
+
   /* Mobile Responsive View */
   @media (max-width: 767.98px) {
     .admsup-chat-container {
       grid-template-columns: 1fr;
       height: calc(100vh - 200px);
+      height: calc(100dvh - 200px);
     }
     .admsup-sidebar.mobile-hidden {
       display: none !important;
@@ -462,20 +508,27 @@
         <button type="button" class="admsup-filter-tab" data-status="pending">Pending</button>
         <button type="button" class="admsup-filter-tab" data-status="resolved">Resolved</button>
         <button type="button" class="admsup-filter-tab" data-status="critical">Critical</button>
+        <button type="button" class="admsup-filter-tab" data-status="high">High</button>
       </div>
 
-      <!-- Search + Select Filter -->
+      <!-- Search + Select Filters -->
       <div class="d-flex gap-2">
-        <select id="admsupStatusFilter" class="form-select form-select-sm admsup-form-control" style="max-width: 130px;">
-          <option value="all">All Status</option>
+        <select id="admsupStatusFilter" class="form-select form-select-sm admsup-form-control" style="max-width: 110px;" title="Filter by Status">
+          <option value="all">Status</option>
           <option value="open">Open</option>
           <option value="in_progress">In Progress</option>
           <option value="pending">Pending</option>
           <option value="resolved">Resolved</option>
           <option value="closed">Closed</option>
-          <option value="critical">Critical</option>
         </select>
-        <div class="input-group input-group-sm">
+        <select id="admsupPriorityFilter" class="form-select form-select-sm admsup-form-control" style="max-width: 110px;" title="Filter by Priority">
+          <option value="all">Priority</option>
+          <option value="critical">Critical</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+        <div class="input-group input-group-sm flex-grow-1">
           <span class="input-group-text admsup-form-control"><i class="bi bi-search"></i></span>
           <input type="text" id="admsupTicketSearch" class="form-control admsup-form-control" placeholder="Search user, #id, subject...">
         </div>
@@ -549,15 +602,26 @@
               <div class="small mt-1" style="color: var(--admsup-text-muted);" id="admsupTicketMeta"></div>
             </div>
           </div>
-          <div class="d-flex gap-2 align-items-center">
-            <label for="admsupTicketStatus" class="small fw-semibold d-none d-sm-inline" style="color: var(--admsup-text-muted);">Status:</label>
-            <select id="admsupTicketStatus" class="form-select form-select-sm admsup-form-control w-auto fw-semibold">
-              <option value="open">Open</option>
-              <option value="in_progress">In Progress</option>
-              <option value="pending">Pending</option>
-              <option value="resolved">Resolved</option>
-              <option value="closed">Closed</option>
-            </select>
+          <div class="d-flex gap-3 align-items-center flex-wrap">
+            <div class="d-flex gap-1 align-items-center">
+              <label for="admsupTicketUrgency" class="small fw-semibold d-none d-sm-inline" style="color: var(--admsup-text-muted);">Priority:</label>
+              <select id="admsupTicketUrgency" class="form-select form-select-sm admsup-form-control w-auto fw-semibold" title="Update Priority">
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
+              </select>
+            </div>
+            <div class="d-flex gap-1 align-items-center">
+              <label for="admsupTicketStatus" class="small fw-semibold d-none d-sm-inline" style="color: var(--admsup-text-muted);">Status:</label>
+              <select id="admsupTicketStatus" class="form-select form-select-sm admsup-form-control w-auto fw-semibold" title="Update Status">
+                <option value="open">Open</option>
+                <option value="in_progress">In Progress</option>
+                <option value="pending">Pending</option>
+                <option value="resolved">Resolved</option>
+                <option value="closed">Closed</option>
+              </select>
+            </div>
           </div>
         </div>
         <div class="mt-2 pt-2 border-top small d-flex flex-wrap gap-3" style="border-color: var(--admsup-border) !important; color: var(--admsup-text-muted);" id="admsupUserInfo"></div>

@@ -66,8 +66,8 @@
             <!-- Chat Header -->
             <header class="page-inbox-chat-header" id="chatHeader" style="display: none;">
               <div class="d-flex align-items-center gap-3">
-                <button type="button" class="page-inbox-toggle-btn d-md-none" onclick="openPageInboxSidebar()" aria-label="Open conversation list">
-                  <i class="fas fa-bars"></i>
+                <button type="button" class="page-inbox-back-btn d-md-none" id="pageInboxBackBtn" onclick="closeMobileChat()" aria-label="Back to conversations">
+                  <i class="fas fa-arrow-left me-1"></i><span>Back</span>
                 </button>
                 <div class="page-inbox-header-avatar-wrap">
                   <img id="chatAvatar" class="page-inbox-header-avatar" src="{% static 'images/avatars/default.png' %}" alt="Avatar">
@@ -145,5 +145,5 @@
 <!-- Firebase App & Database Compat SDKs -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-<script src="{% static 'js/page_inbox.js' %}?v=1"></script>
+<script src="{% static 'js/page_inbox.js' %}?v=2"></script>
 {% endblock %}
