@@ -39,8 +39,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // ============================================================
 // CSRF TOKEN — Django requires this on every POST
 // ============================================================
-function getCsrfToken() {
-    var name = 'csrftoken';
+function getCookie(name) {
     var cookieValue = null;
     if (document.cookie && document.cookie !== '') {
         var cookies = document.cookie.split(';');
@@ -53,6 +52,10 @@ function getCsrfToken() {
         }
     }
     return cookieValue;
+}
+
+function getCsrfToken() {
+    return getCookie('csrftoken');
 }
 
 // ============================================================
@@ -73,7 +76,7 @@ let activeTextarea = null;
 let videoObserver = null;
 let postObserver = null;
 let viewTimers = new Map();
-const VIEW_DURATION = 4000;
+const VIEW_DURATION = 5000;
 
 // ============================================================
 // INITIALIZATION
@@ -163,7 +166,7 @@ function setupVideoScrollTracking() {
 }
 
 // ============================================================
-// POST VIEW TRACKING
+// POST VIEW TRACKING (Repeating 5-Second Intersection Observer)
 // ============================================================
 function setupPostViewTracking() {
     if (postObserver) postObserver.disconnect();
@@ -173,46 +176,63 @@ function setupPostViewTracking() {
             var postId = postElement.dataset.postId;
             var postType = postElement.dataset.source || 'user';
             if (!postId) return;
+
             if (entry.isIntersecting) {
                 if (!viewTimers.has(postId)) {
-                    var timer = setTimeout(function() {
+                    var timer = setInterval(function() {
                         recordView(postId, postType);
-                        viewTimers.delete(postId);
                     }, VIEW_DURATION);
                     viewTimers.set(postId, timer);
                 }
             } else {
                 if (viewTimers.has(postId)) {
-                    clearTimeout(viewTimers.get(postId));
+                    clearInterval(viewTimers.get(postId));
                     viewTimers.delete(postId);
                 }
             }
         });
     }, { threshold: 0.3, rootMargin: '0px 0px -50px 0px' });
-    document.querySelectorAll('.post-card-vertical').forEach(function(post) {
+
+    document.querySelectorAll('.post-card, .feed-post-item, .post-card-vertical').forEach(function(post) {
         postObserver.observe(post);
     });
 }
 
-async function recordView(postId, type) {
-    try {
-        var response = await fetch('/api/posts/view/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCsrfToken()
-            },
-            body: JSON.stringify({ post_id: postId, type: type })
-        });
-        var data = await response.json();
-        if (data.success && data.new_view_count !== undefined) {
-            var postEl = document.querySelector('.post-card-vertical[data-post-id="' + postId + '"]');
-            if (postEl) {
-                var viewEl = postEl.querySelector('.post-views-count');
-                if (viewEl) viewEl.innerHTML = '<i class="bi bi-eye"></i> ' + data.new_view_count;
+function recordView(postId, type) {
+    fetch(`/api/posts/${postId}/view/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ post_id: postId, type: type || 'user' })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success' || data.success) {
+            // Find the view count element inside this specific post card and update it
+            const postCard = document.querySelector(`[data-post-id="${postId}"]`);
+            if (postCard) {
+                const viewCountEl = postCard.querySelector('.post-views-count, .view-count');
+                if (viewCountEl) {
+                    const currentVal = parseInt((viewCountEl.textContent || '').replace(/\D/g, '') || '0', 10);
+                    const newCount = (typeof data.new_count !== 'undefined' && data.new_count !== null) ? data.new_count :
+                                     ((typeof data.views_count !== 'undefined' && data.views_count !== null) ? data.views_count :
+                                     ((typeof data.new_view_count !== 'undefined' && data.new_view_count !== null) ? data.new_view_count : currentVal + 1));
+
+                    const iconEl = viewCountEl.querySelector('i, svg');
+                    if (iconEl) {
+                        viewCountEl.innerHTML = iconEl.outerHTML + ' ' + newCount;
+                    } else if (viewCountEl.children.length > 0) {
+                        viewCountEl.innerHTML = '<i class="bi bi-eye"></i> ' + newCount;
+                    } else {
+                        viewCountEl.textContent = newCount;
+                    }
+                }
             }
         }
-    } catch (error) { console.error('Error recording view:', error); }
+    })
+    .catch(error => { console.error('Error recording view:', error); });
 }
 
 // ============================================================
@@ -392,10 +412,10 @@ function setupInfiniteScroll() {
 // ============================================================
 function renderPostSkeleton() {
     return '<div class="post-card-vertical post-skeleton" aria-hidden="true">' +
-        '<div class="post-header">' +
-            '<div class="post-author d-flex align-items-center gap-2">' +
+        '<div class="post-header feed-post-header">' +
+            '<div class="post-author post-user-info d-flex align-items-center gap-2">' +
                 '<div class="skeleton-shimmer skeleton-avatar"></div>' +
-                '<div class="post-author-info" style="flex:1;">' +
+                '<div class="post-author-info post-header-meta post-user-details" style="flex:1;">' +
                     '<div class="skeleton-shimmer skeleton-line skeleton-title"></div>' +
                     '<div class="skeleton-shimmer skeleton-line skeleton-subtitle"></div>' +
                 '</div>' +
@@ -921,7 +941,7 @@ function escapeHtml(text) {
 
 function createPostElement(post) {
     var el = document.createElement('div');
-    el.className = 'post-card-vertical';
+    el.className = 'post-card-vertical post-card feed-post-item';
     el.dataset.postId = post.id;
     el.dataset.source = post.source || 'user';
 
@@ -963,7 +983,7 @@ function createPostElement(post) {
     var userId = window.XPY_CONFIG.userId;
     var postHeader = '';
     if (post.is_page_post && post.page_info) {
-        postHeader = '<div class="post-header"><div class="post-author" onclick="window.location=\'/feed/\'"><img src="' + post.page_info.profile_image + '" data-full-src="' + post.page_info.profile_image + '" width="40" height="40" class="post-author-avatar"><div class="post-author-info"><h6>' + escapeHtml(post.page_info.title) + '</h6><span class="post-meta">Page · ' + post.time_ago + (post.is_edited ? '<span class="badge-edit">Edited</span>' : '') + '</span></div></div><div class="post-actions-dropdown"><button class="post-action-btn" onclick="togglePostActionsMenu(this, ' + post.id + ')"><i class="bi bi-three-dots-vertical"></i></button><ul class="dropdown-menu"><li><a class="dropdown-item" href="#" onclick="copyToClipboard(\'' + post.share_url + '\'); return false;"><i class="bi bi-link-45deg"></i> Copy Link</a></li></ul></div></div>';
+        postHeader = '<div class="post-header feed-post-header"><div class="post-author post-user-info" onclick="window.location=\'/feed/\'"><img src="' + post.page_info.profile_image + '" data-full-src="' + post.page_info.profile_image + '" width="44" height="44" class="post-author-avatar"><div class="post-author-info post-header-meta post-user-details"><h6>' + escapeHtml(post.page_info.title) + '</h6><span class="post-meta">Page · ' + post.time_ago + (post.is_edited ? '<span class="badge-edit">Edited</span>' : '') + '</span></div></div><div class="post-actions-dropdown"><button class="post-action-btn" onclick="togglePostActionsMenu(this, ' + post.id + ')"><i class="bi bi-three-dots-vertical"></i></button><ul class="dropdown-menu"><li><a class="dropdown-item" href="#" onclick="copyToClipboard(\'' + post.share_url + '\'); return false;"><i class="bi bi-link-45deg"></i> Copy Link</a></li></ul></div></div>';
         } else {
         var authorName = post.author ? post.author.name.split(' ')[0] : 'User';
 
@@ -978,16 +998,16 @@ function createPostElement(post) {
             avThumb = av.replace(/\.(jpg|jpeg|png|gif|webp)$/i, '_avatar.webp');
         }
 
-        postHeader = '<div class="post-header">'
+        postHeader = '<div class="post-header feed-post-header">'
             + (function() {
                 var u = (post.author && post.author.username) ? post.author.username : '';
                 return u
-                    ? '<div class="post-author" onclick="window.location=\'/user/' 
+                    ? '<div class="post-author post-user-info" onclick="window.location=\'/user/' 
                       + encodeURIComponent(u) + '/\'">'
-                    : '<div class="post-author">';
+                    : '<div class="post-author post-user-info">';
             })()
-            +   '<img src="' + avThumb + '" data-full-src="' + av + '" width="40" height="40" onerror="this.onerror=null;this.src=\'' + av + '\'" class="post-author-avatar">'
-            +   '<div class="post-author-info">'
+            +   '<img src="' + avThumb + '" data-full-src="' + av + '" width="44" height="44" onerror="this.onerror=null;this.src=\'' + av + '\'" class="post-author-avatar">'
+            +   '<div class="post-author-info post-header-meta post-user-details">'
             +     '<h6 class="post-author-name">' + escapeHtml(authorName) + '</h6>'
             +     '<span class="post-meta">' + metaLine + '</span>'
             +   '</div>'
@@ -1728,7 +1748,7 @@ window.addEventListener('beforeunload', function() {
     if (window.sentinelObserver) window.sentinelObserver.disconnect();
     if (videoObserver) videoObserver.disconnect();
     if (postObserver) postObserver.disconnect();
-    viewTimers.forEach(function(t) { clearTimeout(t); });
+    viewTimers.forEach(function(t) { clearInterval(t); });
     viewTimers.clear();
 });
 
@@ -1737,7 +1757,8 @@ window.addEventListener('beforeunload', function() {
 // ============================================================
 function applyAmbientBackground(media) {
     var sliderItem = media.closest('.slider-item, .xapyx-slider-item');
-    if (!sliderItem) return;
+    var container = media.closest('.post-media-container, .post-image-container, .feed-media, .post-media-slider, .post-media');
+    var card = media.closest('.post-card-vertical, .post-card, .feed-post-item');
     var src = '';
     if (media.tagName === 'IMG') {
         if (media.naturalWidth && media.naturalWidth >= media.naturalHeight) {
@@ -1748,12 +1769,34 @@ function applyAmbientBackground(media) {
         if (media.poster) {
             src = media.poster;
         } else {
-            sliderItem.style.setProperty('--ambient-image', 'none');
+            if (sliderItem) {
+                sliderItem.style.setProperty('--ambient-image', 'none');
+                sliderItem.style.setProperty('--post-bg-image', 'none');
+            }
+            if (container) {
+                container.style.setProperty('--post-bg-image', 'none');
+                container.style.setProperty('--ambient-image', 'none');
+            }
+            if (card) card.style.setProperty('--post-bg-image', 'none');
             return;
         }
     }
-    if (src) sliderItem.style.setProperty('--ambient-image', 'url("' + src + '")');
+    if (src) {
+        var bgVal = 'url("' + src + '")';
+        if (sliderItem) {
+            sliderItem.style.setProperty('--ambient-image', bgVal);
+            sliderItem.style.setProperty('--post-bg-image', bgVal);
+        }
+        if (container) {
+            container.style.setProperty('--post-bg-image', bgVal);
+            container.style.setProperty('--ambient-image', bgVal);
+        }
+        if (card) {
+            card.style.setProperty('--post-bg-image', bgVal);
+        }
+    }
 }
+window.applyAmbientBackground = applyAmbientBackground;
 
 function applyAllAmbientBackgrounds() {
     document.querySelectorAll('.post-media-slider img, .post-media-slider video').forEach(function(media) {

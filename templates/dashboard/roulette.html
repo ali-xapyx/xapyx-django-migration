@@ -3,13 +3,17 @@
 
 {% block title %}Chat Roulette | XAPYX{% endblock %}
 
-{% block content %}
-<div id="dashboardContainer" class="roulette-page-container roulette-container">
-  <div class="dashboard-inner roulette-inner">
-    <div class="dashboard-flex roulette-flex">
-      <div class="dashboard-main roulette-dashboard-main">
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/roulette.css' %}?v=1">
+{% endblock %}
 
-        <div class="roulette-box" id="rouletteBox">
+{% block content %}
+<div id="dashboardContainer" class="roulette-page-container roulette-container roulette-wrapper roulette-page-wrapper">
+  <div class="dashboard-inner roulette-inner roulette-wrapper">
+    <div class="dashboard-flex roulette-flex">
+      <div class="dashboard-main roulette-dashboard-main roulette-main-container">
+
+        <div class="roulette-box roulette-card roulette-chat-box" id="rouletteBox">
 
           <!-- ============================================================
                STATE 1: IDLE / LOBBY
@@ -96,42 +100,42 @@
           <!-- ============================================================
                STATE 3: MATCHED (ACTIVE CHAT PANEL)
                ============================================================ -->
-          <div id="rouletteMatchedState" class="roulette-state-view d-none">
-            <div class="roulette-chat-panel">
+          <div id="rouletteMatchedState" class="roulette-state-view roulette-chat-section d-none">
+            <div class="roulette-chat-panel roulette-wrapper">
 
               <!-- Chat Header -->
               <header class="roulette-chat-header">
-                <div class="d-flex align-items-center gap-3">
-                  <div class="roulette-avatar-wrap position-relative">
+                <div class="roulette-header-left d-flex align-items-center gap-2 min-w-0">
+                  <div class="roulette-avatar-wrap position-relative flex-shrink-0">
                     <img id="roulettePartnerAvatar" src="{% static 'images/avatars/default.png' %}" alt="Avatar" class="roulette-partner-avatar">
                     <span class="chat-online-indicator"></span>
                   </div>
-                  <div class="roulette-header-info">
-                    <h3 id="roulettePartnerName" class="roulette-header-name">Anonymous User</h3>
-                    <div class="roulette-header-meta">
+                  <div class="roulette-header-info min-w-0">
+                    <h3 id="roulettePartnerName" class="roulette-header-name text-truncate mb-0">Anonymous User</h3>
+                    <div class="roulette-header-meta d-flex align-items-center gap-1">
                       <span class="badge bg-success-subtle text-success">Connected</span>
-                      <span id="roulettePartnerUsername" class="text-muted ms-1 small">@user</span>
+                      <span id="roulettePartnerUsername" class="text-muted small text-truncate">@user</span>
                     </div>
                   </div>
                 </div>
 
-                <div class="roulette-header-actions d-flex align-items-center gap-2">
+                <div class="roulette-header-actions d-flex align-items-center gap-2 flex-shrink-0">
                   <button type="button" id="reportChatBtn" class="btn btn-outline-warning btn-sm roulette-btn-report" title="Report User" data-bs-toggle="modal" data-bs-target="#rouletteReportModal">
                     <i class="fas fa-flag"></i>
                   </button>
                   <button type="button" id="nextChatBtn" class="btn btn-primary btn-sm roulette-btn-next" title="Next Partner">
                     <i class="fas fa-forward me-1"></i>
-                    <span>Next</span>
+                    <span class="d-none d-sm-inline">Next</span>
                   </button>
-                  <button type="button" id="leaveChatBtn" class="btn btn-outline-danger btn-sm" title="Leave Chat">
+                  <button type="button" id="leaveChatBtn" class="btn btn-outline-danger btn-sm roulette-btn-leave" title="Leave Chat">
                     <i class="fas fa-sign-out-alt me-1"></i>
-                    <span>Leave Chat</span>
+                    <span class="d-none d-sm-inline">Leave</span>
                   </button>
                 </div>
               </header>
 
               <!-- Messages Stream Container -->
-              <div class="roulette-messages-container" id="rouletteMessagesContainer">
+              <div class="roulette-messages-container roulette-messages-area" id="rouletteMessagesContainer">
                 <!-- Message rows dynamically populated here -->
               </div>
 
@@ -141,10 +145,10 @@
               </button>
 
               <!-- Chat Input Area -->
-              <footer class="roulette-input-area">
-                <form id="rouletteSendForm" class="d-flex align-items-center gap-2 w-100" onsubmit="return false;">
+              <footer class="roulette-input-area roulette-chat-input-wrapper">
+                <form id="rouletteChatForm" class="roulette-input-form d-flex align-items-center gap-2 w-100" onsubmit="return false;">
                   {% csrf_token %}
-                  <input type="text" id="rouletteMsgInput" class="form-control roulette-msg-input" placeholder="Type a message to your partner..." autocomplete="off">
+                  <input type="text" id="rouletteMessageInput" name="rouletteMessageInput" class="form-control roulette-msg-input" placeholder="Type a message to your partner..." autocomplete="off">
                   <button type="submit" id="rouletteSendBtn" class="btn btn-primary roulette-send-btn" aria-label="Send">
                     <i class="fas fa-paper-plane"></i>
                   </button>
@@ -210,8 +214,19 @@
     </div>
   </div>
 </div>
+<script type="application/json" id="rouletteConfig">
+{
+  "currentUserId": {{ request.user.id|default:0 }},
+  "currentUserName": "{{ request.user.name|default:request.user.username|escapejs }}",
+  "currentUserPicture": "{{ request.user.picture|default:'' }}",
+  "firebaseDbUrl": "https://xapyx-chat-default-rtdb.firebaseio.com"
+}
+</script>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/roulette.js' %}?v=3"></script>
+<!-- Firebase RTDB SDK for real-time presence & instant matchmaking signals -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script src="{% static 'js/roulette.js' %}?v=4"></script>
 {% endblock %}

@@ -508,3 +508,478 @@ html[data-theme="light"] .rank-default {
     color: var(--xpy-text-secondary, #64748b) !important;
     border: 1px solid var(--xpy-border, #e2e8f0) !important;
 }
+
+/* ============================================================
+   ONLINE MULTIPLAYER LOBBY, SHARE BAR, AND FRIEND INVITE MODAL
+   ============================================================ */
+.ludo-online-lobby,
+.ttt-online-lobby {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--xpy-border, rgba(255, 255, 255, 0.1));
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin: 12px 0 16px;
+    animation: fadeInLobby 0.25s ease;
+}
+
+@keyframes fadeInLobby {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.room-code-badge {
+    cursor: pointer;
+    font-size: 0.88rem;
+    padding: 5px 12px;
+    border-radius: 8px;
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    color: var(--xpy-text-primary, #ffffff);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.room-code-badge:hover {
+    background: rgba(245, 158, 11, 0.25);
+    border-color: #f59e0b;
+    transform: translateY(-1px);
+}
+
+.room-players-badge {
+    font-size: 0.82rem;
+    padding: 5px 12px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.friend-invite-row {
+    transition: background 0.15s ease;
+}
+
+.friend-invite-row:hover {
+    background: rgba(255, 255, 255, 0.06) !important;
+}
+
+.game-floating-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(30px);
+    background: rgba(15, 23, 42, 0.95);
+    color: #ffffff;
+    padding: 10px 20px;
+    border-radius: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    z-index: 99999;
+    font-size: 0.88rem;
+    font-weight: 600;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    align-items: center;
+}
+
+.game-floating-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+
+
+/* ============================================================
+   UNIVERSAL LIGHT MODE OVERRIDE FOR GAME CONTROLS & ARROW/ACTION KEYS
+   ============================================================ */
+[data-theme="light"] [class*="game"],
+[data-theme="light"] [class*="snake"],
+[data-theme="light"] [class*="control"],
+html[data-theme="light"] [class*="game"],
+html[data-theme="light"] [class*="snake"],
+html[data-theme="light"] [class*="control"] {
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Container resets: Ensure layout flex/grid containers remain transparent */
+[data-theme="light"] .games-play-flex,
+html[data-theme="light"] .games-play-flex,
+[data-theme="light"] .games-play-main,
+html[data-theme="light"] .games-play-main,
+[data-theme="light"] .game-hud-header,
+html[data-theme="light"] .game-hud-header,
+[data-theme="light"] .game-hud-stats,
+html[data-theme="light"] .game-hud-stats,
+[data-theme="light"] .game-hud-title,
+html[data-theme="light"] .game-hud-title,
+[data-theme="light"] .snake-touch-controls,
+html[data-theme="light"] .snake-touch-controls,
+[data-theme="light"] .snake-mode-bar,
+html[data-theme="light"] .snake-mode-bar,
+[data-theme="light"] .hockey-mode-bar,
+html[data-theme="light"] .hockey-mode-bar,
+[data-theme="light"] .checkers-mode-bar,
+html[data-theme="light"] .checkers-mode-bar,
+[data-theme="light"] .ttt-mode-bar,
+html[data-theme="light"] .ttt-mode-bar,
+[data-theme="light"] .catchme-controls-wrap,
+html[data-theme="light"] .catchme-controls-wrap,
+[data-theme="light"] .ttt-controls,
+html[data-theme="light"] .ttt-controls {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* Explicit high-contrast Game HUD controls */
+[data-theme="light"] .game-hud-stat,
+html[data-theme="light"] .game-hud-stat {
+    background-color: #ffffff !important;
+    color: #334155 !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-theme="light"] .game-hud-stat strong,
+html[data-theme="light"] .game-hud-stat strong {
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .game-icon-btn,
+html[data-theme="light"] .game-icon-btn,
+[data-theme="light"] .game-back-btn,
+html[data-theme="light"] .game-back-btn {
+    background-color: #ffffff !important;
+    color: #334155 !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-theme="light"] .game-icon-btn:hover,
+html[data-theme="light"] .game-icon-btn:hover,
+[data-theme="light"] .game-back-btn:hover,
+html[data-theme="light"] .game-back-btn:hover {
+    background-color: #f1f5f9 !important;
+    color: #ff8c00 !important;
+    border-color: #ff8c00 !important;
+}
+
+/* Snake Mobile D-Pad Buttons */
+[data-theme="light"] .snake-dpad-btn,
+html[data-theme="light"] .snake-dpad-btn {
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+[data-theme="light"] .snake-dpad-btn:active,
+html[data-theme="light"] .snake-dpad-btn:active {
+    background-color: #10b981 !important;
+    color: #ffffff !important;
+    border-color: #059669 !important;
+    transform: scale(0.95);
+}
+
+/* Mode Buttons */
+[data-theme="light"] .snake-mode-btn,
+html[data-theme="light"] .snake-mode-btn,
+[data-theme="light"] .hockey-mode-btn,
+html[data-theme="light"] .hockey-mode-btn,
+[data-theme="light"] .checkers-mode-btn,
+html[data-theme="light"] .checkers-mode-btn,
+[data-theme="light"] .ludo-mode-btn,
+html[data-theme="light"] .ludo-mode-btn {
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+[data-theme="light"] .snake-mode-btn.active,
+html[data-theme="light"] .snake-mode-btn.active,
+[data-theme="light"] .snake-mode-btn:hover,
+html[data-theme="light"] .snake-mode-btn:hover {
+    background-color: rgba(16, 185, 129, 0.15) !important;
+    border-color: #10b981 !important;
+    color: #047857 !important;
+}
+
+[data-theme="light"] .hockey-mode-btn.active,
+html[data-theme="light"] .hockey-mode-btn.active,
+[data-theme="light"] .hockey-mode-btn:hover,
+html[data-theme="light"] .hockey-mode-btn:hover {
+    background-color: rgba(59, 130, 246, 0.15) !important;
+    border-color: #3b82f6 !important;
+    color: #1d4ed8 !important;
+}
+
+[data-theme="light"] .checkers-mode-btn.active,
+html[data-theme="light"] .checkers-mode-btn.active,
+[data-theme="light"] .checkers-mode-btn:hover,
+html[data-theme="light"] .checkers-mode-btn:hover {
+    background-color: rgba(168, 85, 247, 0.15) !important;
+    border-color: #a855f7 !important;
+    color: #7e22ce !important;
+}
+
+[data-theme="light"] .ludo-mode-btn.active,
+html[data-theme="light"] .ludo-mode-btn.active,
+[data-theme="light"] .ludo-mode-btn:hover,
+html[data-theme="light"] .ludo-mode-btn:hover {
+    background-color: rgba(245, 158, 11, 0.15) !important;
+    border-color: #f59e0b !important;
+    color: #b45309 !important;
+}
+
+/* Universal Light Mode Override for Game Controls & Arrow/Action Keys */
+[data-theme="light"] [class*="game-control"],
+[data-theme="light"] [class*="controls-guide"],
+[data-theme="light"] [class*="guide-key"],
+[data-theme="light"] [class*="guide-item"],
+[data-theme="light"] [class*="snake-dpad"],
+[data-theme="light"] [class*="snake-touch"],
+[data-theme="light"] [class*="snake-mode"],
+[data-theme="light"] [class*="ludo-control"],
+[data-theme="light"] [class*="ttt-control"],
+[data-theme="light"] [class*="catchme-control"],
+[data-theme="light"] [class*="hockey-control"],
+[data-theme="light"] [class*="checkers-control"],
+[data-theme="light"] [class*="game"],
+[data-theme="light"] [class*="snake"],
+[data-theme="light"] [class*="control"],
+html[data-theme="light"] [class*="game-control"],
+html[data-theme="light"] [class*="controls-guide"],
+html[data-theme="light"] [class*="guide-key"],
+html[data-theme="light"] [class*="guide-item"],
+html[data-theme="light"] [class*="snake-dpad"],
+html[data-theme="light"] [class*="snake-touch"],
+html[data-theme="light"] [class*="snake-mode"],
+html[data-theme="light"] [class*="ludo-control"],
+html[data-theme="light"] [class*="ttt-control"],
+html[data-theme="light"] [class*="catchme-control"],
+html[data-theme="light"] [class*="hockey-control"],
+html[data-theme="light"] [class*="checkers-control"],
+html[data-theme="light"] [class*="game"],
+html[data-theme="light"] [class*="snake"],
+html[data-theme="light"] [class*="control"] {
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Specific Light Mode Rules for Controls Guide & Directional Keys */
+[data-theme="light"] .game-controls-guide,
+html[data-theme="light"] .game-controls-guide {
+    background-color: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
+    color: #0f172a !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+[data-theme="light"] .guide-header h6,
+html[data-theme="light"] .guide-header h6 {
+    color: #0f172a !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+[data-theme="light"] .guide-item,
+html[data-theme="light"] .guide-item {
+    background-color: #f8fafc !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+[data-theme="light"] .guide-key,
+html[data-theme="light"] .guide-key {
+    background-color: #e2e8f0 !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Directional D-Pad & Control Containers */
+[data-theme="light"] .snake-touch-controls,
+html[data-theme="light"] .snake-touch-controls,
+[data-theme="light"] .ttt-controls,
+html[data-theme="light"] .ttt-controls,
+[data-theme="light"] .catchme-controls-wrap,
+html[data-theme="light"] .catchme-controls-wrap {
+    background-color: transparent !important;
+    border: none !important;
+    display: grid !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+[data-theme="light"] .snake-dpad-btn,
+html[data-theme="light"] .snake-dpad-btn {
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+[data-theme="light"] .snake-dpad-btn:hover,
+html[data-theme="light"] .snake-dpad-btn:hover {
+    background-color: #e2e8f0 !important;
+    color: #0f172a !important;
+    border-color: #94a3b8 !important;
+}
+
+[data-theme="light"] .snake-dpad-btn:active,
+html[data-theme="light"] .snake-dpad-btn:active {
+    background-color: #10b981 !important;
+    color: #ffffff !important;
+    border-color: #059669 !important;
+    transform: scale(0.95);
+}
+
+/* Ludo Controls Strip & Dice */
+[data-theme="light"] .ludo-controls-strip,
+html[data-theme="light"] .ludo-controls-strip {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+[data-theme="light"] .ludo-dice-box,
+html[data-theme="light"] .ludo-dice-box {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border: 2px solid #cbd5e1 !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Button & Action Overrides in Light Theme */
+[data-theme="light"] .btn-success,
+html[data-theme="light"] .btn-success {
+    background-color: #10b981 !important;
+    color: #ffffff !important;
+    border-color: #059669 !important;
+}
+
+[data-theme="light"] .btn-primary,
+html[data-theme="light"] .btn-primary {
+    background-color: #3b82f6 !important;
+    color: #ffffff !important;
+    border-color: #2563eb !important;
+}
+
+[data-theme="light"] .btn-danger,
+html[data-theme="light"] .btn-danger {
+    background-color: #ef4444 !important;
+    color: #ffffff !important;
+    border-color: #dc2626 !important;
+}
+
+[data-theme="light"] .btn-warning,
+html[data-theme="light"] .btn-warning {
+    background-color: #f59e0b !important;
+    color: #0f172a !important;
+    border-color: #d97706 !important;
+}
+
+/* Preserve Dark Arcade Game Canvases & Boards in Light Mode */
+[data-theme="light"] #snakeCanvas,
+html[data-theme="light"] #snakeCanvas,
+[data-theme="light"] [id*="snakeCanvas"],
+html[data-theme="light"] [id*="snakeCanvas"],
+[data-theme="light"] .snake-canvas-wrap,
+html[data-theme="light"] .snake-canvas-wrap,
+[data-theme="light"] #gameCanvas,
+html[data-theme="light"] #gameCanvas,
+[data-theme="light"] [id*="gameCanvas"],
+html[data-theme="light"] [id*="gameCanvas"],
+[data-theme="light"] .space-canvas-wrapper,
+html[data-theme="light"] .space-canvas-wrapper,
+[data-theme="light"] #hockeyCanvas,
+html[data-theme="light"] #hockeyCanvas,
+[data-theme="light"] .hockey-canvas-wrap,
+html[data-theme="light"] .hockey-canvas-wrap,
+[data-theme="light"] #ludoCanvas,
+html[data-theme="light"] #ludoCanvas,
+[data-theme="light"] .ludo-canvas-wrap,
+html[data-theme="light"] .ludo-canvas-wrap,
+[data-theme="light"] .checkers-board-frame,
+html[data-theme="light"] .checkers-board-frame,
+[data-theme="light"] .checkers-square.dark,
+html[data-theme="light"] .checkers-square.dark {
+    background-color: #050510 !important;
+}
+
+[data-theme="light"] .space-canvas-wrapper,
+html[data-theme="light"] .space-canvas-wrapper {
+    background-color: #02020a !important;
+}
+
+[data-theme="light"] #hockeyCanvas,
+html[data-theme="light"] #hockeyCanvas,
+[data-theme="light"] .hockey-canvas-wrap,
+html[data-theme="light"] .hockey-canvas-wrap {
+    background-color: #060919 !important;
+}
+
+[data-theme="light"] #ludoCanvas,
+html[data-theme="light"] #ludoCanvas,
+[data-theme="light"] .ludo-canvas-wrap,
+html[data-theme="light"] .ludo-canvas-wrap {
+    background-color: #0f172a !important;
+}
+
+[data-theme="light"] .checkers-board-frame,
+html[data-theme="light"] .checkers-board-frame {
+    background-color: #181926 !important;
+    border-color: #2d2f45 !important;
+}
+
+[data-theme="light"] .checkers-square.dark,
+html[data-theme="light"] .checkers-square.dark {
+    background-color: #1e1e2e !important;
+}
+
+/* Overlays on Arcade Canvases */
+[data-theme="light"] .snake-overlay,
+html[data-theme="light"] .snake-overlay,
+[data-theme="light"] .space-game-over-overlay,
+html[data-theme="light"] .space-game-over-overlay,
+[data-theme="light"] .space-instructions-overlay,
+html[data-theme="light"] .space-instructions-overlay {
+    background-color: rgba(5, 5, 16, 0.88) !important;
+    color: #ffffff !important;
+}
+
+[data-theme="light"] .snake-gameover-score,
+html[data-theme="light"] .snake-gameover-score {
+    background-color: transparent !important;
+    color: #10b981 !important;
+    border: none !important;
+}

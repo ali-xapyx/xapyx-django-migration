@@ -972,3 +972,288 @@ html[data-theme="light"] .store-card-price {
 html[data-theme="light"] .store-seller-name {
     color: #475569 !important;
 }
+
+/* ============================================================
+   STORE MULTI-IMAGE UPLOAD & PREVIEW THUMBNAILS
+   ============================================================ */
+.store-upload-dropzone {
+    border: 2px dashed var(--xpy-border, rgba(255, 255, 255, 0.15));
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.02);
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.store-upload-dropzone:hover,
+.store-upload-dropzone.drag-over {
+    border-color: var(--xpy-primary, #3b82f6);
+    background: rgba(var(--xpy-primary-rgb, 59, 130, 246), 0.08);
+}
+
+.store-preview-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.store-preview-item {
+    position: relative;
+    width: 76px;
+    height: 76px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--xpy-border, rgba(255, 255, 255, 0.15));
+    background: var(--bg-secondary, #0f131d);
+}
+
+.store-preview-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.store-cover-badge {
+    top: 4px;
+    left: 4px;
+    font-size: 0.6rem;
+    padding: 2px 4px;
+    border-radius: 4px;
+    line-height: 1;
+    z-index: 2;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.store-remove-thumb-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.7);
+    padding: 0;
+    opacity: 0.85;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.store-remove-thumb-btn:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+/* ============================================================
+   PRODUCT CARD MULTI-IMAGE CAROUSEL & DOTS
+   ============================================================ */
+.store-card-carousel {
+    position: relative;
+    user-select: none;
+}
+
+.store-carousel-track {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.store-carousel-slide {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease-in-out;
+}
+
+.store-carousel-slide.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.store-carousel-slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.store-carousel-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(15, 19, 29, 0.7);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 5;
+    opacity: 0;
+    transition: all 0.2s ease;
+    padding: 0;
+    font-size: 0.85rem;
+}
+
+.product-card:hover .store-carousel-btn,
+.store-card:hover .store-carousel-btn {
+    opacity: 0.9;
+}
+
+.store-carousel-btn:hover {
+    opacity: 1 !important;
+    background: rgba(var(--xpy-primary-rgb, 59, 130, 246), 0.9);
+    color: #ffffff;
+    transform: translateY(-50%) scale(1.1);
+}
+
+.store-carousel-prev {
+    left: 8px;
+}
+
+.store-carousel-next {
+    right: 8px;
+}
+
+/* Touch devices always show subtle carousel buttons */
+@media (hover: none) {
+    .store-carousel-btn {
+        opacity: 0.75;
+    }
+}
+
+.store-carousel-dots {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 4px;
+    z-index: 4;
+    padding: 3px 6px;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.store-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.store-dot.active {
+    width: 14px;
+    border-radius: 4px;
+    background: var(--xpy-primary, #3b82f6);
+}
+
+.product-photo-count {
+    font-size: 0.65rem !important;
+    padding: 2px 6px !important;
+    background: rgba(0, 0, 0, 0.65) !important;
+    color: #ffffff !important;
+    z-index: 3 !important;
+}
+
+/* ============================================================
+   PRODUCT DETAIL GALLERY CAROUSEL ARROWS & COUNTER
+   ============================================================ */
+.pd-gallery-main {
+    position: relative;
+    user-select: none;
+}
+
+.pd-carousel-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(15, 19, 29, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    cursor: pointer;
+    z-index: 4;
+    transition: all 0.2s ease;
+    padding: 0;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.pd-carousel-arrow:hover {
+    background: var(--xpy-primary, #3b82f6);
+    color: #ffffff;
+    transform: translateY(-50%) scale(1.08);
+}
+
+.pd-carousel-arrow.pd-prev {
+    left: 12px;
+}
+
+.pd-carousel-arrow.pd-next {
+    right: 12px;
+}
+
+.pd-gallery-counter {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: rgba(0, 0, 0, 0.65);
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 500;
+    z-index: 3;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+/* Light theme overrides */
+[data-theme="light"] .store-upload-dropzone,
+html[data-theme="light"] .store-upload-dropzone {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+[data-theme="light"] .store-preview-item,
+html[data-theme="light"] .store-preview-item {
+    border-color: #e2e8f0;
+    background: #f1f5f9;
+}
+
+[data-theme="light"] .pd-carousel-arrow,
+html[data-theme="light"] .pd-carousel-arrow {
+    background: rgba(255, 255, 255, 0.85);
+    border-color: #cbd5e1;
+    color: #1e293b;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .pd-carousel-arrow:hover,
+html[data-theme="light"] .pd-carousel-arrow:hover {
+    background: var(--xpy-primary, #ff8c00);
+    color: #ffffff;
+}
+EOF

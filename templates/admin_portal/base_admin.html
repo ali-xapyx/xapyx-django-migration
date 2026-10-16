@@ -645,5 +645,38 @@
   })();
 </script>
 {% block extra_js %}{% endblock %}
+  <!-- Service Worker: Auto-purge legacy sw.js & Register Firebase Messaging Service Worker -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      // 1. Unregister legacy sw.js if installed on browser client
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for (var i = 0; i < registrations.length; i++) {
+          var reg = registrations[i];
+          var swUrl = (reg.active && reg.active.scriptURL) ||
+                      (reg.waiting && reg.waiting.scriptURL) ||
+                      (reg.installing && reg.installing.scriptURL) || '';
+          if (swUrl.endsWith('/sw.js') || swUrl.indexOf('/sw.js') !== -1) {
+            reg.unregister().then(function(unregistered) {
+              if (unregistered) console.log('🧹 Purged legacy sw.js service worker:', swUrl);
+            });
+          }
+        }
+      }).catch(function(err) {
+        console.warn('Error checking existing service workers:', err);
+      });
+
+      // 2. Register Firebase Messaging Service Worker
+      navigator.serviceWorker.register('/static/js/firebase-messaging-sw.js')
+        .then(function(registration) {
+          console.log('Firebase Messaging Service Worker registered with scope:', registration.scope);
+          if (typeof firebase !== 'undefined' && firebase.messaging) {
+            var messaging = firebase.messaging();
+            messaging.useServiceWorker(registration);
+          }
+        }).catch(function(err) {
+          console.log('Service Worker registration failed:', err);
+        });
+    }
+  </script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 /**
- * Chat Roulette Client Module (Task 19 Phase 1)
- * Redis-backed ephemeral matchmaking & chat.
+ * Chat Roulette Client Module
+ * Redis-backed atomic matchmaking with Firebase RTDB instant synchronization & WebRTC peer connection.
  */
 (function () {
     'use strict';
@@ -30,14 +30,37 @@
 
     const messagesContainer = document.getElementById('rouletteMessagesContainer');
     const scrollBtn = document.getElementById('rouletteScrollBtn');
-    const sendForm = document.getElementById('rouletteSendForm');
-    const msgInput = document.getElementById('rouletteMsgInput');
+    
+    // Support both ID naming conventions
+    const sendForm = document.getElementById('rouletteChatForm') || document.getElementById('rouletteSendForm');
+    const msgInput = document.getElementById('rouletteMessageInput') || document.getElementById('rouletteMsgInput');
     const sendBtn = document.getElementById('rouletteSendBtn');
 
-    // ---- State ----
+    // ---- Config & State ----
+    let config = {
+        currentUserId: 0,
+        currentUserName: '',
+        currentUserPicture: '',
+        firebaseDbUrl: 'https://xapyx-chat-default-rtdb.firebaseio.com'
+    };
+
+    const cfgEl = document.getElementById('rouletteConfig');
+    if (cfgEl) {
+        try {
+            config = Object.assign(config, JSON.parse(cfgEl.textContent));
+        } catch (e) {
+            console.error('[Roulette] Failed to parse rouletteConfig:', e);
+        }
+    }
+    if (!config.currentUserId && window.XPY_CONFIG) {
+        config.currentUserId = Number(window.XPY_CONFIG.userId || 0);
+    }
+    const currentUserId = Number(config.currentUserId || 0);
+
     let currentStatus = 'idle'; // 'idle' | 'waiting' | 'matched'
     let activePartner = null;
     let activeSessionId = null;
+    let isInitiator = false;
     let sinceId = 0;
     const knownMsgIds = new Set();
 
@@ -45,18 +68,25 @@
     let statsTimer = null;
     let dotTimer = null;
     let heartbeatTimer = null;
-    let currentUserId = 0;
 
-    // Read current user ID if available
-    try {
-        const xpyConfigEl = document.getElementById('xpy-config');
-        if (xpyConfigEl) {
-            const conf = JSON.parse(xpyConfigEl.textContent);
-            currentUserId = Number(conf.userId || 0);
-        }
-    } catch (e) {
-        currentUserId = 0;
-    }
+    // Firebase References
+    let firebaseDb = null;
+    let fbQueueRef = null;
+    let fbMatchRef = null;
+    let fbRoomStatusRef = null;
+    let fbRoomMessagesRef = null;
+    let fbSignalsRef = null;
+
+    // WebRTC Peer Connection
+    const RTC_CONFIG = {
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' }
+        ]
+    };
+    let peerConnection = null;
+    let dataChannel = null;
 
     // ---- Utilities ----
     function getCsrfToken() {
@@ -64,6 +94,18 @@
         if (inp && inp.value) return inp.value;
         const m = document.cookie.match(/csrftoken=([^;]+)/);
         return m ? m[1] : '';
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return String(text).replace(/[&<>"']/g, function (m) { return map[m]; });
     }
 
     function getAvatarThumb(av) {
@@ -91,6 +133,265 @@
                 behavior: smooth ? 'smooth' : 'auto'
             });
         });
+    }
+
+    // ---- Firebase RTDB Initialization ----
+    function initFirebase() {
+        try {
+            if (typeof firebase === 'undefined') {
+                console.warn('[Roulette] Firebase SDK not loaded, using HTTP fallback');
+                return;
+            }
+            const fbConfig = { databaseURL: config.firebaseDbUrl };
+            let app;
+            try {
+                app = firebase.app('xapyx-roulette-app');
+            } catch (err) {
+                app = firebase.initializeApp(fbConfig, 'xapyx-roulette-app');
+            }
+            firebaseDb = firebase.database(app);
+            console.log('[Roulette] Firebase RTDB initialized successfully');
+        } catch (e) {
+            console.warn('[Roulette] Firebase init warning:', e);
+        }
+    }
+
+    function attachQueueListeners() {
+        detachQueueListeners();
+        if (!firebaseDb || !currentUserId) return;
+
+        try {
+            // 1. Presence in queue with onDisconnect removal
+            fbQueueRef = firebaseDb.ref('roulette/queue/' + currentUserId);
+            fbQueueRef.set({
+                userId: currentUserId,
+                joined_at: firebase.database.ServerValue.TIMESTAMP
+            });
+            fbQueueRef.onDisconnect().remove();
+
+            // 2. Instant Match listener (Firebase push)
+            fbMatchRef = firebaseDb.ref('roulette/matches/' + currentUserId);
+            fbMatchRef.on('value', (snapshot) => {
+                const match = snapshot.val();
+                if (match && match.session_id && currentStatus !== 'matched') {
+                    console.log('[Roulette] Instant match via Firebase listener:', match);
+                    stopPolling();
+                    stopDotAnimation();
+                    startRouletteSession(match);
+                }
+            });
+            fbMatchRef.onDisconnect().remove();
+        } catch (err) {
+            console.warn('[Roulette] attachQueueListeners error:', err);
+        }
+    }
+
+    function detachQueueListeners() {
+        if (fbQueueRef) {
+            try {
+                fbQueueRef.off();
+                fbQueueRef.remove();
+                fbQueueRef.onDisconnect().cancel();
+            } catch (e) {}
+            fbQueueRef = null;
+        }
+        if (fbMatchRef) {
+            try {
+                fbMatchRef.off();
+                fbMatchRef.remove();
+                fbMatchRef.onDisconnect().cancel();
+            } catch (e) {}
+            fbMatchRef = null;
+        }
+    }
+
+    function attachRoomListeners(sessionId) {
+        detachRoomListeners();
+        if (!firebaseDb || !sessionId) return;
+
+        try {
+            // 1. Instant partner left / disconnected status
+            fbRoomStatusRef = firebaseDb.ref('roulette/rooms/' + sessionId + '/status');
+            fbRoomStatusRef.on('value', (snap) => {
+                const val = snap.val();
+                if ((val === 'left' || val === 'expired') && currentStatus === 'matched') {
+                    console.log('[Roulette] Room status changed to', val);
+                    handlePartnerLeft();
+                }
+            });
+            fbRoomStatusRef.onDisconnect().set('left');
+
+            // 2. Instant incoming messages
+            fbRoomMessagesRef = firebaseDb.ref('roulette/rooms/' + sessionId + '/messages');
+            fbRoomMessagesRef.on('child_added', (snap) => {
+                const msg = snap.val();
+                if (msg && msg.id) {
+                    if (!knownMsgIds.has(String(msg.id))) {
+                        knownMsgIds.add(String(msg.id));
+                        renderMessageRow(msg);
+                        scrollToBottom(true);
+                    }
+                }
+            });
+        } catch (err) {
+            console.warn('[Roulette] attachRoomListeners error:', err);
+        }
+    }
+
+    function detachRoomListeners() {
+        if (fbRoomStatusRef) {
+            try {
+                fbRoomStatusRef.off();
+                fbRoomStatusRef.onDisconnect().cancel();
+            } catch (e) {}
+            fbRoomStatusRef = null;
+        }
+        if (fbRoomMessagesRef) {
+            try {
+                fbRoomMessagesRef.off();
+            } catch (e) {}
+            fbRoomMessagesRef = null;
+        }
+    }
+
+    // ---- WebRTC Peer Connection Handshake ----
+    function initWebRtcHandshake(sessionId, partnerId, initiator) {
+        closeWebRtc();
+        if (typeof RTCPeerConnection === 'undefined') {
+            console.warn('[Roulette] WebRTC not supported in this browser environment');
+            return;
+        }
+
+        try {
+            peerConnection = new RTCPeerConnection(RTC_CONFIG);
+
+            // ICE candidate handler
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate && firebaseDb && sessionId) {
+                    const candRef = firebaseDb.ref('roulette/rooms/' + sessionId + '/signals/' + currentUserId + '/candidates');
+                    candRef.push(event.candidate.toJSON()).catch(() => {});
+                }
+            };
+
+            peerConnection.onconnectionstatechange = () => {
+                console.log('[Roulette WebRTC] Connection state:', peerConnection.connectionState);
+            };
+
+            if (initiator) {
+                // Initiator creates data channel and offer
+                try {
+                    dataChannel = peerConnection.createDataChannel('roulette-data', { ordered: true });
+                    setupDataChannel(dataChannel);
+                } catch (e) {
+                    console.warn('[Roulette] DataChannel create error:', e);
+                }
+
+                peerConnection.createOffer().then((offer) => {
+                    return peerConnection.setLocalDescription(offer);
+                }).then(() => {
+                    if (firebaseDb && sessionId) {
+                        firebaseDb.ref('roulette/rooms/' + sessionId + '/signals/' + currentUserId + '/offer').set({
+                            type: peerConnection.localDescription.type,
+                            sdp: peerConnection.localDescription.sdp
+                        }).catch(() => {});
+                    }
+                }).catch((err) => {
+                    console.warn('[Roulette] WebRTC offer error:', err);
+                });
+            } else {
+                // Receiver listens for incoming datachannel
+                peerConnection.ondatachannel = (event) => {
+                    dataChannel = event.channel;
+                    setupDataChannel(dataChannel);
+                };
+            }
+
+            // Signal exchange via Firebase RTDB
+            if (firebaseDb && sessionId && partnerId) {
+                fbSignalsRef = firebaseDb.ref('roulette/rooms/' + sessionId + '/signals/' + partnerId);
+
+                if (!initiator) {
+                    // Receiver waits for offer, creates answer
+                    fbSignalsRef.child('offer').on('value', async (snap) => {
+                        const offer = snap.val();
+                        if (offer && peerConnection && peerConnection.signalingState === 'stable') {
+                            try {
+                                await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+                                const answer = await peerConnection.createAnswer();
+                                await peerConnection.setLocalDescription(answer);
+                                firebaseDb.ref('roulette/rooms/' + sessionId + '/signals/' + currentUserId + '/answer').set({
+                                    type: answer.type,
+                                    sdp: answer.sdp
+                                }).catch(() => {});
+                            } catch (err) {
+                                console.warn('[Roulette] WebRTC answer error:', err);
+                            }
+                        }
+                    });
+                } else {
+                    // Initiator waits for answer
+                    fbSignalsRef.child('answer').on('value', async (snap) => {
+                        const answer = snap.val();
+                        if (answer && peerConnection && peerConnection.signalingState === 'have-local-offer') {
+                            try {
+                                await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+                            } catch (err) {
+                                console.warn('[Roulette] WebRTC remote answer error:', err);
+                            }
+                        }
+                    });
+                }
+
+                // Remote ICE candidates
+                fbSignalsRef.child('candidates').on('child_added', async (snap) => {
+                    const cand = snap.val();
+                    if (cand && peerConnection) {
+                        try {
+                            await peerConnection.addIceCandidate(new RTCIceCandidate(cand));
+                        } catch (e) {
+                            // Candidate addition error ignored
+                        }
+                    }
+                });
+            }
+        } catch (err) {
+            console.warn('[Roulette] WebRTC init error:', err);
+        }
+    }
+
+    function setupDataChannel(channel) {
+        if (!channel) return;
+        channel.onopen = () => {
+            console.log('[Roulette WebRTC] DataChannel connected');
+        };
+        channel.onclose = () => {
+            console.log('[Roulette WebRTC] DataChannel closed');
+        };
+        channel.onmessage = (event) => {
+            try {
+                const msg = JSON.parse(event.data);
+                if (msg && msg.id && !knownMsgIds.has(String(msg.id))) {
+                    knownMsgIds.add(String(msg.id));
+                    renderMessageRow(msg);
+                    scrollToBottom(true);
+                }
+            } catch (e) {}
+        };
+    }
+
+    function closeWebRtc() {
+        if (fbSignalsRef) {
+            try { fbSignalsRef.off(); } catch (e) {}
+            fbSignalsRef = null;
+        }
+        if (dataChannel) {
+            try { dataChannel.close(); } catch (e) {}
+            dataChannel = null;
+        }
+        if (peerConnection) {
+            try { peerConnection.close(); } catch (e) {}
+            peerConnection = null;
+        }
     }
 
     // ---- View Transitions ----
@@ -164,9 +465,110 @@
         }
     }
 
+    // ---- Session Initialization (Immediate Handshake) ----
+    function startRouletteSession(matchData) {
+        if (!matchData) return;
+
+        // Immediately stop searching timers to prevent unnecessary cycles
+        stopPolling();
+        stopDotAnimation();
+
+        const sessionId = matchData.session_id || matchData.sessionId || matchData.room_id;
+        if (!sessionId) return;
+
+        // Guard against duplicate connection attempts
+        if (activeSessionId === sessionId && currentStatus === 'matched') {
+            return;
+        }
+
+        const partner = matchData.partner || {
+            id: matchData.partner_id || matchData.partnerId,
+            name: matchData.partner_name || matchData.partnerName || 'Anonymous User',
+            username: matchData.partner_username || matchData.partnerUsername || 'anonymous',
+            picture: matchData.partner_picture || matchData.partnerPicture || '/static/images/avatars/default.png'
+        };
+
+        // Cleanly evaluate isInitiator: (Number(currentUserId) < Number(matchData.partner_id))
+        const partnerId = Number(partner.id || matchData.partner_id || 0);
+        let initiator = false;
+        if (typeof matchData.is_initiator === 'boolean') {
+            initiator = matchData.is_initiator;
+        } else {
+            initiator = Number(currentUserId) < partnerId;
+        }
+
+        setupMatch(partner, sessionId, initiator);
+        initWebRtcHandshake(sessionId, partnerId, initiator);
+    }
+
+    function setupMatch(partner, sessionId, initiator) {
+        detachQueueListeners();
+
+        activePartner = partner;
+        activeSessionId = sessionId;
+        isInitiator = initiator;
+        sinceId = 0;
+        knownMsgIds.clear();
+
+        if (partnerAvatar) partnerAvatar.src = getAvatarThumb(partner.picture);
+        if (partnerName) partnerName.textContent = partner.name || 'Anonymous User';
+        if (partnerUsername) partnerUsername.textContent = '@' + (partner.username || 'user');
+
+        if (messagesContainer) {
+            messagesContainer.innerHTML = '';
+            const notice = document.createElement('div');
+            notice.className = 'roulette-match-notice text-center my-3';
+            notice.innerHTML = `<span class="badge bg-secondary-subtle text-muted px-3 py-2">Connected with <strong>${escapeHtml(partner.name || 'Anonymous')}</strong>. Say hello!</span>`;
+            messagesContainer.appendChild(notice);
+        }
+
+        showState('matched');
+        notify('Connected with a partner!', 'success');
+        scrollToBottom(false);
+
+        // Attach Firebase real-time room listeners for instant messaging and status
+        attachRoomListeners(sessionId);
+    }
+
+    function resetChat() {
+        closeWebRtc();
+        activePartner = null;
+        activeSessionId = null;
+        isInitiator = false;
+        sinceId = 0;
+        knownMsgIds.clear();
+        if (messagesContainer) messagesContainer.innerHTML = '';
+    }
+
+    function handlePartnerLeft() {
+        if (currentStatus !== 'matched') return;
+        detachRoomListeners();
+        resetChat();
+        notify('Partner has left the chat. Re-searching...', 'warning');
+        startSearching();
+    }
+
     // ---- Main Matchmaking Flow ----
     async function startSearching() {
+        // Explicitly clean up old state & listeners first
+        if (firebaseDb && currentUserId) {
+            try {
+                const mRef = firebaseDb.ref('roulette/matches/' + currentUserId);
+                mRef.off();
+                mRef.remove();
+                const qRef = firebaseDb.ref('roulette/queue/' + currentUserId);
+                qRef.off();
+                qRef.remove();
+            } catch (e) {}
+        }
+        detachRoomListeners();
+        detachQueueListeners();
+        resetChat();
+        stopPolling();
+        stopDotAnimation();
         showState('waiting');
+        attachQueueListeners();
+
         try {
             const formData = new FormData();
             const res = await fetch('/api/roulette/join/', {
@@ -180,16 +582,32 @@
 
             const data = await res.json();
             if (data.status === 'matched') {
-                setupMatch(data.partner, data.session_id);
+                stopPolling();
+                stopDotAnimation();
+                startRouletteSession(data);
             }
         } catch (err) {
-            console.error('join error:', err);
+            console.error('[Roulette] join error:', err);
             notify('Failed to connect to matchmaking queue', 'error');
+            detachQueueListeners();
             showState('idle');
         }
     }
 
     async function stopSearching() {
+        if (firebaseDb && currentUserId) {
+            try {
+                const mRef = firebaseDb.ref('roulette/matches/' + currentUserId);
+                mRef.off();
+                mRef.remove();
+                const qRef = firebaseDb.ref('roulette/queue/' + currentUserId);
+                qRef.off();
+                qRef.remove();
+            } catch (e) {}
+        }
+        detachQueueListeners();
+        stopPolling();
+        stopDotAnimation();
         try {
             const formData = new FormData();
             await fetch('/api/roulette/leave/', {
@@ -201,13 +619,33 @@
                 body: formData
             });
         } catch (err) {
-            console.error('leave queue error:', err);
+            console.error('[Roulette] leave queue error:', err);
         } finally {
             showState('idle');
         }
     }
 
     async function leaveChat() {
+        if (firebaseDb) {
+            try {
+                if (activeSessionId) {
+                    firebaseDb.ref('roulette/rooms/' + activeSessionId + '/status').set('left');
+                }
+                if (currentUserId) {
+                    const mRef = firebaseDb.ref('roulette/matches/' + currentUserId);
+                    mRef.off();
+                    mRef.remove();
+                    const qRef = firebaseDb.ref('roulette/queue/' + currentUserId);
+                    qRef.off();
+                    qRef.remove();
+                }
+            } catch (e) {}
+        }
+        detachRoomListeners();
+        detachQueueListeners();
+        stopPolling();
+        stopDotAnimation();
+
         try {
             const formData = new FormData();
             await fetch('/api/roulette/leave/', {
@@ -219,7 +657,7 @@
                 body: formData
             });
         } catch (err) {
-            console.error('leave chat error:', err);
+            console.error('[Roulette] leave chat error:', err);
         } finally {
             resetChat();
             showState('idle');
@@ -227,46 +665,7 @@
         }
     }
 
-    function setupMatch(partner, sessionId) {
-        activePartner = partner;
-        activeSessionId = sessionId;
-        sinceId = 0;
-        knownMsgIds.clear();
-
-        if (partnerAvatar) partnerAvatar.src = getAvatarThumb(partner.picture);
-        if (partnerName) partnerName.textContent = partner.name || 'Anonymous User';
-        if (partnerUsername) partnerUsername.textContent = '@' + (partner.username || 'user');
-
-        if (messagesContainer) {
-            messagesContainer.innerHTML = '';
-            // Insert subtle notification banner
-            const notice = document.createElement('div');
-            notice.className = 'roulette-match-notice text-center my-3';
-            notice.innerHTML = `<span class="badge bg-secondary-subtle text-muted px-3 py-2">Connected with <strong>${partner.name || 'Anonymous'}</strong>. Say hello!</span>`;
-            messagesContainer.appendChild(notice);
-        }
-
-        showState('matched');
-        notify('Connected with a partner!', 'success');
-        scrollToBottom(false);
-    }
-
-    function resetChat() {
-        activePartner = null;
-        activeSessionId = null;
-        sinceId = 0;
-        knownMsgIds.clear();
-        if (messagesContainer) messagesContainer.innerHTML = '';
-    }
-
-    function handlePartnerLeft() {
-        resetChat();
-        notify('Partner has left the chat. Re-searching...', 'warning');
-        // Graceful automatic re-queueing
-        startSearching();
-    }
-
-    // ---- Polling Loop ----
+    // ---- Polling Loop (Fallback) ----
     function startPolling(intervalMs) {
         if (pollTimer) clearInterval(pollTimer);
         pollTimer = setInterval(pollStep, intervalMs);
@@ -293,12 +692,15 @@
 
             if (currentStatus === 'waiting') {
                 if (data.status === 'matched') {
-                    setupMatch(data.partner, data.session_id);
+                    stopPolling();
+                    stopDotAnimation();
+                    startRouletteSession(data);
                 }
             } else if (currentStatus === 'matched') {
                 if (data.status === 'left') {
                     handlePartnerLeft();
                 } else if (data.status === 'idle') {
+                    detachRoomListeners();
                     resetChat();
                     showState('idle');
                     notify('Session ended', 'info');
@@ -334,7 +736,6 @@
         if (!text) return;
 
         msgInput.value = '';
-
         if (sendBtn) sendBtn.disabled = true;
 
         try {
@@ -352,19 +753,25 @@
 
             const data = await res.json();
             if (data.success && data.message) {
-                const msg = data.message;
-                if (!knownMsgIds.has(String(msg.id))) {
-                    knownMsgIds.add(String(msg.id));
-                    renderMessageRow(msg);
+                const m = data.message;
+                if (!knownMsgIds.has(String(m.id))) {
+                    knownMsgIds.add(String(m.id));
+                    renderMessageRow(m);
                     scrollToBottom(true);
                 }
-            } else {
-                notify(data.error || 'Failed to send message', res.status === 429 ? 'warning' : 'error');
-                msgInput.value = text;
+
+                // If WebRTC dataChannel is open, also push directly to peer
+                if (dataChannel && dataChannel.readyState === 'open') {
+                    try {
+                        dataChannel.send(JSON.stringify(m));
+                    } catch (e) {}
+                }
+            } else if (data.error) {
+                notify(data.error, 'warning');
             }
-        } catch (e) {
-            notify('Network error sending message', 'error');
-            msgInput.value = text;
+        } catch (err) {
+            console.error('[Roulette] send error:', err);
+            notify('Failed to send message', 'error');
         } finally {
             if (sendBtn) sendBtn.disabled = false;
             if (msgInput) msgInput.focus();
@@ -374,30 +781,24 @@
     function renderMessageRow(msg) {
         if (!messagesContainer) return;
 
-        if (msg.system || Number(msg.sender_id) === 0) {
-            const sysNotice = document.createElement('div');
-            sysNotice.className = 'text-center my-2';
-            sysNotice.innerHTML = `<span class="badge bg-danger-subtle text-danger px-3 py-2">${escapeHtml(msg.text)}</span>`;
-            messagesContainer.appendChild(sysNotice);
-            return;
-        }
-
-        const isMe = currentUserId ? (Number(msg.sender_id) === Number(currentUserId)) : false;
+        const isMe = Number(msg.sender_id) === Number(currentUserId);
         const row = document.createElement('div');
-        row.className = `page-inbox-msg-row ${isMe ? 'sent' : 'received'}`;
-        row.dataset.msgId = msg.id;
+        row.className = `roulette-msg-row ${isMe ? 'msg-outgoing' : 'msg-incoming'}`;
 
         const bubble = document.createElement('div');
-        bubble.className = `chatroom-bubble ${isMe ? 'sent' : 'received'}`;
+        bubble.className = `roulette-msg-bubble ${isMe ? 'bubble-outgoing' : 'bubble-incoming'}`;
 
         const textDiv = document.createElement('div');
-        textDiv.className = 'chatroom-msg-text';
-        textDiv.textContent = msg.text;
+        textDiv.className = 'roulette-msg-text';
+        textDiv.textContent = msg.text || '';
         bubble.appendChild(textDiv);
 
-        const timeSpan = document.createElement('div');
-        timeSpan.className = 'chatroom-msg-time text-end mt-1';
-        timeSpan.style.fontSize = '0.7rem';
+        const timeSpan = document.createElement('span');
+        timeSpan.className = 'roulette-msg-time';
+        timeSpan.style.fontSize = '0.75rem';
+        timeSpan.style.display = 'block';
+        timeSpan.style.textAlign = isMe ? 'right' : 'left';
+        timeSpan.style.marginTop = '2px';
         timeSpan.style.opacity = '0.7';
         timeSpan.textContent = msg.time_str || '';
         bubble.appendChild(timeSpan);
@@ -425,11 +826,34 @@
         });
     }
 
-    // ---- Next Partner & Heartbeat (Phase 2) ----
+    // ---- Next Partner & Heartbeat ----
     async function nextChat() {
         if (nextChatBtn) nextChatBtn.disabled = true;
+
+        // 1. Explicitly clean up old Firebase room listener, room status, and queue/match listeners
+        if (firebaseDb) {
+            try {
+                if (activeSessionId) {
+                    firebaseDb.ref('roulette/rooms/' + activeSessionId + '/status').set('left');
+                }
+                if (currentUserId) {
+                    const mRef = firebaseDb.ref('roulette/matches/' + currentUserId);
+                    mRef.off();
+                    mRef.remove();
+                    const qRef = firebaseDb.ref('roulette/queue/' + currentUserId);
+                    qRef.off();
+                    qRef.remove();
+                }
+            } catch (e) {}
+        }
+        detachRoomListeners();
+        detachQueueListeners();
         resetChat();
+        stopPolling();
+        stopDotAnimation();
         showState('waiting');
+        attachQueueListeners();
+
         try {
             const formData = new FormData();
             const res = await fetch('/api/roulette/next/', {
@@ -442,10 +866,12 @@
             });
             const data = await res.json();
             if (data.status === 'matched') {
-                setupMatch(data.partner, data.session_id);
+                stopPolling();
+                stopDotAnimation();
+                startRouletteSession(data);
             }
         } catch (err) {
-            console.error('next error:', err);
+            console.error('[Roulette] next error:', err);
             notify('Error switching partner', 'error');
             startSearching();
         } finally {
@@ -469,6 +895,8 @@
                 if (currentStatus === 'matched' && (data.status === 'left' || data.partner_expired)) {
                     handlePartnerLeft();
                 } else if (data.status === 'idle' && currentStatus !== 'idle') {
+                    detachRoomListeners();
+                    detachQueueListeners();
                     resetChat();
                     showState('idle');
                 }
@@ -497,7 +925,7 @@
             }
             const data = await res.json();
             if (data.status === 'matched') {
-                setupMatch(data.partner, data.session_id);
+                startRouletteSession(data);
                 if (data.messages && data.messages.length) {
                     data.messages.forEach(m => {
                         if (!knownMsgIds.has(String(m.id))) {
@@ -510,6 +938,7 @@
                 }
             } else if (data.status === 'waiting') {
                 showState('waiting');
+                attachQueueListeners();
             } else {
                 showState('idle');
             }
@@ -518,7 +947,7 @@
         }
     }
 
-    // ---- Moderation & Report (Phase 3) ----
+    // ---- Moderation & Report ----
     if (reportReason) {
         reportReason.addEventListener('change', function () {
             const isOther = this.value === 'Other';
@@ -569,6 +998,8 @@
                     }
                     reportForm.reset();
                     if (reportDetailsRequired) reportDetailsRequired.classList.add('d-none');
+                    detachRoomListeners();
+                    detachQueueListeners();
                     resetChat();
                     showState('idle');
                     notify('User reported. Chat ended.', 'warning');
@@ -608,20 +1039,30 @@
         });
     }
 
-    // Ensure session is cleared if user navigates away or closes tab
+    // Tab close / navigation cleanup
     window.addEventListener('beforeunload', () => {
         if (currentStatus !== 'idle') {
+            try {
+                if (firebaseDb) {
+                    if (activeSessionId) {
+                        firebaseDb.ref('roulette/rooms/' + activeSessionId + '/status').set('left');
+                    }
+                    if (currentUserId) {
+                        firebaseDb.ref('roulette/matches/' + currentUserId).remove();
+                        firebaseDb.ref('roulette/queue/' + currentUserId).remove();
+                    }
+                }
+            } catch (e) {}
             try {
                 const formData = new FormData();
                 formData.append('csrfmiddlewaretoken', getCsrfToken());
                 navigator.sendBeacon('/api/roulette/leave/', formData);
-            } catch (e) {
-                // Ignore
-            }
+            } catch (e) {}
         }
     });
 
     // ---- Initialization ----
+    initFirebase();
     startHeartbeat();
     checkInitialState();
 })();

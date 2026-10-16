@@ -1,0 +1,49 @@
+{% load static %}
+<!-- Game Friend Invite Modal -->
+<div class="modal fade" id="gameInviteFriendsModal" tabindex="-1" aria-labelledby="gameInviteFriendsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg" style="background: var(--xpy-card-bg, #1e293b); color: var(--xpy-text-primary, #f8fafc); border-radius: 16px;">
+      
+      <div class="modal-header border-bottom" style="border-color: rgba(255, 255, 255, 0.1) !important;">
+        <h5 class="modal-title fw-bold d-flex align-items-center gap-2" id="gameInviteFriendsModalLabel">
+          <i class="bi bi-person-plus-fill text-warning fs-5"></i>
+          <span>Invite Friends to Game</span>
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body p-3">
+        <!-- Room Code Info Pill in Modal -->
+        <div class="d-flex align-items-center justify-content-between p-2 mb-3 rounded" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);">
+          <div class="small text-muted">Active Room Code:</div>
+          <span class="badge bg-warning text-dark font-monospace fw-bold fs-6" id="modalActiveRoomCode">------</span>
+        </div>
+
+        <!-- Search Friends Input -->
+        <div class="input-group mb-3">
+          <span class="input-group-text bg-transparent border-end-0" style="border-color: rgba(255, 255, 255, 0.15); color: #94a3b8;">
+            <i class="bi bi-search"></i>
+          </span>
+          <input type="text" class="form-control border-start-0" id="gameFriendSearchInput" placeholder="Search friends by name or username..." style="background: transparent; color: inherit; border-color: rgba(255, 255, 255, 0.15);">
+        </div>
+
+        <!-- Friends List Container -->
+        <div id="gameFriendsListContainer" class="d-flex flex-column gap-2" style="max-height: 340px; overflow-y: auto;">
+          <div class="text-center py-4 text-muted" id="gameFriendsLoading">
+            <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+            <span>Loading friends...</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer border-top d-flex justify-content-between" style="border-color: rgba(255, 255, 255, 0.1) !important;">
+        <div class="small text-muted">
+          <i class="bi bi-lightning-charge-fill text-success me-1"></i>Friends get an instant notification &amp; DM
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Close</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+<script src="{% static 'js/games/game_invite.js' %}?v=1"></script>

@@ -1,0 +1,801 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>404 — Lost in the Cosmic Void | XAPYX</title>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="{% static 'images/icons/xapyx_icon.png' %}">
+
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    /* ============================================================
+       XAPYX BRAND DESIGN TOKENS & THEME VARIABLES
+       ============================================================ */
+    :root {
+      --xpy-primary: #ff8c00;
+      --xpy-primary-rgb: 255, 140, 0;
+      --xpy-secondary: #ff5500;
+      --xpy-accent: #8b5cf6;
+      --xpy-accent-cyan: #06b6d4;
+      --xpy-bg: #050510;
+      --xpy-text: #e8e8ff;
+      --xpy-text-secondary: #a8b8d8;
+      --xpy-text-muted: #7888a8;
+      --xpy-card-bg: rgba(12, 12, 35, 0.72);
+      --xpy-border: rgba(255, 255, 255, 0.08);
+      --xpy-border-glow: rgba(255, 140, 0, 0.35);
+      --xpy-shadow: 0 25px 60px rgba(255, 140, 0, 0.15);
+      --xpy-glow: 0 0 35px rgba(255, 140, 0, 0.25);
+      --xpy-radius: 20px;
+      --xpy-radius-sm: 12px;
+      --xpy-transition: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Light Theme (matches XAPYX global toggle) */
+    body.xpy-light {
+      --xpy-primary: #ff8c00;
+      --xpy-secondary: #ff5500;
+      --xpy-accent: #7c3aed;
+      --xpy-accent-cyan: #0891b2;
+      --xpy-bg: #f5f7fb;
+      --xpy-text: #1a1a2e;
+      --xpy-text-secondary: #4a5568;
+      --xpy-text-muted: #718096;
+      --xpy-card-bg: rgba(255, 255, 255, 0.9);
+      --xpy-border: rgba(0, 0, 0, 0.08);
+      --xpy-border-glow: rgba(255, 140, 0, 0.3);
+      --xpy-shadow: 0 25px 60px rgba(0, 0, 0, 0.08);
+      --xpy-glow: 0 0 35px rgba(255, 140, 0, 0.12);
+    }
+
+    /* ============================================================
+       BASE RESET & VIEWPORT
+       ============================================================ */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      min-height: 100vh;
+      min-height: 100dvh;
+      width: 100%;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--xpy-bg);
+      color: var(--xpy-text);
+      overflow-x: hidden;
+      transition: background-color var(--xpy-transition), color var(--xpy-transition);
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* Dark Space Backdrop */
+    body:not(.xpy-light) {
+      background-image:
+        radial-gradient(ellipse at 15% 20%, rgba(139, 92, 246, 0.22) 0%, transparent 50%),
+        radial-gradient(ellipse at 85% 75%, rgba(6, 182, 212, 0.18) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(255, 140, 0, 0.08) 0%, transparent 65%),
+        radial-gradient(circle at 50% 50%, rgba(10, 15, 40, 0.95) 0%, #050510 100%);
+    }
+
+    /* Light Theme Radiant Backdrop */
+    body.xpy-light {
+      background-image:
+        radial-gradient(ellipse at 20% 20%, rgba(255, 140, 0, 0.12) 0%, transparent 45%),
+        radial-gradient(ellipse at 80% 80%, rgba(124, 58, 237, 0.10) 0%, transparent 50%),
+        linear-gradient(160deg, #fef9e7 0%, #fdebd0 25%, #d6eaf8 50%, #f4f6fb 100%);
+    }
+
+    /* ============================================================
+       STARFIELD CANVAS & CELESTIAL ELEMENTS (PURE CODE)
+       ============================================================ */
+    #spaceCanvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Distant Nebula Glows */
+    .nebula-glow {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.45;
+      animation: nebulaPulse 12s ease-in-out infinite alternate;
+    }
+    .nebula-1 {
+      width: 420px;
+      height: 420px;
+      background: radial-gradient(circle, rgba(139, 92, 246, 0.4) 0%, transparent 70%);
+      top: -100px;
+      left: -100px;
+    }
+    .nebula-2 {
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(255, 140, 0, 0.28) 0%, transparent 70%);
+      bottom: -120px;
+      right: -120px;
+      animation-delay: -6s;
+    }
+    .nebula-3 {
+      width: 350px;
+      height: 350px;
+      background: radial-gradient(circle, rgba(6, 182, 212, 0.25) 0%, transparent 70%);
+      top: 50%;
+      left: 65%;
+      animation-delay: -3s;
+    }
+    @keyframes nebulaPulse {
+      0% { transform: scale(1) translate(0, 0); opacity: 0.35; }
+      50% { transform: scale(1.15) translate(25px, -20px); opacity: 0.55; }
+      100% { transform: scale(0.95) translate(-20px, 15px); opacity: 0.4; }
+    }
+
+    /* ============================================================
+       TOP HEADER
+       ============================================================ */
+    .header-bar {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px 24px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: inherit;
+      transition: transform var(--xpy-transition);
+    }
+    .brand-link:hover {
+      transform: translateY(-1px);
+    }
+
+    .brand-icon-box {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--xpy-primary), var(--xpy-secondary));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 900;
+      color: #ffffff;
+      box-shadow: 0 4px 18px rgba(255, 140, 0, 0.45);
+      position: relative;
+      overflow: hidden;
+    }
+    .brand-icon-box::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: linear-gradient(60deg, transparent 30%, rgba(255,255,255,0.4) 50%, transparent 70%);
+      transform: rotate(25deg);
+      animation: brandSheen 4s ease-in-out infinite;
+    }
+    @keyframes brandSheen {
+      0%, 75% { transform: translateX(-120%) rotate(25deg); }
+      100% { transform: translateX(120%) rotate(25deg); }
+    }
+
+    .brand-text {
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+      background: linear-gradient(90deg, var(--xpy-primary), var(--xpy-secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-transform: uppercase;
+    }
+
+    .theme-toggle-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: var(--xpy-card-bg);
+      border: 1px solid var(--xpy-border);
+      color: var(--xpy-text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all var(--xpy-transition);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .theme-toggle-btn:hover {
+      border-color: var(--xpy-border-glow);
+      color: var(--xpy-primary);
+      transform: scale(1.08);
+      box-shadow: var(--xpy-glow);
+    }
+
+    /* ============================================================
+       MAIN CONTENT CONTAINER
+       ============================================================ */
+    .main-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 5;
+      padding: 16px 20px 40px;
+    }
+
+    .error-card {
+      width: 100%;
+      max-width: 680px;
+      background: var(--xpy-card-bg);
+      border: 1px solid var(--xpy-border);
+      border-radius: var(--xpy-radius);
+      box-shadow: var(--xpy-shadow);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      padding: 44px 36px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      transition: border-color var(--xpy-transition), box-shadow var(--xpy-transition);
+    }
+
+    .error-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 10%;
+      right: 10%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--xpy-border-glow), var(--xpy-primary), var(--xpy-border-glow), transparent);
+    }
+
+    /* ============================================================
+       CODE-DRIVEN COSMIC HERO: 404 WITH ORBITING PLANET & RADAR
+       ============================================================ */
+    .cosmic-art-wrapper {
+      position: relative;
+      width: 260px;
+      height: 190px;
+      margin: 0 auto 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Orbit Rings (CSS) */
+    .orbit-ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px dashed rgba(255, 140, 0, 0.25);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotateX(65deg);
+      pointer-events: none;
+    }
+    .ring-outer {
+      width: 250px;
+      height: 250px;
+      animation: spinOrbit 24s linear infinite;
+    }
+    .ring-inner {
+      width: 190px;
+      height: 190px;
+      border-color: rgba(139, 92, 246, 0.3);
+      animation: spinOrbitReverse 16s linear infinite;
+    }
+
+    @keyframes spinOrbit {
+      from { transform: translate(-50%, -50%) rotateX(65deg) rotate(0deg); }
+      to { transform: translate(-50%, -50%) rotateX(65deg) rotate(360deg); }
+    }
+    @keyframes spinOrbitReverse {
+      from { transform: translate(-50%, -50%) rotateX(65deg) rotate(360deg); }
+      to { transform: translate(-50%, -50%) rotateX(65deg) rotate(0deg); }
+    }
+
+    /* Floating Astronaut SVG (Inline Vector Code) */
+    .astronaut-svg {
+      width: 140px;
+      height: 140px;
+      filter: drop-shadow(0 10px 24px rgba(255, 140, 0, 0.35));
+      animation: floatAstronaut 5s ease-in-out infinite;
+      z-index: 2;
+      position: relative;
+    }
+    @keyframes floatAstronaut {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      25% { transform: translateY(-12px) rotate(3deg); }
+      75% { transform: translateY(8px) rotate(-3deg); }
+    }
+
+    /* Orbiting Mini Satellite / Planet */
+    .orbiting-satellite {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--xpy-primary), var(--xpy-secondary));
+      box-shadow: 0 0 12px var(--xpy-primary);
+      top: 50%;
+      left: 50%;
+      animation: satellitePath 8s ease-in-out infinite;
+      z-index: 3;
+    }
+    @keyframes satellitePath {
+      0% { transform: translate(-105px, -35px) scale(0.8); }
+      50% { transform: translate(95px, 25px) scale(1.15); box-shadow: 0 0 20px var(--xpy-primary); }
+      100% { transform: translate(-105px, -35px) scale(0.8); }
+    }
+
+    /* ============================================================
+       TYPOGRAPHY & GLOWING NUMBERS
+       ============================================================ */
+    .error-number-row {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 8px;
+      line-height: 1;
+    }
+
+    .error-digit {
+      font-size: 78px;
+      font-weight: 900;
+      letter-spacing: -2px;
+      background: linear-gradient(135deg, #ffffff 0%, var(--xpy-primary) 60%, var(--xpy-secondary) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 45px rgba(255, 140, 0, 0.3);
+    }
+    body.xpy-light .error-digit {
+      background: linear-gradient(135deg, #1a1a2e 0%, var(--xpy-primary) 70%, var(--xpy-secondary) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .badge-signal {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 50px;
+      background: rgba(255, 140, 0, 0.12);
+      border: 1px solid var(--xpy-border-glow);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--xpy-primary);
+      margin-bottom: 18px;
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--xpy-primary);
+      box-shadow: 0 0 10px var(--xpy-primary);
+      animation: signalPulse 1.8s infinite;
+    }
+    @keyframes signalPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.35; transform: scale(1.4); }
+    }
+
+    .error-title {
+      font-size: 26px;
+      font-weight: 800;
+      margin-bottom: 12px;
+      letter-spacing: -0.5px;
+    }
+
+    .error-desc {
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--xpy-text-secondary);
+      max-width: 480px;
+      margin: 0 auto 30px;
+    }
+
+    /* ============================================================
+       ACTION BUTTONS
+       ============================================================ */
+    .actions-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      margin-bottom: 32px;
+    }
+
+    .btn-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 13px 24px;
+      border-radius: var(--xpy-radius-sm);
+      font-size: 14px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: all var(--xpy-transition);
+      cursor: pointer;
+      border: 1px solid transparent;
+    }
+
+    .btn-primary-xpy {
+      background: linear-gradient(135deg, var(--xpy-primary), var(--xpy-secondary));
+      color: #ffffff !important;
+      box-shadow: 0 8px 24px rgba(255, 140, 0, 0.35);
+    }
+    .btn-primary-xpy:hover {
+      box-shadow: 0 12px 30px rgba(255, 140, 0, 0.55);
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary-xpy {
+      background: var(--xpy-card-bg);
+      border-color: var(--xpy-border);
+      color: var(--xpy-text) !important;
+    }
+    .btn-secondary-xpy:hover {
+      border-color: var(--xpy-border-glow);
+      color: var(--xpy-primary) !important;
+      transform: translateY(-2px);
+      box-shadow: var(--xpy-glow);
+    }
+
+    /* Quick Links Grid */
+    .quick-links {
+      border-top: 1px solid var(--xpy-border);
+      padding-top: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .quick-link-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--xpy-text-muted);
+      text-decoration: none;
+      transition: color var(--xpy-transition), transform var(--xpy-transition);
+    }
+    .quick-link-item:hover {
+      color: var(--xpy-primary);
+      transform: translateY(-1px);
+    }
+    .quick-link-item i {
+      font-size: 12px;
+      color: var(--xpy-accent);
+    }
+
+    /* ============================================================
+       RESPONSIVE DESIGN (<= 600px)
+       ============================================================ */
+    @media (max-width: 600px) {
+      .error-card {
+        padding: 32px 20px;
+        border-radius: 16px;
+      }
+      .error-digit {
+        font-size: 62px;
+      }
+      .error-title {
+        font-size: 22px;
+      }
+      .error-desc {
+        font-size: 14px;
+        margin-bottom: 24px;
+      }
+      .actions-row {
+        flex-direction: column;
+        width: 100%;
+        gap: 10px;
+      }
+      .btn-action {
+        width: 100%;
+        justify-content: center;
+      }
+      .cosmic-art-wrapper {
+        width: 220px;
+        height: 160px;
+      }
+      .astronaut-svg {
+        width: 110px;
+        height: 110px;
+      }
+      .ring-outer {
+        width: 210px;
+        height: 210px;
+      }
+      .ring-inner {
+        width: 160px;
+        height: 160px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Ambient Animated Background Canvas -->
+  <canvas id="spaceCanvas"></canvas>
+
+  <!-- Distant Cosmic Nebulae (Pure CSS Glows) -->
+  <div class="nebula-glow nebula-1"></div>
+  <div class="nebula-glow nebula-2"></div>
+  <div class="nebula-glow nebula-3"></div>
+
+  <!-- Header -->
+  <header class="header-bar">
+    <a href="/" class="brand-link" title="XAPYX Home">
+      <div class="brand-icon-box">X</div>
+      <span class="brand-text">XAPYX</span>
+    </a>
+    <button class="theme-toggle-btn" id="themeToggleBtn" type="button" aria-label="Toggle Dark/Light Mode">
+      <i class="fas fa-moon" id="themeIcon"></i>
+    </button>
+  </header>
+
+  <!-- Central 404 Card -->
+  <main class="main-wrap">
+    <div class="error-card">
+
+      <!-- Pure Code Cosmic Vector Art -->
+      <div class="cosmic-art-wrapper">
+        <div class="orbit-ring ring-outer"></div>
+        <div class="orbit-ring ring-inner"></div>
+        <div class="orbiting-satellite"></div>
+
+        <!-- Fully Coded Astronaut Vector -->
+        <svg class="astronaut-svg" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Lost Astronaut in Space">
+          <defs>
+            <!-- Visor Gold Glow -->
+            <linearGradient id="visorGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#ffb703" />
+              <stop offset="50%" stop-color="#fb8500" />
+              <stop offset="100%" stop-color="#ff5400" />
+            </linearGradient>
+            <!-- Suit Gradient -->
+            <linearGradient id="suitGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#f8fafc" />
+              <stop offset="100%" stop-color="#cbd5e1" />
+            </linearGradient>
+            <!-- Accent Cyan Glow -->
+            <linearGradient id="cyanAccent" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#06b6d4" />
+              <stop offset="100%" stop-color="#3b82f6" />
+            </linearGradient>
+            <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+
+          <!-- Backpack / Oxygen Tank -->
+          <rect x="42" y="52" width="76" height="66" rx="14" fill="#94a3b8" />
+          <rect x="46" y="56" width="68" height="58" rx="10" fill="#64748b" />
+          <!-- Neon Thruster Ports -->
+          <circle cx="56" cy="118" r="4" fill="#06b6d4" filter="url(#neonGlow)" />
+          <circle cx="104" cy="118" r="4" fill="#ff8c00" filter="url(#neonGlow)" />
+
+          <!-- Body / Spacesuit -->
+          <rect x="52" y="66" width="56" height="54" rx="18" fill="url(#suitGrad)" />
+
+          <!-- Chest Control Plate -->
+          <rect x="62" y="74" width="36" height="26" rx="6" fill="#1e293b" />
+          <circle cx="70" cy="82" r="3" fill="#06b6d4" />
+          <circle cx="80" cy="82" r="3" fill="#ff8c00" />
+          <circle cx="90" cy="82" r="3" fill="#8b5cf6" />
+          <rect x="68" y="90" width="24" height="4" rx="2" fill="url(#cyanAccent)" />
+
+          <!-- Left Arm holding Sign -->
+          <path d="M52 74 C40 82, 32 94, 28 106 C26 112, 34 116, 38 110 C44 98, 48 88, 54 82 Z" fill="url(#suitGrad)" />
+          <circle cx="28" cy="108" r="7" fill="#e2e8f0" />
+
+          <!-- Right Arm floating gently -->
+          <path d="M108 74 C120 80, 128 88, 134 98 C138 104, 144 98, 140 92 C134 82, 124 74, 110 70 Z" fill="url(#suitGrad)" />
+          <circle cx="136" cy="96" r="7" fill="#e2e8f0" />
+
+          <!-- Helmet -->
+          <circle cx="80" cy="50" r="30" fill="url(#suitGrad)" />
+          <!-- Helmet Visor with Orange/Gold Cosmic Reflection -->
+          <ellipse cx="80" cy="50" rx="22" ry="17" fill="url(#visorGrad)" filter="url(#neonGlow)" />
+          <!-- Visor Specular Highlight -->
+          <path d="M66 43 C70 38, 78 36, 88 38 C84 41, 74 43, 66 48 Z" fill="#ffffff" opacity="0.65" />
+
+          <!-- Glowing "404" Antenna / Neon Flag held by Astronaut -->
+          <line x1="28" y1="108" x2="28" y2="44" stroke="#ff8c00" stroke-width="2.5" stroke-linecap="round" />
+          <g filter="url(#neonGlow)">
+            <rect x="10" y="24" width="36" height="20" rx="4" fill="rgba(12, 12, 35, 0.9)" stroke="#ff8c00" stroke-width="1.8" />
+            <text x="28" y="38" font-family="'Inter', sans-serif" font-size="11" font-weight="900" fill="#ff8c00" text-anchor="middle" letter-spacing="1">404</text>
+          </g>
+
+          <!-- Legs -->
+          <path d="M60 118 L54 140 C53 144, 61 146, 64 142 L72 120 Z" fill="url(#suitGrad)" />
+          <ellipse cx="56" cy="144" rx="8" ry="4" fill="#94a3b8" />
+
+          <path d="M100 118 L106 140 C107 144, 99 146, 96 142 L88 120 Z" fill="url(#suitGrad)" />
+          <ellipse cx="104" cy="144" rx="8" ry="4" fill="#94a3b8" />
+        </svg>
+      </div>
+
+      <!-- Signal Status Badge -->
+      <div class="badge-signal">
+        <span class="pulse-dot"></span>
+        <span>Transmission Lost &bull; Sector Uncharted</span>
+      </div>
+
+      <!-- Main Headline -->
+      <div class="error-number-row">
+        <span class="error-digit">4</span>
+        <span class="error-digit">0</span>
+        <span class="error-digit">4</span>
+      </div>
+
+      <h1 class="error-title">You've Drifted Out of Orbit</h1>
+      <p class="error-desc">
+        The coordinates you entered don't exist in the XAPYX Social Universe, or this celestial page has migrated to another solar system.
+      </p>
+
+      <!-- Primary Action Buttons -->
+      <div class="actions-row">
+        <a href="/" class="btn-action btn-primary-xpy">
+          <i class="fas fa-rocket"></i> Return to Home
+        </a>
+        <button type="button" class="btn-action btn-secondary-xpy" onclick="if (history.length > 1) { history.back(); } else { window.location.href = '/'; }">
+          <i class="fas fa-arrow-left"></i> Previous Orbit
+        </button>
+      </div>
+
+      <!-- Quick Helpful Links -->
+      <div class="quick-links">
+        <a href="/feed/" class="quick-link-item"><i class="fas fa-stream"></i> Feed</a>
+        <a href="/chatrooms/" class="quick-link-item"><i class="fas fa-comments"></i> Chatrooms</a>
+        <a href="/games/" class="quick-link-item"><i class="fas fa-gamepad"></i> Arcade</a>
+        <a href="/store/" class="quick-link-item"><i class="fas fa-store"></i> Store</a>
+        <a href="/support/" class="quick-link-item"><i class="fas fa-life-ring"></i> Support</a>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Starfield Canvas Script & Theme Engine -->
+  <script>
+    (function() {
+      // 1. Starfield Particles Animation (Pure JS / Canvas)
+      const canvas = document.getElementById('spaceCanvas');
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+        let stars = [];
+        const numStars = Math.min(Math.floor((width * height) / 7500), 120);
+
+        function initStars() {
+          stars = [];
+          for (let i = 0; i < numStars; i++) {
+            stars.push({
+              x: Math.random() * width,
+              y: Math.random() * height,
+              radius: Math.random() * 1.6 + 0.4,
+              alpha: Math.random() * 0.8 + 0.2,
+              delta: (Math.random() * 0.02 + 0.005) * (Math.random() > 0.5 ? 1 : -1),
+              speedY: (Math.random() * 0.2 + 0.05),
+              color: Math.random() > 0.8 ? '#ff8c00' : (Math.random() > 0.6 ? '#8b5cf6' : (Math.random() > 0.5 ? '#06b6d4' : '#ffffff'))
+            });
+          }
+        }
+
+        function drawStars() {
+          ctx.clearRect(0, 0, width, height);
+          for (let s of stars) {
+            s.alpha += s.delta;
+            if (s.alpha > 0.95 || s.alpha < 0.15) {
+              s.delta = -s.delta;
+            }
+            s.y -= s.speedY;
+            if (s.y < 0) {
+              s.y = height;
+              s.x = Math.random() * width;
+            }
+
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+            ctx.fillStyle = s.color;
+            ctx.globalAlpha = Math.max(0.1, Math.min(1, s.alpha));
+            ctx.fill();
+          }
+          ctx.globalAlpha = 1.0;
+          requestAnimationFrame(drawStars);
+        }
+
+        initStars();
+        drawStars();
+
+        window.addEventListener('resize', function() {
+          width = canvas.width = window.innerWidth;
+          height = canvas.height = window.innerHeight;
+          initStars();
+        });
+      }
+
+      // 2. Theme Toggle (Syncs with XAPYX localStorage 'theme' or 'xpy_theme')
+      const themeBtn = document.getElementById('themeToggleBtn');
+      const themeIcon = document.getElementById('themeIcon');
+
+      function applyTheme(isLight) {
+        if (isLight) {
+          document.body.classList.add('xpy-light');
+          if (themeIcon) {
+            themeIcon.classList.remove('fa-moon');
+            themeIcon.classList.add('fa-sun');
+          }
+        } else {
+          document.body.classList.remove('xpy-light');
+          if (themeIcon) {
+            themeIcon.classList.remove('fa-sun');
+            themeIcon.classList.add('fa-moon');
+          }
+        }
+      }
+
+      const savedTheme = localStorage.getItem('theme') || localStorage.getItem('xpy_theme');
+      if (savedTheme === 'light') {
+        applyTheme(true);
+      } else {
+        applyTheme(false);
+      }
+
+      if (themeBtn) {
+        themeBtn.addEventListener('click', function() {
+          const isCurrentLight = document.body.classList.contains('xpy-light');
+          const nextTheme = isCurrentLight ? 'dark' : 'light';
+          applyTheme(!isCurrentLight);
+          localStorage.setItem('theme', nextTheme);
+          localStorage.setItem('xpy_theme', nextTheme);
+        });
+      }
+    })();
+  </script>
+
+</body>
+</html>

@@ -28,8 +28,12 @@
             return null;
         }
         try {
-            const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-            console.log('✅ [WebPush] Service Worker registered with scope:', reg.scope);
+            const reg = await navigator.serviceWorker.register('/static/js/firebase-messaging-sw.js');
+            console.log('Firebase Messaging Service Worker registered with scope:', reg.scope);
+            if (typeof firebase !== 'undefined' && firebase.messaging) {
+                const messaging = firebase.messaging();
+                messaging.useServiceWorker(reg);
+            }
             return reg;
         } catch (err) {
             console.warn('⚠️ [WebPush] Service Worker registration failed:', err);

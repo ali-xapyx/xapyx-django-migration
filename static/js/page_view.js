@@ -177,7 +177,7 @@
                     }
                     return `
                     <a href="/user/${f.username}/" class="follower-list-item">
-                        <img src="${avThumb}" data-full-src="${av}" width="40" height="40" class="follower-avatar" onerror="this.onerror=null;this.src='${av}'">
+                        <img src="${avThumb}" data-full-src="${av}" width="44" height="44" class="follower-avatar" onerror="this.onerror=null;this.src='${av}'">
                         <div class="follower-info">
                             <div class="follower-name">${escapeHtml(f.name)}</div>
                             <div class="follower-username">@${escapeHtml(f.username)}</div>
@@ -408,10 +408,10 @@
 // ============================================================
 function renderPostSkeleton() {
     return '<div class="post-card-vertical post-skeleton" aria-hidden="true">' +
-        '<div class="post-header">' +
+        '<div class="post-header feed-post-header">' +
             '<div class="post-author d-flex align-items-center gap-2">' +
                 '<div class="skeleton-shimmer skeleton-avatar"></div>' +
-                '<div class="post-author-info" style="flex:1;">' +
+                '<div class="post-author-info post-header-meta post-user-details" style="flex:1;">' +
                     '<div class="skeleton-shimmer skeleton-line skeleton-title"></div>' +
                     '<div class="skeleton-shimmer skeleton-line skeleton-subtitle"></div>' +
                 '</div>' +
@@ -520,15 +520,15 @@ function removePostSkeletons(container) {
 
     function createPostElement(post) {
         var el = document.createElement('div');
-        el.className = 'post-card-vertical';
+        el.className = 'post-card-vertical post-card feed-post-item';
         el.dataset.postId = post.id;
         el.dataset.source = 'page';
 
-        var postHeader = '<div class="post-header">'
-            + '<div class="post-author" onclick="window.location=\'/pages/'
+        var postHeader = '<div class="post-header feed-post-header">'
+            + '<div class="post-author post-user-info" onclick="window.location=\'/pages/'
             + CONFIG.pageId + '/\'">'
-            +   '<img src="' + CONFIG.pageProfileImage + '" data-full-src="' + CONFIG.pageProfileImage + '" width="40" height="40" class="post-author-avatar">'
-            +   '<div class="post-author-info">'
+            +   '<img src="' + CONFIG.pageProfileImage + '" data-full-src="' + CONFIG.pageProfileImage + '" width="44" height="44" class="post-author-avatar">'
+            +   '<div class="post-author-info post-header-meta post-user-details">'
             +     '<h6 class="post-author-name">' + escapeHtml(CONFIG.pageTitle) + '</h6>'
             +     '<span class="post-meta">Page · ' + post.time_ago
             +       (post.is_edited ? ' · <span class="badge-edit">Edited</span>' : '')
@@ -712,7 +712,7 @@ function removePostSkeletons(container) {
         }
 
         div.innerHTML = `
-            <img src="${avThumb}" data-full-src="${av}" width="40" height="40" class="comment-avatar" onerror="this.onerror=null;this.src='${av}'">
+            <img src="${avThumb}" data-full-src="${av}" width="44" height="44" class="comment-avatar" width="36" height="36" onerror="this.onerror=null;this.src='${av}'">
             <div class="comment-content">
                 <div class="comment-header">
                     <span class="comment-author" onclick="window.location='/user/${comment.author.username}/'">${escapeHtml(comment.author.name)}</span>

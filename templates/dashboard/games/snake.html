@@ -65,20 +65,16 @@
   color: #10b981;
 }
 
-/* Touch controls for mobile */
+/* Directional & Touch controls for all screens */
 .snake-touch-controls {
   display: grid;
   grid-template-columns: repeat(3, 56px);
   grid-template-rows: repeat(3, 56px);
   gap: 8px;
   justify-content: center;
-  margin-top: 14px;
-}
-
-@media (min-width: 992px) {
-  .snake-touch-controls {
-    display: none;
-  }
+  margin: 14px auto 8px;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 .snake-dpad-btn {
@@ -92,6 +88,8 @@
   justify-content: center;
   user-select: none;
   touch-action: manipulation;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 .snake-dpad-btn:active {
@@ -121,6 +119,120 @@
   color: #10b981;
   margin: 6px 0 16px;
   font-family: 'JetBrains Mono', monospace;
+}
+
+/* Light Mode Theme Overrides for Snake */
+[data-theme="light"] .snake-arena-container,
+html[data-theme="light"] .snake-arena-container {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-theme="light"] .snake-mode-btn,
+html[data-theme="light"] .snake-mode-btn {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+[data-theme="light"] .snake-mode-btn.active,
+html[data-theme="light"] .snake-mode-btn.active,
+[data-theme="light"] .snake-mode-btn:hover,
+html[data-theme="light"] .snake-mode-btn:hover {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-color: #10b981 !important;
+  color: #047857 !important;
+}
+
+[data-theme="light"] .snake-touch-controls,
+html[data-theme="light"] .snake-touch-controls {
+  display: grid !important;
+  background: transparent !important;
+  border: none !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+[data-theme="light"] .snake-dpad-btn,
+html[data-theme="light"] .snake-dpad-btn {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08) !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+[data-theme="light"] .snake-dpad-btn:hover,
+html[data-theme="light"] .snake-dpad-btn:hover {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+  border-color: #94a3b8 !important;
+}
+
+[data-theme="light"] .snake-dpad-btn:active,
+html[data-theme="light"] .snake-dpad-btn:active {
+  background-color: #10b981 !important;
+  color: #ffffff !important;
+  border-color: #059669 !important;
+  transform: scale(0.95);
+}
+
+[data-theme="light"] .game-controls-guide,
+html[data-theme="light"] .game-controls-guide {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
+  color: #0f172a !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+[data-theme="light"] .guide-header h6,
+html[data-theme="light"] .guide-header h6 {
+  color: #0f172a !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+[data-theme="light"] .guide-item,
+html[data-theme="light"] .guide-item {
+  background-color: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+[data-theme="light"] .guide-key,
+html[data-theme="light"] .guide-key {
+  background-color: #e2e8f0 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+[data-theme="light"] #snakeCanvas,
+html[data-theme="light"] #snakeCanvas,
+[data-theme="light"] .snake-canvas-wrap,
+html[data-theme="light"] .snake-canvas-wrap {
+  background-color: #050510 !important;
+}
+
+[data-theme="light"] .snake-overlay,
+html[data-theme="light"] .snake-overlay {
+  background: rgba(5, 5, 16, 0.88) !important;
+  color: #ffffff !important;
+}
+
+[data-theme="light"] .snake-gameover-score,
+html[data-theme="light"] .snake-gameover-score {
+  background: transparent !important;
+  border: none !important;
+  color: #10b981 !important;
 }
 </style>
 {% endblock %}

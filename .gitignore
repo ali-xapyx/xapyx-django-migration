@@ -12,3 +12,10 @@ __pycache__/
 test_friends_delete.py
 landing/tmp/
 *$'\r'
+*.tmp
+*.old
+*.orig
+*~
+*_backup*
+manifest.json
+static/manifest.json

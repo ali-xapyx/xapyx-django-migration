@@ -16,7 +16,6 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="{% static 'images/icons/xapyx_icon.png' %}">
-  <link rel="manifest" href="{% static 'manifest.json' %}">
 
   {% comment %} Firebase {% endcomment %}
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
@@ -162,20 +161,21 @@
 
       <!-- Profile Mini + Dropdown Wrapper -->
       <div class="profile-menu-wrapper" id="profileMenuWrapper">
-        <div class="profile-mini" id="profileMini" role="button" aria-haspopup="true" aria-expanded="false" title="Account menu">
+        <div class="profile-mini user-profile-toggle header-avatar-container" id="profileMini" role="button" aria-haspopup="true" aria-expanded="false" title="Account menu">
           {% if request.user.picture %}
             <img src="https://s3.eu-west-1.amazonaws.com/xapyx.com-media/uploads/{{ request.user.picture }}"
                  alt="{{ request.user.name }}"
-                 class="avatar-mini-img" width="36" height="36"
+                 id="headerUserAvatar"
+                 class="avatar-mini-img header-avatar-img no-lightbox" width="36" height="36"
                  data-default-avatar="{% static 'images/avatars/default.png' %}">
           {% else %}
             <img src="{% static 'images/avatars/default.png' %}"
                  alt="{{ request.user.name }}"
-                 class="avatar-mini-img" width="36" height="36">
+                 id="headerUserAvatar"
+                 class="avatar-mini-img header-avatar-img no-lightbox" width="36" height="36">
           {% endif %}
-          <span>{{ request.user.name|default:request.user.username }} ▾</span>
         </div>
-        <div id="profileDropdown" class="profile-dropdown">
+        <div id="profileDropdown" class="profile-dropdown user-dropdown-menu profile-dropdown-panel">
           <div class="profile-info">
             <div class="fw-semibold text-truncate">{{ request.user.name|default:request.user.username }}</div>
             <small class="text-muted text-truncate d-block">@{{ request.user.username }}</small>
@@ -562,5 +562,38 @@ document.addEventListener('DOMContentLoaded', function() {
   <script src="{% static 'js/avatar-lightbox.js' %}?v=1"></script>
 
   {% block extra_js %}{% endblock %}
+  <!-- Service Worker: Auto-purge legacy sw.js & Register Firebase Messaging Service Worker -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      // 1. Unregister legacy sw.js if installed on browser client
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for (var i = 0; i < registrations.length; i++) {
+          var reg = registrations[i];
+          var swUrl = (reg.active && reg.active.scriptURL) ||
+                      (reg.waiting && reg.waiting.scriptURL) ||
+                      (reg.installing && reg.installing.scriptURL) || '';
+          if (swUrl.endsWith('/sw.js') || swUrl.indexOf('/sw.js') !== -1) {
+            reg.unregister().then(function(unregistered) {
+              if (unregistered) console.log('🧹 Purged legacy sw.js service worker:', swUrl);
+            });
+          }
+        }
+      }).catch(function(err) {
+        console.warn('Error checking existing service workers:', err);
+      });
+
+      // 2. Register Firebase Messaging Service Worker
+      navigator.serviceWorker.register('/static/js/firebase-messaging-sw.js')
+        .then(function(registration) {
+          console.log('Firebase Messaging Service Worker registered with scope:', registration.scope);
+          if (typeof firebase !== 'undefined' && firebase.messaging) {
+            var messaging = firebase.messaging();
+            messaging.useServiceWorker(registration);
+          }
+        }).catch(function(err) {
+          console.log('Service Worker registration failed:', err);
+        });
+    }
+  </script>
 </body>
 </html>

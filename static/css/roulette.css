@@ -1,0 +1,223 @@
+/* --- Mobile View (<= 768px): Flush to Mobile Bottom Nav & Full Inner Scroll --- */
+@media (max-width: 768px) {
+    /* Site Header: Compact padding and hide/collapse secondary elements to prevent clumping */
+    .main-header {
+        padding: 8px 12px !important;
+    }
+    .header-actions {
+        gap: 6px !important;
+        flex-shrink: 0 !important;
+    }
+    .header-actions .theme-picker-wrapper {
+        display: none !important;
+    }
+    .main-header .logo-link {
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    body:has(.roulette-box) {
+        overflow: hidden !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        padding-bottom: 0 !important;
+        margin: 0 !important;
+    }
+
+    /* Strict dynamic viewport height (dvh) anchoring with clean navbar and bottom nav padding */
+    .roulette-page-wrapper,
+    .roulette-container,
+    .roulette-main-container,
+    .roulette-wrapper,
+    .roulette-page-container,
+    #dashboardContainer.roulette-page-container {
+        display: flex !important;
+        flex-direction: column !important;
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+        padding-top: 70px !important; /* clear fixed top navbar */
+        padding-bottom: 70px !important; /* clear mobile bottom nav */
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+        margin: 0 !important;
+    }
+
+    .roulette-inner {
+        height: 100% !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+    }
+
+    .roulette-flex,
+    .roulette-dashboard-main {
+        height: 100% !important;
+        flex: 1 1 auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+    }
+
+    .roulette-card,
+    .roulette-chat-box,
+    .roulette-box {
+        flex: 1 !important;
+        min-height: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+        border-radius: 0 !important;
+        border: none !important;
+        margin: 0 !important;
+        background: var(--xpy-card-bg, #0c0c23) !important;
+        height: 100% !important;
+    }
+
+    /* Active state panel takes full height; inactive panels remain strictly hidden */
+    .roulette-state-view {
+        height: 100% !important;
+        flex: 1 1 auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+    }
+
+    .roulette-state-view.d-none,
+    .roulette-state-view[style*="display: none"],
+    .roulette-state-view.hidden,
+    .roulette-state-view[hidden],
+    #rouletteIdleState.d-none,
+    #rouletteWaitingState.d-none,
+    #rouletteMatchedState.d-none {
+        display: none !important;
+    }
+
+    /* State 1: Idle Lobby (scrollable vertically with bottom clearance) */
+    #rouletteIdleState:not(.d-none) {
+        display: flex !important;
+        flex-direction: column !important;
+        height: 100% !important;
+        overflow: hidden !important;
+    }
+
+    .roulette-hero {
+        padding: 24px 16px 36px !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        flex: 1 1 auto !important;
+    }
+
+    .roulette-hero-title {
+        font-size: 1.6rem;
+    }
+
+    .roulette-features-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        margin-top: 24px;
+        margin-bottom: 24px;
+    }
+
+    /* State 2: Searching Radar (centered cleanly in viewport) */
+    #rouletteWaitingState:not(.d-none) {
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        align-items: center !important;
+        height: 100% !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    .roulette-waiting-hero {
+        padding: 30px 16px !important;
+        margin: auto 0 !important;
+        width: 100% !important;
+        flex: 1 1 auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        align-items: center !important;
+    }
+
+    /* State 3: Active Chat Panel (docked header and flush bottom input bar) */
+    #rouletteMatchedState:not(.d-none) {
+        display: flex !important;
+        flex-direction: column !important;
+        height: 100% !important;
+        overflow: hidden !important;
+    }
+
+    .roulette-video-section {
+        height: 40% !important;
+        min-height: 180px !important;
+    }
+
+    .roulette-chat-section,
+    .roulette-chat-panel {
+        display: flex !important;
+        flex-direction: column !important;
+        flex: 1 !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+        height: 100% !important;
+    }
+
+    .roulette-chat-header {
+        flex-shrink: 0 !important;
+        padding: 8px 12px !important;
+        gap: 8px !important;
+    }
+
+    .roulette-chat-header .roulette-header-left {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .roulette-chat-header .roulette-header-name {
+        font-size: 0.95rem !important;
+        max-width: 140px;
+    }
+
+    .roulette-chat-header .roulette-header-actions {
+        flex-shrink: 0 !important;
+        gap: 6px !important;
+    }
+
+    .roulette-chat-header .roulette-header-actions .btn {
+        padding: 5px 8px !important;
+        font-size: 0.82rem !important;
+    }
+
+    .roulette-messages-area,
+    .roulette-messages-container {
+        flex: 1 !important;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        padding: 12px 10px !important;
+    }
+
+    .roulette-input-form,
+    .roulette-chat-input-wrapper,
+    .roulette-input-area {
+        display: flex !important;
+        flex-shrink: 0 !important;
+        position: sticky !important;
+        bottom: 0 !important;
+        background: var(--xpy-card-bg, #12122a) !important;
+        padding: 10px !important;
+        border-top: 1px solid rgba(255,255,255,0.1);
+        z-index: 10;
+    }
+}

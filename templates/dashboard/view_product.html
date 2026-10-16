@@ -46,14 +46,29 @@
       
       <!-- Gallery Card -->
       <div class="pd-card">
-        <div class="pd-gallery-main">
+        <div class="pd-gallery-main position-relative">
           <img src="{{ product.first_image }}" id="pdMainImage" alt="{{ product.title }}" onerror="this.onerror=null;this.src='/static/images/products/product.jpg';">
+
+          {% if product.images|length > 1 %}
+            <!-- Carousel Navigation Arrows -->
+            <button type="button" class="pd-carousel-arrow pd-prev" onclick="window.pdGalleryPrev()" aria-label="Previous Image">
+              <i class="bi bi-chevron-left"></i>
+            </button>
+            <button type="button" class="pd-carousel-arrow pd-next" onclick="window.pdGalleryNext()" aria-label="Next Image">
+              <i class="bi bi-chevron-right"></i>
+            </button>
+
+            <!-- Photo Counter Badge -->
+            <div class="pd-gallery-counter">
+              <i class="bi bi-camera me-1"></i><span id="pdCounterCurrent">1</span> of {{ product.images|length }}
+            </div>
+          {% endif %}
         </div>
 
         {% if product.images|length > 1 %}
-          <div class="d-flex flex-wrap gap-2">
+          <div class="d-flex flex-wrap gap-2 mt-3">
             {% for img in product.images %}
-              <div class="pd-thumb-item {% if forloop.first %}active{% endif %}" onclick="selectProductImage('{{ img }}', this)">
+              <div class="pd-thumb-item {% if forloop.first %}active{% endif %}" data-img-url="{{ img }}" onclick="window.selectProductImage('{{ img }}', this)">
                 <img src="{{ img }}" alt="Thumbnail {{ forloop.counter }}" onerror="this.onerror=null;this.src='/static/images/products/product.jpg';">
               </div>
             {% endfor %}
@@ -301,86 +316,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-function selectProductImage(url, thumbEl) {
-    const mainImg = document.getElementById('pdMainImage');
-    if (mainImg) {
-        mainImg.src = url;
-    }
-    document.querySelectorAll('.pd-thumb-item').forEach(el => el.classList.remove('active'));
-    if (thumbEl) {
-        thumbEl.classList.add('active');
-    }
-}
-
-function toggleContactNumber() {
-    const card = document.getElementById('contactNumberCard');
-    const btnText = document.getElementById('contactBtnText');
-    if (card) {
-        if (card.classList.contains('d-none')) {
-            card.classList.remove('d-none');
-            btnText.textContent = 'Hide Phone Number';
-        } else {
-            card.classList.add('d-none');
-            btnText.textContent = 'Show Phone Number';
-        }
-    }
-}
-
-let currentSellerProductId = null;
-function openMarkSoldModal(productId, title) {
-    currentSellerProductId = productId;
-    const t = document.getElementById('markSoldProductTitle');
-    if (t) t.textContent = title;
-    bootstrap.Modal.getOrCreateInstance(document.getElementById('markSoldModal')).show();
-}
-function openDeleteProductModal(productId, title) {
-    currentSellerProductId = productId;
-    const t = document.getElementById('deleteProductTitle');
-    if (t) t.textContent = title;
-    bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteProductModal')).show();
-}
-function getCsrfToken() {
-    const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]*)/);
-    return match ? decodeURIComponent(match[1]) : (document.querySelector('[name=csrfmiddlewaretoken]')?.value || '');
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    const sBtn = document.getElementById('confirmMarkSoldBtn');
-    if (sBtn) {
-        sBtn.addEventListener('click', function() {
-            if (!currentSellerProductId) return;
-            sBtn.disabled = true;
-            fetch(`/api/store/mark-sold/${currentSellerProductId}/`, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': getCsrfToken(), 'X-Requested-With': 'XMLHttpRequest' }
-            }).then(r => r.json()).then(data => {
-                if (data.success) location.reload();
-                else { alert(data.error || 'Failed to mark as sold.'); sBtn.disabled = false; }
-            }).catch(err => {
-                alert('Request failed. Please try again.');
-                sBtn.disabled = false;
-            });
-        });
-    }
-    const dBtn = document.getElementById('confirmDeleteProductBtn');
-    if (dBtn) {
-        dBtn.addEventListener('click', function() {
-            if (!currentSellerProductId) return;
-            dBtn.disabled = true;
-            fetch(`/api/store/delete/${currentSellerProductId}/`, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': getCsrfToken(), 'X-Requested-With': 'XMLHttpRequest' }
-            }).then(r => r.json()).then(data => {
-                if (data.success) window.location.href = '/store/';
-                else { alert(data.error || 'Failed to delete listing.'); dBtn.disabled = false; }
-            }).catch(err => {
-                alert('Request failed. Please try again.');
-                dBtn.disabled = false;
-            });
-        });
-    }
-});
-
-</script>
+<script src="{% static 'js/store.js' %}?v=2"></script>
 {% endblock %}

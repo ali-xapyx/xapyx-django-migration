@@ -63,7 +63,7 @@
                     </div>
                     <div class="page-inbox-conv-bottom">
                       <span class="page-inbox-conv-last-msg">{{ chat.last_message }}</span>
-                      {% if chat.unread_count %}
+                      {% if chat.user_id != selected_friend_id and chat.unread_count %}
                       <span class="page-inbox-conv-badge">{{ chat.unread_count }}</span>
                       {% endif %}
                     </div>

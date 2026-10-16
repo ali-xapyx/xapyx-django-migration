@@ -340,7 +340,14 @@
 
         fbUserInboxRef = firebaseDb.ref('user_chats/' + config.currentUserId);
 
-        const handleInboxMessage = (snapshot) => {
+        let initialChildrenLoaded = false;
+        fbUserInboxRef.once('value').then(() => {
+            initialChildrenLoaded = true;
+        }).catch(() => {
+            initialChildrenLoaded = true;
+        });
+
+        const handleInboxMessage = (snapshot, isNewChange = false) => {
             const data = snapshot.val();
             if (!data) return;
 
@@ -389,13 +396,16 @@
                         markConversationRead(activeFriendId);
                     }
                 }
-            } else if (isIncoming) {
-                incrementUnreadBadge(friendId);
+            } else if (isIncoming && isNewChange && initialChildrenLoaded) {
+                // Only increment for genuine incoming unread messages received while connected
+                if (!data.is_read && data.unread !== 0) {
+                    incrementUnreadBadge(friendId);
+                }
             }
         };
 
-        fbUserInboxRef.on('child_added', handleInboxMessage);
-        fbUserInboxRef.on('child_changed', handleInboxMessage);
+        fbUserInboxRef.on('child_added', (snap) => handleInboxMessage(snap, false));
+        fbUserInboxRef.on('child_changed', (snap) => handleInboxMessage(snap, true));
     }
 
 
@@ -684,6 +694,14 @@
             conversations = data.conversations || [];
             renderConversations(conversations);
 
+            const totalUnread = conversations.reduce((sum, c) => sum + (Number(c.unread_count) || 0), 0);
+            if (typeof window.updateSidebarBadge === 'function') {
+                window.updateSidebarBadge('chat', totalUnread);
+            }
+            if (typeof window.updateSidebarChatBadge === 'function') {
+                window.updateSidebarChatBadge(totalUnread);
+            }
+
             if (config.selectedFriendId && config.selectedFriendId > 0) {
                 openConversation(config.selectedFriendId);
             }
@@ -712,7 +730,8 @@
             const userId = c.user_id || c.friend_id;
             const isActive = activeFriendId && Number(activeFriendId) === Number(userId);
             const thumb = getAvatarThumb(c.picture || c.avatar);
-            const unreadBadge = c.unread_count > 0 ? `<span class="page-inbox-conv-badge">${c.unread_count}</span>` : '';
+            const effectiveUnread = (activeFriendId && Number(activeFriendId) === Number(userId)) ? 0 : (Number(c.unread_count) || 0);
+            const unreadBadge = effectiveUnread > 0 ? `<span class="page-inbox-conv-badge">${effectiveUnread}</span>` : '';
             const isOnline = Boolean(c.is_online !== undefined ? c.is_online : c.online);
             const onlineClass = isOnline ? 'online' : 'offline';
 
@@ -805,6 +824,15 @@
             window.updateBellBadge(Math.max(0, curBell - clearedBadgeCount));
         }
 
+        // Synchronously clear sidebar chat badge
+        if (typeof window.updateSidebarBadge === 'function') {
+            window.updateSidebarBadge('chat', 0);
+        }
+        if (typeof window.updateSidebarChatBadge === 'function') {
+            window.updateSidebarChatBadge(0);
+        }
+        window.dispatchEvent(new CustomEvent('chatMessagesRead', { detail: { friendId: friendId } }));
+
         // Trigger immediate background mark read
         markConversationRead(friendId);
 
@@ -854,8 +882,14 @@
             if (data.unread_count !== undefined && typeof window.updateBellBadge === 'function') {
                 window.updateBellBadge(data.unread_count);
             }
+            if (data.chat_unread !== undefined && typeof window.updateSidebarBadge === 'function') {
+                window.updateSidebarBadge('chat', data.chat_unread);
+            }
             if (typeof window.refreshNotifications === 'function') {
                 window.refreshNotifications();
+            }
+            if (typeof window.refreshSidebarBadges === 'function') {
+                window.refreshSidebarBadges();
             }
 
             // Update Header
@@ -1706,6 +1740,36 @@
 
     async function markConversationRead(friendId) {
         if (!friendId) return;
+
+        // Instantly strip badge from list item
+        const convItem = conversationsList ? conversationsList.querySelector(`[data-friend-id="${friendId}"]`) : null;
+        if (convItem) {
+            const b = convItem.querySelector('.page-inbox-conv-badge, .unread-badge');
+            if (b) b.remove();
+            convItem.classList.remove('has-unread');
+        }
+
+        // Synchronously clear sidebar chat badge
+        if (typeof window.updateSidebarBadge === 'function') {
+            window.updateSidebarBadge('chat', 0);
+        }
+        if (typeof window.updateSidebarChatBadge === 'function') {
+            window.updateSidebarChatBadge(0);
+        }
+        window.dispatchEvent(new CustomEvent('chatMessagesRead', { detail: { friendId: friendId } }));
+
+        // Reset Firebase RTDB user_chats unread flag
+        if (firebaseDb && config.currentUserId) {
+            try {
+                firebaseDb.ref(`user_chats/${config.currentUserId}/${friendId}`).update({
+                    is_read: true,
+                    unread: 0
+                });
+            } catch (err) {
+                console.warn('Firebase user_chats reset error:', err);
+            }
+        }
+
         try {
             const formData = new FormData();
             formData.append('friend_id', friendId);
@@ -1719,8 +1783,14 @@
                 if (data.unread_count !== undefined && typeof window.updateBellBadge === 'function') {
                     window.updateBellBadge(data.unread_count);
                 }
+                if (data.chat_unread !== undefined && typeof window.updateSidebarBadge === 'function') {
+                    window.updateSidebarBadge('chat', data.chat_unread);
+                }
                 if (typeof window.refreshNotifications === 'function') {
                     window.refreshNotifications();
+                }
+                if (typeof window.refreshSidebarBadges === 'function') {
+                    window.refreshSidebarBadges();
                 }
             }
         } catch (e) {
@@ -1789,6 +1859,11 @@
         if (timeEl) {
             timeEl.textContent = formatRelativeTime(convTs);
         }
+        // Current user sent the latest message, so clear any unread badge on this thread
+        const badge = item.querySelector('.page-inbox-conv-badge, .unread-badge');
+        if (badge) badge.remove();
+        item.classList.remove('has-unread');
+
         // Move to top of conversations list
         if (conversationsList && item !== conversationsList.firstElementChild) {
             conversationsList.prepend(item);

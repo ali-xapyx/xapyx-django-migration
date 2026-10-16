@@ -125,7 +125,7 @@
         '</div>'
       : '';
 
-    return '<div class="post-media-slider" id="' + mid + '">' +
+    return '<div class="post-media-slider post-media-container feed-media multi-image-carousel" id="' + mid + '">' +
       '<div class="slider-container">' + items + '</div>' + nav + '</div>';
   }
 
@@ -157,11 +157,11 @@
       : '';
 
     return '' +
-      '<div class="post-card-vertical" data-post-id="' + post.id + '">' +
-        '<div class="post-header">' +
-          '<div class="post-author" onclick="' + authorOnclick + '">' +
-            '<img src="' + avThumb + '" data-full-src="' + av + '" width="40" height="40" class="post-author-avatar" alt="" onerror="this.onerror=null;this.src=\'' + av + '\'">' +
-            '<div class="post-author-info">' +
+      '<div class="post-card-vertical post-card feed-post-item" data-post-id="' + post.id + '">' +
+        '<div class="post-header feed-post-header">' +
+          '<div class="post-author post-user-info" onclick="' + authorOnclick + '">' +
+            '<img src="' + avThumb + '" data-full-src="' + av + '" width="44" height="44" class="post-author-avatar" alt="" onerror="this.onerror=null;this.src=\'' + av + '\'">' +
+            '<div class="post-author-info post-header-meta post-user-details">' +
               '<h6>' + escapeHtml(post.author.name) + '</h6>' +
               '<span class="post-meta">@' + escapeHtml(post.author.username) + ' · ' + escapeHtml(post.time_ago) +
                 (post.is_edited ? ' · <span class="badge-edit">Edited</span>' : '') +
@@ -217,10 +217,10 @@
 // ============================================================
 function renderPostSkeleton() {
     return '<div class="post-card-vertical post-skeleton" aria-hidden="true">' +
-        '<div class="post-header">' +
+        '<div class="post-header feed-post-header">' +
             '<div class="post-author d-flex align-items-center gap-2">' +
                 '<div class="skeleton-shimmer skeleton-avatar"></div>' +
-                '<div class="post-author-info" style="flex:1;">' +
+                '<div class="post-author-info post-header-meta post-user-details" style="flex:1;">' +
                     '<div class="skeleton-shimmer skeleton-line skeleton-title"></div>' +
                     '<div class="skeleton-shimmer skeleton-line skeleton-subtitle"></div>' +
                 '</div>' +
@@ -576,7 +576,7 @@ function removePostSkeletons(container) {
     }
     return '' +
       '<div class="comment-item" data-comment-id="' + cm.id + '">' +
-        '<img src="' + avThumb + '" data-full-src="' + av + '" width="40" height="40" class="comment-avatar" onerror="this.onerror=null;this.src=\'' + av + '\'">' +
+        '<img src="' + avThumb + '" data-full-src="' + av + '" width="44" height="44" class="comment-avatar" width="36" height="36" onerror="this.onerror=null;this.src=\'' + av + '\'">' +
         '<div class="comment-content">' +
           '<div class="comment-header">' +
             '<strong>' + escapeHtml(cm.author.name.split(' ')[0]) + '</strong>' +
@@ -934,7 +934,7 @@ function removePostSkeletons(container) {
         }
         return `
         <a href="/user/${m.username}/" class="gv-modal-member">
-          <img src="${avThumb}" data-full-src="${av}" class="avatar-img" width="40" height="40" onerror="this.onerror=null;this.src='${av}'">
+          <img src="${avThumb}" data-full-src="${av}" class="avatar-img" width="44" height="44" onerror="this.onerror=null;this.src='${av}'">
           <div class="gv-modal-member-info">
             <div class="gv-modal-member-name">${escapeHtml(m.name)}</div>
             <div class="gv-modal-member-username">@${escapeHtml(m.username)}</div>

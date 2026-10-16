@@ -1,5 +1,5 @@
 // Firebase Cloud Messaging (FCM) Service Worker
-// Provides native desktop push notifications for background messages.
+// Provides native desktop & mobile push notifications for background messages.
 
 importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js');
@@ -21,7 +21,15 @@ if (!firebase.apps.length) {
 
 const messaging = firebase.messaging();
 
-// Handle background messages received while the app is closed or in background
+self.addEventListener('install', (event) => {
+    self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+    event.waitUntil(self.clients.claim());
+});
+
+// Handle background messages received via Firebase Cloud Messaging
 messaging.onBackgroundMessage((payload) => {
     console.log('[firebase-messaging-sw.js] Received background message:', payload);
 
@@ -33,19 +41,66 @@ messaging.onBackgroundMessage((payload) => {
                  (payload.data && payload.data.message) ||
                  '';
     const icon = (payload.notification && payload.notification.icon) ||
-                 '/static/images/logo.png';
+                 (payload.data && payload.data.icon) ||
+                 '/static/images/icons/icon-192x192.png';
+    const badge = '/static/images/icons/icon-192x192.png';
+    const tag = (payload.data && payload.data.tag) || 'xapyx-push';
 
     const notificationOptions = {
         body: body,
         icon: icon,
-        badge: '/static/images/icons/icon-192x192.png',
-        data: payload.data || {}
+        badge: badge,
+        tag: tag,
+        data: payload.data || {},
+        vibrate: [100, 50, 100],
+        renotify: true
     };
 
     return self.registration.showNotification(title, notificationOptions);
 });
 
-// Handle notification click: focus existing window or open new window to target link
+// Handle standard Web Push / VAPID push events
+self.addEventListener('push', (event) => {
+    if (!event.data) return;
+    try {
+        const payload = event.data.json();
+        // Skip if payload is already handled by FCM onBackgroundMessage
+        if (payload.fcmMessageId || payload.from) return;
+
+        const title = payload.title || (payload.notification && payload.notification.title) || 'XAPYX Notification';
+        const body = payload.body || payload.message || (payload.notification && payload.notification.body) || '';
+        const icon = payload.icon || (payload.notification && payload.notification.icon) || '/static/images/icons/icon-192x192.png';
+        const badge = payload.badge || '/static/images/icons/icon-192x192.png';
+        const tag = payload.tag || 'xapyx-push';
+        const targetUrl = (payload.data && (payload.data.url || payload.data.link)) || payload.url || '/feed/';
+
+        event.waitUntil(
+            self.registration.showNotification(title, {
+                body: body,
+                icon: icon,
+                badge: badge,
+                tag: tag,
+                data: { url: targetUrl, tag: tag, ...payload.data },
+                vibrate: [100, 50, 100],
+                renotify: true
+            })
+        );
+    } catch (e) {
+        const text = event.data.text();
+        if (text) {
+            event.waitUntil(
+                self.registration.showNotification('XAPYX Notification', {
+                    body: text,
+                    icon: '/static/images/icons/icon-192x192.png',
+                    badge: '/static/images/icons/icon-192x192.png',
+                    data: { url: '/feed/' }
+                })
+            );
+        }
+    }
+});
+
+// Handle notification click: focus existing window or open target link
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
 

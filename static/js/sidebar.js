@@ -398,9 +398,9 @@ window.deleteNotification = async function(notificationId, event, button) {
 // PROFILE DROPDOWN
 // ===========================================
 function setupProfileDropdown() {
-    const profileMini = document.getElementById('profileMini');
-    const profileDropdown = document.getElementById('profileDropdown');
-    const profileWrapper = document.getElementById('profileMenuWrapper');
+    const profileMini = document.getElementById('profileMini') || document.querySelector('.user-profile-toggle, .header-avatar-container');
+    const profileDropdown = document.getElementById('profileDropdown') || document.querySelector('.user-dropdown-menu, .profile-dropdown-panel');
+    const profileWrapper = document.getElementById('profileMenuWrapper') || document.querySelector('.profile-menu-wrapper');
 
     if (profileMini && profileDropdown) {
         profileMini.addEventListener('click', (e) => {
@@ -511,9 +511,15 @@ class NotificationSystem {
         if (!('serviceWorker' in navigator)) return;
 
         try {
-            // Register root Service Worker for full-site scope
-            const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-            console.log('✅ [WebPush] Service Worker registered with scope:', registration.scope);
+            // Register Firebase Messaging Service Worker
+            const registration = await navigator.serviceWorker.register('/static/js/firebase-messaging-sw.js');
+            console.log('Firebase Messaging Service Worker registered with scope:', registration.scope);
+
+            // Initialize Firebase messaging token with registration
+            if (typeof firebase !== 'undefined' && firebase.messaging) {
+                const messaging = firebase.messaging();
+                messaging.useServiceWorker(registration);
+            }
 
             if ('Notification' in window && 'PushManager' in window) {
                 if (Notification.permission === 'granted') {
@@ -614,30 +620,37 @@ class NotificationSystem {
             const notificationsRef = ref(db, `notifications/${this.userId}`);
             const recentQuery = query(notificationsRef, orderByKey(), limitToLast(1));
 
+            // Prevent initial query snapshot from falsely triggering unread badge increments on page load
+            let initialNotificationSnapshotDone = false;
+            const sessionStartTime = Math.floor(Date.now() / 1000) - 2;
+
             const childListener = onChildAdded(recentQuery, (snapshot) => {
                 const notification = snapshot.val();
                 if (!notification) return;
                 notification.id = parseInt(notification.id);
                 notification.is_read = notification.is_read ? 1 : 0;
 
+                let createdAtSec = 0;
                 // Format time_ago from created_at timestamp if present (type-aware for Unix int, ms int, or PHP datetime string)
-                if (notification.created_at && !notification.time_ago) {
+                if (notification.created_at) {
                     let createdAt = notification.created_at;
                     if (typeof createdAt === 'string') {
                         const parsed = Date.parse(createdAt.replace(' ', 'T'));
-                        createdAt = isNaN(parsed) ? 0 : Math.floor(parsed / 1000);
+                        createdAtSec = isNaN(parsed) ? 0 : Math.floor(parsed / 1000);
                     } else if (typeof createdAt === 'number' && createdAt > 1e12) {
-                        createdAt = Math.floor(createdAt / 1000);
+                        createdAtSec = Math.floor(createdAt / 1000);
                     } else {
-                        createdAt = parseInt(createdAt) || 0;
+                        createdAtSec = parseInt(createdAt) || 0;
                     }
-                    const nowSec = Math.floor(Date.now() / 1000);
-                    const diffSec = Math.max(0, nowSec - createdAt);
-                    if (diffSec < 60) notification.time_ago = 'Just now';
-                    else if (diffSec < 3600) notification.time_ago = Math.floor(diffSec / 60) + 'm ago';
-                    else if (diffSec < 86400) notification.time_ago = Math.floor(diffSec / 3600) + 'h ago';
-                    else if (diffSec < 604800) notification.time_ago = Math.floor(diffSec / 86400) + 'd ago';
-                    else notification.time_ago = Math.floor(diffSec / 604800) + 'w ago';
+                    if (!notification.time_ago) {
+                        const nowSec = Math.floor(Date.now() / 1000);
+                        const diffSec = Math.max(0, nowSec - createdAtSec);
+                        if (diffSec < 60) notification.time_ago = 'Just now';
+                        else if (diffSec < 3600) notification.time_ago = Math.floor(diffSec / 60) + 'm ago';
+                        else if (diffSec < 86400) notification.time_ago = Math.floor(diffSec / 3600) + 'h ago';
+                        else if (diffSec < 604800) notification.time_ago = Math.floor(diffSec / 86400) + 'd ago';
+                        else notification.time_ago = Math.floor(diffSec / 604800) + 'w ago';
+                    }
                 }
 
                 // Clean legacy '??' in title if present
@@ -658,12 +671,14 @@ class NotificationSystem {
 
                 const isUnread = !notification.is_read;
                 const nType = String(notification.type || '').toLowerCase();
+                const isRealtimeNew = initialNotificationSnapshotDone && (!createdAtSec || createdAtSec >= sessionStartTime);
+
                 if (nType === 'message' || nType === 'chat_message' || nType.startsWith('chat_')) {
-                    if (isUnread && window.handleNotificationSidebarBadge) {
+                    if (isUnread && isRealtimeNew && window.handleNotificationSidebarBadge) {
                         window.handleNotificationSidebarBadge(notification);
                     }
                 } else {
-                    if (isUnread) {
+                    if (isUnread && isRealtimeNew) {
                         this.unreadCount++;
                         this.lastChildAddedAt = Date.now();
                         window.updateBellBadge(this.unreadCount);
@@ -671,6 +686,10 @@ class NotificationSystem {
                     this.addNotificationToPanel(notification);
                 }
             });
+
+            setTimeout(() => {
+                initialNotificationSnapshotDone = true;
+            }, 1000);
 
             this.firebaseListeners.push({ type: 'child', query: recentQuery, listener: childListener });
 
@@ -1495,19 +1514,23 @@ function setupNavigation() {
 document.addEventListener('DOMContentLoaded', function() {
     createStars();
 
-    // Register Service Worker for Web Push notifications
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
-        navigator.serviceWorker.register('/sw.js', { scope: '/' })
-            .then(function(reg) {
-                console.log('✅ [WebPush] Service Worker registered:', reg.scope);
+    // Register Firebase Messaging Service Worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/static/js/firebase-messaging-sw.js')
+            .then(function(registration) {
+                console.log('Firebase Messaging Service Worker registered with scope:', registration.scope);
+                // Initialize Firebase messaging token with registration
+                if (typeof firebase !== 'undefined' && firebase.messaging) {
+                    const messaging = firebase.messaging();
+                    messaging.useServiceWorker(registration);
+                }
                 if ('Notification' in window && Notification.permission === 'granted') {
                     if (window.sidebarNotifications && window.sidebarNotifications.syncPushSubscription) {
-                        window.sidebarNotifications.syncPushSubscription(reg);
+                        window.sidebarNotifications.syncPushSubscription(registration);
                     }
                 }
-            })
-            .catch(function(err) {
-                console.warn('[WebPush] Service Worker registration failed:', err);
+            }).catch(function(err) {
+                console.log('Service Worker registration failed:', err);
             });
     }
 
@@ -1715,10 +1738,15 @@ async function fetchSidebarCounts() {
 
 function handleNotificationSidebarBadge(notification) {
     if (!notification) return;
+    if (notification.is_read) return;
     const type = String(notification.type || '').toLowerCase();
 
     // Badges strictly for direct Chat/Messages (general notifications use notification-badge in header)
     if (type === 'message' || type === 'chat_message' || type.startsWith('chat_')) {
+        if (isCurrentSection('/chat')) {
+            updateSidebarBadge('chat', 0);
+            return;
+        }
         incrementSidebarBadge('chat');
     }
 }
@@ -1728,6 +1756,9 @@ window.updateSidebarBadge = updateSidebarBadge;
 window.incrementSidebarBadge = incrementSidebarBadge;
 window.refreshSidebarBadges = fetchSidebarCounts;
 window.handleNotificationSidebarBadge = handleNotificationSidebarBadge;
+window.updateSidebarChatBadge = function(count) {
+    updateSidebarBadge('chat', count);
+};
 window.applyFriendsBadge = function(pending) {
     updateSidebarBadge('friends', pending);
 };

@@ -70,16 +70,14 @@
   }
   function startViewTimer(postId) {
     clearViewTimer(postId);
-    const tid = setTimeout(() => {
+    const tid = setInterval(() => {
       recordView(postId);
-      visiblePosts.delete(postId);
-      postViewTimeouts.delete(postId);
-    }, 4000);
+    }, 5000);
     postViewTimeouts.set(postId, tid);
   }
   function clearViewTimer(postId) {
     if (postViewTimeouts.has(postId)) {
-      clearTimeout(postViewTimeouts.get(postId));
+      clearInterval(postViewTimeouts.get(postId));
       postViewTimeouts.delete(postId);
     }
     visiblePosts.delete(postId);
@@ -97,7 +95,14 @@
   }
   function updatePostViewCount(postId, count) {
     const el = document.querySelector(`.post-card-vertical[data-post-id="${postId}"] .post-views-count`);
-    if (el && count != null) el.innerHTML = `<i class="bi bi-eye"></i> ${count}`; 
+    if (el && count != null) {
+      const iconEl = el.querySelector('i, svg');
+      if (iconEl) {
+        el.innerHTML = `${iconEl.outerHTML} ${count}`;
+      } else {
+        el.innerHTML = `<i class="bi bi-eye"></i> ${count}`;
+      }
+    }
   }
 
   /* ============================================================
@@ -268,7 +273,7 @@
       return `
       <div class="mention-item ${i === 0 ? 'active' : ''}"
            data-user-id="${f.id}" data-username="${f.username}">
-        <img src="${avThumb}" data-full-src="${av}" width="40" height="40" onerror="this.onerror=null;this.src='${av}'" class="mention-avatar" alt="">
+        <img src="${avThumb}" data-full-src="${av}" width="44" height="44" onerror="this.onerror=null;this.src='${av}'" class="mention-avatar" alt="">
         <div><div class="mention-name">${f.name}</div><div class="mention-username">@${f.username}</div></div>
       </div>`;
     }).join('');
@@ -530,10 +535,10 @@ document.addEventListener('DOMContentLoaded', function() {
 // ============================================================
 function renderPostSkeleton() {
     return '<div class="post-card-vertical post-skeleton" aria-hidden="true">' +
-        '<div class="post-header">' +
+        '<div class="post-header feed-post-header">' +
             '<div class="post-author d-flex align-items-center gap-2">' +
                 '<div class="skeleton-shimmer skeleton-avatar"></div>' +
-                '<div class="post-author-info" style="flex:1;">' +
+                '<div class="post-author-info post-header-meta post-user-details" style="flex:1;">' +
                     '<div class="skeleton-shimmer skeleton-line skeleton-title"></div>' +
                     '<div class="skeleton-shimmer skeleton-line skeleton-subtitle"></div>' +
                 '</div>' +
@@ -637,7 +642,7 @@ function removePostSkeletons(container) {
 
   function createPostElement(post) {
     var el = document.createElement('div');
-    el.className = 'post-card-vertical';
+    el.className = 'post-card-vertical post-card feed-post-item';
     el.dataset.postId = post.id;
     el.dataset.source = post.source || 'user';
 
@@ -691,16 +696,16 @@ function removePostSkeletons(container) {
       avThumb = av.replace(/\.(jpg|jpeg|png|gif|webp)$/i, '_avatar.webp');
     }
 
-    var postHeader = '<div class="post-header">'
+    var postHeader = '<div class="post-header feed-post-header">'
       + (function() {
           var u = (post.author && post.author.username) ? post.author.username : '';
           return u
-              ? '<div class="post-author" onclick="window.location=\'/user/' 
+              ? '<div class="post-author post-user-info" onclick="window.location=\'/user/' 
                 + encodeURIComponent(u) + '/\'">'
-              : '<div class="post-author">';
+              : '<div class="post-author post-user-info">';
       })()
-      +   '<img src="' + avThumb + '" data-full-src="' + av + '" width="40" height="40" onerror="this.onerror=null;this.src=\'' + av + '\'" class="post-author-avatar">'
-      +   '<div class="post-author-info">'
+      +   '<img src="' + avThumb + '" data-full-src="' + av + '" width="44" height="44" onerror="this.onerror=null;this.src=\'' + av + '\'" class="post-author-avatar">'
+      +   '<div class="post-author-info post-header-meta post-user-details">'
       +     '<h6 class="post-author-name">' + escapeHtml(authorName) + '</h6>'
       +     '<span class="post-meta">' + metaLine + '</span>'
       +   '</div>'
@@ -919,7 +924,7 @@ function removePostSkeletons(container) {
     if (av && /\.(jpg|jpeg|png|gif|webp)$/i.test(av) && !av.includes('_avatar.webp') && !av.includes('default.png') && !av.includes('avatar.png')) {
       avThumb = av.replace(/\.(jpg|jpeg|png|gif|webp)$/i, '_avatar.webp');
     }
-    el.innerHTML = '<img src="' + avThumb + '" data-full-src="' + av + '" width="40" height="40" onerror="this.onerror=null;this.src=\'' + av + '\'" class="comment-avatar">'
+    el.innerHTML = '<img src="' + avThumb + '" data-full-src="' + av + '" width="44" height="44" onerror="this.onerror=null;this.src=\'' + av + '\'" class="comment-avatar">'
       + '<div class="comment-content">'
       +   '<div class="comment-header">'
       +     '<strong>' + escapeHtml(comment.author.name.split(' ')[0]) + '</strong>'

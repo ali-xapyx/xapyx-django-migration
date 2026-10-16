@@ -58,6 +58,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'landing.context_processors.sidebar_badges',
+                'landing.context_processors.google_auth_context',
             ],
         },
     },
@@ -165,3 +166,10 @@ CELERY_TIMEZONE = 'UTC'
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 300
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+
+# GOOGLE SIGN-IN CONFIGURATION (Replace on Senior's / Production Device)
+GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', 'PASTE_YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com')
+GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', 'PASTE_YOUR_GOOGLE_CLIENT_SECRET_HERE')
+
+# Required so Google's popup can communicate with your login page
+SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin-allow-popups'

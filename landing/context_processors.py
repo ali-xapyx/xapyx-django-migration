@@ -18,3 +18,17 @@ def sidebar_badges(request):
             'total_notifications': 0,
         }
     }
+
+
+def google_auth_context(request):
+    """
+    Injects GOOGLE_CLIENT_ID and GOOGLE_CALLBACK_URL into all template contexts.
+    """
+    from django.conf import settings
+    scheme = 'https' if request.is_secure() or request.META.get('HTTP_X_FORWARDED_PROTO') == 'https' else request.scheme
+    host = request.get_host()
+    callback_url = f"{scheme}://{host}/auth/google/callback/"
+    return {
+        'GOOGLE_CLIENT_ID': getattr(settings, 'GOOGLE_CLIENT_ID', ''),
+        'GOOGLE_CALLBACK_URL': callback_url,
+    }

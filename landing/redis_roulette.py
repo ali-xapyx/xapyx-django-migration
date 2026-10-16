@@ -3,7 +3,10 @@ import os
 import json
 import time
 import uuid
+import logging
 from datetime import datetime
+
+_log = logging.getLogger(__name__)
 
 r = redis.Redis(
     host='127.0.0.1',
@@ -19,29 +22,35 @@ MESSAGES_KEY = 'roulette:messages:{}'  # list of JSON strings
 ACTIVE_SESSIONS_KEY = 'roulette:active_sessions'
 
 TTL = 300  # 5 minutes for session/messages
-PRESENCE_TTL = 30
+PRESENCE_TTL = 30  # 30 seconds presence TTL for user state
 COOLDOWN_KEY = 'roulette:cooldown:{}:{}'
 COOLDOWN_TTL = 1800  # 30 minutes cooldown between same pair
 RATE_LIMIT_KEY = 'roulette:rate:{}'
 RATE_LIMIT_MAX = 10
 RATE_LIMIT_WINDOW = 10  # max 10 messages per 10 seconds
 MAX_SESSION_DURATION = 1800  # 30 minutes maximum session duration
-  # 30 seconds presence TTL for user state
 
-# Atomic matchmaking Lua script
+# Atomic matchmaking Lua script with presence & ghost purge
 LUA_MATCH = """
 local waiting = KEYS[1]
 local me = ARGV[1]
+local now = tonumber(ARGV[2]) or 0
 local members = redis.call('SMEMBERS', waiting)
 for _, uid in ipairs(members) do
     if uid ~= me then
         local user_key = 'roulette:user:' .. uid
-        local exists = redis.call('EXISTS', user_key)
-        if exists == 1 then
-            local removed = redis.call('SREM', waiting, uid)
-            if removed == 1 then
-                redis.call('SREM', waiting, me)
-                return uid
+        local status = redis.call('HGET', user_key, 'status')
+        if status == 'waiting' then
+            local last_seen = tonumber(redis.call('HGET', user_key, 'last_seen')) or 0
+            if now > 0 and last_seen > 0 and (now - last_seen) > 20 then
+                redis.call('SREM', waiting, uid)
+                redis.call('DEL', user_key)
+            else
+                local removed = redis.call('SREM', waiting, uid)
+                if removed == 1 then
+                    redis.call('SREM', waiting, me)
+                    return uid
+                end
             end
         else
             redis.call('SREM', waiting, uid)
@@ -52,6 +61,97 @@ return nil
 """
 
 
+def get_user_profile_for_roulette(user_id):
+    """Fetch user profile with raw SQL."""
+    try:
+        from django.db import connection
+        with connection.cursor() as cur:
+            cur.execute("SELECT id, name, username, picture FROM auth WHERE id = %s LIMIT 1", [user_id])
+            row = cur.fetchone()
+            if row:
+                pic = row[3] or ''
+                if not pic:
+                    pic_url = '/static/images/avatars/default.png'
+                elif pic.startswith('http://') or pic.startswith('https://') or pic.startswith('/'):
+                    pic_url = pic
+                else:
+                    pic_url = f'https://s3.eu-west-1.amazonaws.com/xapyx.com-media/uploads/{pic}'
+                return {
+                    'id': int(row[0]),
+                    'name': row[1] or row[2] or 'Anonymous User',
+                    'username': row[2] or 'anonymous',
+                    'picture': pic_url,
+                }
+    except Exception:
+        pass
+    return {
+        'id': int(user_id),
+        'name': 'Anonymous User',
+        'username': 'anonymous',
+        'picture': '/static/images/avatars/default.png',
+    }
+
+
+def broadcast_roulette_match(user_a_id, user_b_id, session_id):
+    """
+    Pushes match payload to Firebase RTDB for both users so their clients connect instantly.
+    """
+    try:
+        import requests
+        base_url = os.environ.get('FIREBASE_CHAT_DB_URL', 'https://xapyx-chat-default-rtdb.firebaseio.com').rstrip('/')
+        prof_a = get_user_profile_for_roulette(user_a_id)
+        prof_b = get_user_profile_for_roulette(user_b_id)
+        now_ms = int(time.time() * 1000)
+
+        payload_a = {
+            'room_id': session_id,
+            'session_id': session_id,
+            'partner': prof_b,
+            'is_initiator': (int(user_a_id) < int(user_b_id)),
+            'matched_at': now_ms,
+            'status': 'matched',
+        }
+        payload_b = {
+            'room_id': session_id,
+            'session_id': session_id,
+            'partner': prof_a,
+            'is_initiator': (int(user_b_id) < int(user_a_id)),
+            'matched_at': now_ms,
+            'status': 'matched',
+        }
+
+        requests.put(f"{base_url}/roulette/matches/{user_a_id}.json", json=payload_a, timeout=3)
+        requests.put(f"{base_url}/roulette/matches/{user_b_id}.json", json=payload_b, timeout=3)
+        requests.put(f"{base_url}/roulette/rooms/{session_id}/status.json", json='active', timeout=3)
+        requests.delete(f"{base_url}/roulette/queue/{user_a_id}.json", timeout=2)
+        requests.delete(f"{base_url}/roulette/queue/{user_b_id}.json", timeout=2)
+    except Exception as e:
+        _log.warning(f"Roulette Firebase match broadcast failed: {e}")
+
+
+def purge_stale_queue():
+    """Scans QUEUE_KEY and deletes members whose USER_KEY is expired, not 'waiting', or last_seen > 20s ago."""
+    try:
+        now = time.time()
+        members = r.smembers(QUEUE_KEY)
+        for uid in list(members):
+            u_key = USER_KEY.format(uid)
+            data = r.hgetall(u_key)
+            if not data or data.get('status') != 'waiting':
+                r.srem(QUEUE_KEY, uid)
+                continue
+            last_seen = data.get('last_seen')
+            if last_seen:
+                try:
+                    if (now - float(last_seen)) > 20:
+                        r.srem(QUEUE_KEY, uid)
+                        r.delete(u_key)
+                except (ValueError, TypeError):
+                    pass
+    except Exception:
+        pass
+
+
 def join_queue(user_id):
     """Adds user to waiting set and initializes USER_KEY with TTL."""
     uid = str(user_id)
@@ -59,6 +159,7 @@ def join_queue(user_id):
     if user_state and user_state.get('status') == 'matched':
         leave_session(uid)
 
+    purge_stale_queue()
     now = str(time.time())
     r.hset(USER_KEY.format(uid), mapping={
         'status': 'waiting',
@@ -77,8 +178,13 @@ def leave_queue(user_id):
     uid = str(user_id)
     r.srem(QUEUE_KEY, uid)
     r.delete(USER_KEY.format(uid))
+    try:
+        import requests
+        base_url = os.environ.get('FIREBASE_CHAT_DB_URL', 'https://xapyx-chat-default-rtdb.firebaseio.com').rstrip('/')
+        requests.delete(f"{base_url}/roulette/queue/{uid}.json", timeout=2)
+    except Exception:
+        pass
     return True
-
 
 
 def set_cooldown(uid_a, uid_b):
@@ -177,86 +283,104 @@ def end_expired_session(session_id):
     r.expire(SESSION_KEY.format(session_id), 60)
     r.expire(MESSAGES_KEY.format(session_id), 60)
 
+    try:
+        import requests
+        base_url = os.environ.get('FIREBASE_CHAT_DB_URL', 'https://xapyx-chat-default-rtdb.firebaseio.com').rstrip('/')
+        requests.put(f"{base_url}/roulette/rooms/{session_id}/status.json", json='expired', timeout=2)
+    except Exception:
+        pass
+
+
 def try_match(user_id):
     """
     Atomic matchmaking with cooldown and block-list checks (skips up to 20 candidates).
     Returns (partner_id, session_id) or (None, None).
     """
     uid = str(user_id)
+    # Check if this user was already matched concurrently
+    state = get_user_state(uid)
+    if state and state.get('status') == 'matched' and state.get('partner_id') and state.get('session_id'):
+        return int(state['partner_id']), state['session_id']
+
+    now_ts = time.time()
     skipped_candidates = []
     matched_candidate = None
 
     for _ in range(20):
-        candidate = r.eval(LUA_MATCH, 1, QUEUE_KEY, uid)
+        candidate = r.eval(LUA_MATCH, 1, QUEUE_KEY, uid, str(now_ts))
         if not candidate:
             break
 
         cand_str = str(candidate)
         if is_in_cooldown(uid, cand_str) or is_blocked_pair(uid, cand_str):
             skipped_candidates.append(cand_str)
-            r.sadd(QUEUE_KEY, uid)
             continue
 
         matched_candidate = cand_str
         break
 
     for sc in skipped_candidates:
-        if r.exists(USER_KEY.format(sc)):
+        sc_state = get_user_state(sc)
+        if sc_state and sc_state.get('status') == 'waiting':
             r.sadd(QUEUE_KEY, sc)
 
     if not matched_candidate:
         user_state = get_user_state(uid)
         if user_state and user_state.get('status') == 'waiting':
             r.sadd(QUEUE_KEY, uid)
+        elif user_state and user_state.get('status') == 'matched' and user_state.get('partner_id') and user_state.get('session_id'):
+            return int(user_state['partner_id']), user_state['session_id']
         return None, None
 
-    if matched_candidate:
-        partner_id = matched_candidate
-        session_id = uuid.uuid4().hex[:12]
-        now = str(time.time())
+    partner_id = matched_candidate
+    now = str(time.time())
+    u_min = min(int(uid), int(partner_id))
+    u_max = max(int(uid), int(partner_id))
+    session_id = f"roulette_{u_min}_{u_max}_{int(float(now))}"
 
-        # Record wait times for stats
-        try:
-            user_a_joined = float(r.hget(USER_KEY.format(uid), 'joined_at') or now)
-            user_b_joined = float(r.hget(USER_KEY.format(partner_id), 'joined_at') or now)
-            wait_a = max(1, int(float(now) - user_a_joined))
-            wait_b = max(1, int(float(now) - user_b_joined))
-            r.lpush('roulette:match_times', wait_a, wait_b)
-            r.ltrim('roulette:match_times', 0, 19)
-        except Exception:
-            pass
+    # Record wait times for stats
+    try:
+        user_a_joined = float(r.hget(USER_KEY.format(uid), 'joined_at') or now)
+        user_b_joined = float(r.hget(USER_KEY.format(partner_id), 'joined_at') or now)
+        wait_a = max(1, int(float(now) - user_a_joined))
+        wait_b = max(1, int(float(now) - user_b_joined))
+        r.lpush('roulette:match_times', wait_a, wait_b)
+        r.ltrim('roulette:match_times', 0, 19)
+    except Exception:
+        pass
 
-        # Session hash
-        r.hset(SESSION_KEY.format(session_id), mapping={
-            'session_id': session_id,
-            'user_a': uid,
-            'user_b': partner_id,
-            'created_at': now,
-        })
-        r.expire(SESSION_KEY.format(session_id), TTL)
-        r.sadd(ACTIVE_SESSIONS_KEY, session_id)
+    # Session hash
+    r.hset(SESSION_KEY.format(session_id), mapping={
+        'session_id': session_id,
+        'user_a': str(u_min),
+        'user_b': str(u_max),
+        'created_at': now,
+    })
+    r.expire(SESSION_KEY.format(session_id), TTL)
+    r.sadd(ACTIVE_SESSIONS_KEY, session_id)
 
-        # User A state
-        r.hset(USER_KEY.format(uid), mapping={
-            'status': 'matched',
-            'partner_id': partner_id,
-            'session_id': session_id,
-            'last_seen': now,
-        })
-        r.expire(USER_KEY.format(uid), PRESENCE_TTL)
+    # User A state
+    r.hset(USER_KEY.format(uid), mapping={
+        'status': 'matched',
+        'partner_id': str(partner_id),
+        'session_id': session_id,
+        'last_seen': now,
+    })
+    r.expire(USER_KEY.format(uid), PRESENCE_TTL)
 
-        # User B state
-        r.hset(USER_KEY.format(partner_id), mapping={
-            'status': 'matched',
-            'partner_id': uid,
-            'session_id': session_id,
-            'last_seen': now,
-        })
-        r.expire(USER_KEY.format(partner_id), PRESENCE_TTL)
+    # User B state
+    r.hset(USER_KEY.format(partner_id), mapping={
+        'status': 'matched',
+        'partner_id': str(uid),
+        'session_id': session_id,
+        'last_seen': now,
+    })
+    r.expire(USER_KEY.format(partner_id), PRESENCE_TTL)
 
-        return int(partner_id), session_id
+    # Broadcast match payload to Firebase RTDB for sub-50ms instant pairing
+    broadcast_roulette_match(int(uid), int(partner_id), session_id)
 
-    return None, None
+    return int(partner_id), session_id
 
 
 def get_user_state(user_id):
@@ -303,6 +427,14 @@ def send_message(user_id, partner_id, text):
     r.expire(USER_KEY.format(uid), PRESENCE_TTL)
     r.expire(USER_KEY.format(partner_id), PRESENCE_TTL)
 
+    # Push to Firebase RTDB room messages for real-time delivery
+    try:
+        import requests
+        base_url = os.environ.get('FIREBASE_CHAT_DB_URL', 'https://xapyx-chat-default-rtdb.firebaseio.com').rstrip('/')
+        requests.put(f"{base_url}/roulette/rooms/{session_id}/messages/{msg_id}.json", json=msg_obj, timeout=2)
+    except Exception:
+        pass
+
     return msg_obj
 
 
@@ -329,6 +461,9 @@ def leave_session(user_id):
     r.srem(QUEUE_KEY, uid)
     r.delete(u_key)
 
+    partner_id = None
+    session_id = None
+
     if user_state:
         partner_id = user_state.get('partner_id')
         session_id = user_state.get('session_id')
@@ -349,6 +484,19 @@ def leave_session(user_id):
             r.srem(ACTIVE_SESSIONS_KEY, session_id)
             r.expire(SESSION_KEY.format(session_id), 60)
             r.expire(MESSAGES_KEY.format(session_id), 60)
+
+    # Sync leave to Firebase RTDB
+    try:
+        import requests
+        base_url = os.environ.get('FIREBASE_CHAT_DB_URL', 'https://xapyx-chat-default-rtdb.firebaseio.com').rstrip('/')
+        requests.delete(f"{base_url}/roulette/matches/{uid}.json", timeout=2)
+        requests.delete(f"{base_url}/roulette/queue/{uid}.json", timeout=2)
+        if session_id:
+            requests.put(f"{base_url}/roulette/rooms/{session_id}/status.json", json='left', timeout=2)
+        if partner_id:
+            requests.delete(f"{base_url}/roulette/matches/{partner_id}.json", timeout=2)
+    except Exception:
+        pass
 
     return True
 
@@ -378,6 +526,7 @@ def next_partner(user_id):
 
 def get_active_counts():
     """Returns waiting, chatting, total active users count, and average wait time."""
+    purge_stale_queue()
     waiting_members = r.smembers(QUEUE_KEY)
     valid_waiting = 0
     now = time.time()
@@ -433,4 +582,3 @@ def get_active_counts():
         'avg_wait': avg_wait,
         'avg_wait_str': f"{avg_wait}s",
     }
-

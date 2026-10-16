@@ -28,6 +28,8 @@ urlpatterns = [
 
     # Authentication pages
     path('login/', views.login_view, name='login'),
+    path('auth/google/callback/', views.google_auth_callback, name='google_auth_callback'),
+    path('google-auth/', views.google_auth_callback, name='google_auth_legacy'),
     path('signup/', views.signup_view, name='signup'),
     path('logout/', views.logout_view, name='logout'),
 
@@ -45,6 +47,7 @@ urlpatterns = [
     path('api/posts/react/', views.api_posts_react, name='api_posts_react'),
     path('api/posts/save/', views.api_posts_save, name='api_posts_save'),
     path('api/posts/view/', views.api_posts_view, name='api_posts_view'),
+    path('api/posts/<int:post_id>/view/', views.api_increment_view, name='api_increment_view'),
     path('api/posts/comments/', views.api_posts_get_comments, name='api_posts_get_comments'),
     path('api/posts/comments/add/', views.api_posts_add_comment, name='api_posts_add_comment'),
     path('api/posts/comments/delete/', views.api_posts_delete_comment, name='api_posts_delete_comment'),
@@ -236,6 +239,8 @@ urlpatterns = [
     path('api/games/leaderboard/', views.api_games_leaderboard, name='api_games_leaderboard'),
     path('api/games/track-play/', views.api_games_track_play, name='api_games_track_play'),
     path('api/games/save-score/', views.api_games_save_score, name='api_games_save_score'),
+    path('api/games/invite/', views.api_games_invite, name='api_games_invite'),
+    path('api/games/friends/', views.api_games_friends, name='api_games_friends'),
 
     # Store / Marketplace
     path('store/', views.store_view, name='store'),
@@ -265,8 +270,9 @@ urlpatterns = [
     path('portal-admin/store/delete/<int:product_id>/', admin_views.admin_store_delete_view, name='portal_admin_store_delete'),
 
     # Web Push & Service Worker
-    path('sw.js', views.serve_sw, name='serve_sw'),
+    path('firebase-messaging-sw.js', views.serve_firebase_sw, name='serve_firebase_sw'),
     path('api/save-push-subscription/', views.api_save_push_subscription, name='api_save_push_subscription'),
+    path('404/', views.error_404_view, name='error_404_preview'),
 
    
 ]

@@ -44,7 +44,7 @@
 
     var capText = imgEl.dataset.username || imgEl.alt || '';
     if (!capText) {
-      var wrap = imgEl.closest('.post-author, .post-header, .comment-item, .comment-avatar-wrap, .page-inbox-conv-item, .page-inbox-msg-row, .chatroom-msg, .follower-list-item, .gv-modal-member, .user-card, .profile-mini, .notification-item, .notif-page-item, .suggested-user-card, .suggested-item');
+      var wrap = imgEl.closest('.post-author, .post-header, .comment-item, .comment-avatar-wrap, .page-inbox-conv-item, .page-inbox-msg-row, .chatroom-msg, .follower-list-item, .gv-modal-member, .user-card, .notification-item, .notif-page-item, .suggested-user-card, .suggested-item');
       if (wrap) {
         var nameEl = wrap.querySelector('.post-author-name, h6, strong, .follower-name, .gv-modal-member-name, h4, .mention-name, .page-inbox-conv-name, .chatroom-msg-sender');
         if (nameEl) capText = nameEl.textContent.trim();
@@ -68,6 +68,19 @@
     var t = e.target;
     if (!t || t.tagName !== 'IMG') return;
     if (t.closest('#avatarLightbox')) return;
+
+    // Do NOT trigger avatar lightbox preview on header/navbar profile avatar or elements marked no-lightbox
+    if (t.id === 'headerUserAvatar'
+        || t.classList.contains('no-lightbox')
+        || t.classList.contains('header-avatar-img')
+        || t.closest('#profileMini')
+        || t.closest('.profile-mini')
+        || t.closest('.user-profile-toggle')
+        || t.closest('.header-avatar-container')
+        || t.closest('#profileMenuWrapper')
+        || t.closest('.profile-menu-wrapper')) {
+      return;
+    }
 
     var isAvatar = t.classList.contains('post-author-avatar')
       || t.classList.contains('comment-avatar')

@@ -69,14 +69,32 @@
             </div>
 
             <!-- Active Room Info Pill -->
-            <div class="ttt-room-info-pill text-center my-2" id="tttRoomInfo" style="display: none;">
-              <span class="room-code-badge" id="pillRoomCode" role="button" title="Click to copy room code">
-                <i class="bi bi-key-fill text-warning me-1"></i>ROOM: <strong id="valRoomCode">------</strong> <i class="bi bi-clipboard ms-1 small"></i>
-              </span>
-              <span class="room-players-badge ms-2" id="pillPlayers">
-                <span class="text-warning fw-bold" id="valPlayerX">X: ---</span> vs <span class="text-info fw-bold" id="valPlayerO">O: ---</span>
-              </span>
-              <span class="badge bg-secondary ms-2" id="pillMySymbol">You: ?</span>
+            <div class="ttt-room-info-pill text-center my-2 p-2 rounded" id="tttRoomInfo" style="display: none; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08);">
+              <div class="d-flex flex-wrap align-items-center justify-content-center gap-2 mb-2">
+                <span class="room-code-badge" id="pillRoomCode" role="button" title="Click to copy room code">
+                  <i class="bi bi-key-fill text-warning me-1"></i>ROOM: <strong id="valRoomCode" class="font-monospace text-warning">------</strong> <i class="bi bi-clipboard ms-1 small"></i>
+                </span>
+                <span class="room-players-badge" id="pillPlayers">
+                  <span class="text-warning fw-bold" id="valPlayerX">X: ---</span> vs <span class="text-info fw-bold" id="valPlayerO">O: ---</span>
+                </span>
+                <span class="badge bg-secondary" id="pillMySymbol">You: ?</span>
+              </div>
+
+              <!-- Share & Friend Invite Action Bar -->
+              <div class="d-flex flex-wrap align-items-center justify-content-center gap-2 mt-2">
+                <button type="button" class="btn btn-sm btn-success fw-semibold" id="btnTttShareWhatsApp" title="Share on WhatsApp">
+                  <i class="bi bi-whatsapp me-1"></i>WhatsApp
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-light" id="btnTttCopyInviteLink" title="Copy Direct Invite Link">
+                  <i class="bi bi-link-45deg me-1"></i>Copy Link
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-warning fw-semibold" id="btnTttInviteFriends" title="Invite Friends from XAPYX">
+                  <i class="bi bi-person-plus-fill me-1"></i>Invite Friends
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnTttNativeShare" title="More Share Options">
+                  <i class="bi bi-share-fill"></i>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -117,8 +135,23 @@
     </div><!-- /dashboard-flex -->
   </div><!-- /dashboard-inner -->
 </div><!-- /dashboardContainer -->
+
+{% include "dashboard/games/partials/friend_invite_modal.html" %}
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/games/tictactoe.js' %}?v=2"></script>
+<script>
+window.XPY_GAME_CONFIG = {
+    gameType: 'tictactoe',
+    gameTitle: 'Tic-Tac-Toe',
+    initialRoomCode: '{{ initial_room_code|default:""|escapejs }}',
+    currentUser: {
+        id: {{ current_user_id|default:0 }},
+        name: "{{ current_user_name|default:'Player'|escapejs }}",
+        avatar: "{{ current_user_avatar|default:'/static/images/avatars/default.png'|escapejs }}"
+    }
+};
+</script>
+<script src="{% static 'js/games/game_invite.js' %}?v=1"></script>
+<script src="{% static 'js/games/tictactoe.js' %}?v=4"></script>
 {% endblock %}

@@ -21,6 +21,20 @@ import json
 import mimetypes
 
 
+def check_content_safety(text):
+    if not text:
+        return True, ""
+    cleaned = text.lower().replace(" ", "").replace("*", "").replace("-", "")
+    prohibited_words = [
+        'gandu', 'madarchod', 'bhenchod', 'chutiya', 'harami', 
+        'randi', 'lund', 'bhosdike', 'choot', 'kanjar', 'fuck', 'shit', 'bitch'
+    ]
+    for word in prohibited_words:
+        if word in cleaned:
+            return False, "Comment violates community safety guidelines."
+    return True, ""
+
+
 def _upload_to_s3(file_obj, folder='uploads/space_posts'):
     """
     Upload a Django UploadedFile to S3.
@@ -604,7 +618,7 @@ def login_view(request):
   # If already logged in, redirect to target
   if request.user.is_authenticated:
     return redirect(next_url)
-  error = None
+  error = request.GET.get('error') or None
   login_value = ''
   if request.method == 'POST':
     login_value = (request.POST.get('login') or '').strip()
@@ -1344,6 +1358,16 @@ def api_posts_create(request):
     return JsonResponse({'success': False, 'error': 'Post cannot be empty'})
   if len(content) > 1000:
     return JsonResponse({'success': False, 'error': 'Post is too long (max 1000)'})
+
+  # Content moderation & profanity check
+  is_safe, error_msg = check_content_safety(content)
+  if not is_safe:
+    return JsonResponse({'status': 'error', 'success': False, 'error': error_msg, 'message': error_msg}, status=400)
+  if poll_question:
+    p_safe, p_error_msg = check_content_safety(poll_question)
+    if not p_safe:
+      return JsonResponse({'status': 'error', 'success': False, 'error': p_error_msg, 'message': p_error_msg}, status=400)
+
   try:
     poll_duration = max(1, int(poll_duration_raw))
   except:
@@ -1764,73 +1788,89 @@ def api_posts_save(request):
             )
             is_saved = True
   return JsonResponse({'success': True, 'is_saved': is_saved})
-@login_required
+@csrf_exempt
 @require_POST
+def api_posts_view(request, post_id=None):
+  """POST /api/posts/view/ or /api/posts/<post_id>/view/ — record/increment a view on a post unconditionally."""
+  if request.method != 'POST':
+    return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
 
-
-def api_posts_view(request):
-  """POST /api/posts/view/ — record a view on a user post."""
   import json as _json
-  try:
-    data = _json.loads(request.body)
-  except:
-    Exception
-  try:
-    post_id = int(data.get('post_id') or 0)
-  except:
-    (TypeError, ValueError)
-  # Only user posts supported for now (page posts handled later)
+  data = {}
+  if request.body and request.content_type == 'application/json':
+    try:
+      data = _json.loads(request.body)
+    except Exception:
+      data = {}
+  elif request.POST:
+    data = request.POST
+
+  if not post_id:
+    try:
+      post_id = int(data.get('post_id') or 0)
+    except (TypeError, ValueError):
+      post_id = 0
+
   post_type = data.get('type') or 'user'
   if post_type != 'user':
-    return JsonResponse({'success': False, 'error': 'Page posts not supported yet'})
-  if post_id <= 0:
-    return JsonResponse({'success': False, 'error': 'Invalid post ID'})
-  user_id = request.user.id
-  with connection.cursor() as cur:
-        # Verify post exists
-        cur.execute(
-            "SELECT post_id FROM space_posts WHERE post_id = %s AND is_deleted = 0",
-            [post_id]
-        )
-        if not cur.fetchone():
-            return JsonResponse({'success': False, 'error': 'Post not found'})
+    return JsonResponse({'status': 'error', 'success': False, 'error': 'Page posts not supported yet'}, status=400)
+  if not post_id or post_id <= 0:
+    return JsonResponse({'status': 'error', 'success': False, 'error': 'Invalid post ID'}, status=400)
 
-        # 1. Record the view (unique per user, debounced 5 min)
+  user_id = getattr(request.user, 'id', None) if getattr(request, 'user', None) and request.user.is_authenticated else None
+
+  with connection.cursor() as cur:
+    # Verify post exists and is not deleted
+    cur.execute(
+        "SELECT post_id FROM space_posts WHERE post_id = %s AND is_deleted = 0",
+        [post_id]
+    )
+    if not cur.fetchone():
+      return JsonResponse({'status': 'error', 'success': False, 'error': 'Post not found'}, status=404)
+
+    # Unconditional view increment on space_posts
+    cur.execute(
+        "UPDATE space_posts SET views_count = COALESCE(views_count, 0) + 1 WHERE post_id = %s",
+        [post_id]
+    )
+
+    if user_id:
+      try:
         cur.execute("""
             INSERT INTO space_user_interactions 
                 (user_id, post_id, view_count, last_viewed_at, created_at, updated_at)
             VALUES (%s, %s, 1, NOW(), NOW(), NOW())
             ON DUPLICATE KEY UPDATE
-                view_count = IF(last_viewed_at < NOW() - INTERVAL 5 MINUTE, 
-                                view_count + 1, view_count),
-                last_viewed_at = IF(last_viewed_at < NOW() - INTERVAL 5 MINUTE, 
-                                    NOW(), last_viewed_at),
+                view_count = COALESCE(view_count, 0) + 1,
+                last_viewed_at = NOW(),
                 updated_at = NOW()
         """, [user_id, post_id])
+      except Exception:
+        pass
 
-        # 2. Recompute post view count from distinct viewers
-        cur.execute("""
-            UPDATE space_posts 
-            SET views_count = (
-                SELECT COUNT(DISTINCT user_id) 
-                FROM space_user_interactions 
-                WHERE post_id = %s
-            )
-            WHERE post_id = %s
-        """, [post_id, post_id])
+    # Fetch updated count
+    cur.execute(
+        "SELECT views_count FROM space_posts WHERE post_id = %s",
+        [post_id]
+    )
+    views_row = cur.fetchone()
+    new_view_count = views_row[0] if views_row else 0
 
-        # Fetch updated count
-        cur.execute(
-            "SELECT views_count FROM space_posts WHERE post_id = %s",
-            [post_id]
-        )
-        views_row = cur.fetchone()
-        new_view_count = views_row[0] if views_row else 0
   return JsonResponse({
-        'success': True,
-        'message': 'View recorded',
-        'new_view_count': new_view_count,
-    })
+      'status': 'success',
+      'success': True,
+      'message': 'View recorded',
+      'new_count': new_view_count,
+      'new_view_count': new_view_count,
+      'views_count': new_view_count,
+  })
+
+
+@csrf_exempt
+@require_POST
+def api_increment_view(request, post_id):
+  """Alias for incrementing post view at /api/posts/<post_id>/view/ unconditionally."""
+  return api_posts_view(request, post_id=post_id)
 @login_required
 
 
@@ -1911,6 +1951,11 @@ def api_posts_add_comment(request):
     return JsonResponse({'success': False, 'error': 'Invalid data'})
   if post_type != 'user':
     return JsonResponse({'success': False, 'error': 'Page posts not supported yet'})
+
+  is_safe, error_msg = check_content_safety(content)
+  if not is_safe:
+    return JsonResponse({'status': 'error', 'success': False, 'error': error_msg, 'message': error_msg}, status=400)
+
   with connection.cursor() as cur:
         # Make sure post exists
         cur.execute(
@@ -2416,26 +2461,22 @@ def view_post_view(request, post_id):
         if not cur.fetchone():
             return redirect('/feed/')
 
-    # Session key to prevent counting the same user's multiple page refreshes
-    session_key = f'viewed_post_{post_id}'
-    if not request.session.get(session_key):
-        request.session[session_key] = True
-        with connection.cursor() as cur:
-            # Direct raw SQL increment on space_posts (safe with unmanaged MariaDB tables)
-            cur.execute(
-                "UPDATE space_posts SET views_count = views_count + 1 WHERE post_id = %s",
-                [post_id]
-            )
-            # Record user interaction for distinct user analytics
-            cur.execute("""
-                INSERT INTO space_user_interactions 
-                    (user_id, post_id, view_count, last_viewed_at, created_at, updated_at)
-                VALUES (%s, %s, 1, NOW(), NOW(), NOW())
-                ON DUPLICATE KEY UPDATE
-                    view_count = view_count + 1,
-                    last_viewed_at = NOW(),
-                    updated_at = NOW()
-            """, [user.id, post_id])
+    with connection.cursor() as cur:
+        # Direct raw SQL increment on space_posts (unconditional)
+        cur.execute(
+            "UPDATE space_posts SET views_count = COALESCE(views_count, 0) + 1 WHERE post_id = %s",
+            [post_id]
+        )
+        # Record user interaction
+        cur.execute("""
+            INSERT INTO space_user_interactions 
+                (user_id, post_id, view_count, last_viewed_at, created_at, updated_at)
+            VALUES (%s, %s, 1, NOW(), NOW(), NOW())
+            ON DUPLICATE KEY UPDATE
+                view_count = COALESCE(view_count, 0) + 1,
+                last_viewed_at = NOW(),
+                updated_at = NOW()
+        """, [user.id, post_id])
 
     # Friends — for @mention autocomplete in comments
     friends = []
@@ -2481,6 +2522,11 @@ def api_posts_edit(request):
     return JsonResponse({'success': False, 'error': 'Invalid post ID'})
   if post_type != 'user':
     return JsonResponse({'success': False, 'error': 'Page posts not supported yet'})
+
+  is_safe, error_msg = check_content_safety(content)
+  if not is_safe:
+    return JsonResponse({'status': 'error', 'success': False, 'error': error_msg, 'message': error_msg}, status=400)
+
   S3_BASE = 'https://s3.eu-west-1.amazonaws.com/xapyx.com-media/'
   def to_full(raw):
     if not raw:
@@ -2601,13 +2647,168 @@ def api_posts_edit(request):
 
 
 # ============================================================
-# NOTIFICATIONS
+# AVATAR & CONVERSATIONS HELPERS
+# ============================================================
+
+# _full_avatar_url is defined above get_sidebar_unread_counts'
+
+
+def _fetch_user_conversations(user_id):
+    """
+    Helper to fetch conversations for a user with online presence, avatar, and unread counts.
+    Ensures strict recipient unread filtering and that threads where the current user sent
+    the last message have an unread count of strictly 0.
+    Also executes database auto-healing: if total unread count across all visible conversations is 0,
+    or if user has replied, marks orphaned/stale unread rows in messages and notifications as read.
+    """
+    conversations = []
+    with connection.cursor() as cur:
+        sql = """
+            SELECT 
+                f.friend_id,
+                a.name, a.username, a.picture, a.last_seen,
+                lm.id AS last_msg_id, lm.message AS last_message, lm.message_type, lm.created_at AS last_time,
+                lm.sender_id AS last_sender_id,
+                CASE 
+                    WHEN lm.sender_id = %s THEN 0
+                    ELSE (
+                        SELECT COUNT(*) 
+                        FROM messages 
+                        WHERE messages.sender_id = f.friend_id 
+                          AND messages.receiver_id = %s 
+                          AND COALESCE(messages.is_read, 0) = 0
+                          AND (messages.is_deleted = 0 OR messages.is_deleted IS NULL)
+                    )
+                END AS unread_count
+            FROM (
+                SELECT DISTINCT
+                    CASE WHEN sender_id = %s THEN receiver_id ELSE sender_id END AS friend_id
+                FROM messages
+                WHERE (sender_id = %s OR receiver_id = %s) AND (is_deleted = 0 OR is_deleted IS NULL)
+                UNION
+                SELECT CASE WHEN sender_id = %s THEN receiver_id ELSE sender_id END AS friend_id
+                FROM friends
+                WHERE (sender_id = %s OR receiver_id = %s) AND status = 'accepted'
+            ) f
+            JOIN auth a ON a.id = f.friend_id
+            LEFT JOIN (
+                SELECT m1.*
+                FROM messages m1
+                JOIN (
+                    SELECT 
+                        CASE WHEN sender_id = %s THEN receiver_id ELSE sender_id END AS partner_id,
+                        MAX(id) AS max_id
+                    FROM messages
+                    WHERE (sender_id = %s OR receiver_id = %s) AND (is_deleted = 0 OR is_deleted IS NULL)
+                    GROUP BY partner_id
+                ) m2 ON m1.id = m2.max_id
+            ) lm ON lm.id IS NOT NULL AND (lm.sender_id = f.friend_id OR lm.receiver_id = f.friend_id)
+            ORDER BY COALESCE(lm.id, 0) DESC
+        """
+        cur.execute(sql, [user_id] * 11)
+        rows = cur.fetchall()
+
+        now = timezone.now()
+        for r in rows:
+            fid = r[0]
+            name = r[1] or r[2] or 'User'
+            username = r[2] or 'user'
+            pic = _full_avatar_url(r[3])
+            last_seen = r[4]
+            is_online = False
+            if last_seen:
+                if timezone.is_naive(last_seen):
+                    last_seen_aware = timezone.make_aware(last_seen)
+                else:
+                    last_seen_aware = last_seen
+                is_online = (now - last_seen_aware).total_seconds() < 120
+
+            last_msg = r[6] or 'Start conversation'
+            msg_type = r[7] or 'text'
+            if msg_type == 'image':
+                last_msg = '📷 Photo'
+            elif msg_type == 'video':
+                last_msg = '🎥 Video'
+            elif msg_type == 'file':
+                last_msg = '📁 File'
+            elif msg_type == 'voice':
+                last_msg = '🎤 Voice message'
+
+            if len(last_msg) > 40:
+                last_msg = last_msg[:40] + '...'
+
+            last_time = r[8]
+            time_ago_str = _format_time_ago(last_time, now) if last_time else ''
+
+            last_sender_id = r[9]
+            raw_unread = int(r[10] or 0)
+            unread_count = 0 if (last_sender_id is not None and last_sender_id == user_id) else raw_unread
+
+            chat_id = f"{min(user_id, fid)}_{max(user_id, fid)}"
+
+            conversations.append({
+                'user_id': fid,
+                'friend_id': fid,
+                'chat_id': chat_id,
+                'name': name,
+                'username': username,
+                'avatar': pic,
+                'picture': pic,
+                'is_online': is_online,
+                'online': is_online,
+                'last_message': last_msg,
+                'last_time': last_time.isoformat() if last_time else '',
+                'time_ago': time_ago_str,
+                'unread_count': unread_count,
+            })
+
+    # Database Auto-Healing on Fetch:
+    # If total unread across visible conversations is 0, auto-clear any orphaned/stale unread rows in messages & notifications
+    try:
+        total_visible_unread = sum(int(c.get('unread_count', 0) or 0) for c in conversations)
+        if total_visible_unread == 0:
+            with connection.cursor() as heal_cur:
+                heal_cur.execute("""
+                    UPDATE messages 
+                    SET is_read = 1, read_at = NOW() 
+                    WHERE receiver_id = %s AND COALESCE(is_read, 0) = 0
+                """, [user_id])
+                heal_cur.execute("""
+                    UPDATE notifications 
+                    SET is_read = 1, is_seen = 1 
+                    WHERE user_id = %s AND type = 'chat_message' AND COALESCE(is_read, 0) = 0
+                """, [user_id])
+        else:
+            # If a specific thread has unread_count == 0 because user sent the last message, auto-heal incoming unread for that partner
+            for c in conversations:
+                if c.get('unread_count', 0) == 0 and c.get('friend_id'):
+                    fid = c['friend_id']
+                    with connection.cursor() as heal_cur:
+                        heal_cur.execute("""
+                            UPDATE messages 
+                            SET is_read = 1, read_at = NOW() 
+                            WHERE sender_id = %s AND receiver_id = %s AND COALESCE(is_read, 0) = 0
+                        """, [fid, user_id])
+                        heal_cur.execute("""
+                            UPDATE notifications 
+                            SET is_read = 1, is_seen = 1 
+                            WHERE user_id = %s AND (actor_id = %s OR data LIKE %s) AND type = 'chat_message' AND COALESCE(is_read, 0) = 0
+                        """, [user_id, fid, f'%"{fid}"%'])
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Error during auto-healing unread messages for user {user_id}: {e}")
+
+    return conversations
+
+
+# ============================================================
+# NOTIFICATIONS & SIDEBAR COUNTS
 # ============================================================
 
 def get_sidebar_unread_counts(user_id):
     """
     Computes real-time unread counts for direct Chat/Messages and general Notifications via raw SQL:
-    - chat: unread direct messages in messages table
+    - chat: unread direct messages in messages table (strictly aligned with user's conversations)
     - total_notifications: unread notifications in notifications table
     (Badges for Groups, Pages, and Shoutbox streamlined/removed per design requirements)
     """
@@ -2625,14 +2826,10 @@ def get_sidebar_unread_counts(user_id):
     }
 
     try:
-        with connection.cursor() as cur:
-            # 1. Unread direct messages (Chat)
-            cur.execute("""
-                SELECT COUNT(*) FROM messages
-                WHERE receiver_id = %s AND is_read = 0 AND is_deleted = 0
-            """, [user_id])
-            counts['chat'] = cur.fetchone()[0] or 0
+        convs = _fetch_user_conversations(user_id)
+        counts['chat'] = sum(int(c.get('unread_count', 0) or 0) for c in convs)
 
+        with connection.cursor() as cur:
             # 2. Total unread general notifications
             cur.execute("""
                 SELECT COUNT(*) FROM notifications
@@ -3889,9 +4086,9 @@ def api_friends_recent_activity(request):
     })
 
 
-def serve_sw(request):
-    """Serve the service worker from /sw.js (root) as browsers expect."""
-    path = os.path.join(settings.BASE_DIR, 'static', 'sw.js')
+def serve_firebase_sw(request):
+    """Serve the Firebase messaging service worker from /firebase-messaging-sw.js (root) with full-site scope."""
+    path = os.path.join(settings.BASE_DIR, 'static', 'js', 'firebase-messaging-sw.js')
     try:
         with open(path, 'r', encoding='utf-8') as f:
             content = f.read()
@@ -6873,6 +7070,10 @@ def api_groups_post_comment_add(request, post_id):
     if not content:
         return JsonResponse({'success': False, 'error': 'Comment required'})
 
+    is_safe, error_msg = check_content_safety(content)
+    if not is_safe:
+        return JsonResponse({'status': 'error', 'success': False, 'error': error_msg, 'message': error_msg}, status=400)
+
     user = request.user
     with connection.cursor() as cur:
         cur.execute("SELECT group_id FROM group_posts WHERE id = %s", [post_id])
@@ -8181,6 +8382,10 @@ def api_page_comment_add(request, post_id):
     if not content:
         return JsonResponse({'success': False, 'error': 'Invalid data'})
 
+    is_safe, error_msg = check_content_safety(content)
+    if not is_safe:
+        return JsonResponse({'status': 'error', 'success': False, 'error': error_msg, 'message': error_msg}, status=400)
+
     with connection.cursor() as cur:
         cur.execute("""
             SELECT pp.page_id, p.title, pp.creator_id, p.creator_id
@@ -8956,7 +9161,7 @@ def _push_chat_message_firebase(chat_id, message_data, sender_id=None, receiver_
     s_id = sender_id or message_data.get('sender_id')
     r_id = receiver_id or message_data.get('receiver_id')
     if s_id and r_id:
-        inbox_payload = {
+        inbox_payload_receiver = {
             'chat_id': chat_id,
             'msg_id': str(message_data['id']),
             'content': message_data.get('content') or message_data.get('message') or '',
@@ -8965,113 +9170,24 @@ def _push_chat_message_firebase(chat_id, message_data, sender_id=None, receiver_
             'sender_id': s_id,
             'sender_name': message_data.get('sender_name') or 'User',
             'receiver_id': r_id,
+            'is_read': False,
+            'unread': 1,
             'timestamp': message_data.get('timestamp') or int(time.time()),
             'created_at': message_data.get('created_at') or '',
         }
+        inbox_payload_sender = dict(inbox_payload_receiver)
+        inbox_payload_sender['is_read'] = True
+        inbox_payload_sender['unread'] = 0
         try:
-            requests.put(f"{base_url}/user_chats/{r_id}/{s_id}.json", json=inbox_payload, timeout=5)
-            requests.put(f"{base_url}/user_chats/{s_id}/{r_id}.json", json=inbox_payload, timeout=5)
+            requests.put(f"{base_url}/user_chats/{r_id}/{s_id}.json", json=inbox_payload_receiver, timeout=4)
+            requests.put(f"{base_url}/user_chats/{s_id}/{r_id}.json", json=inbox_payload_sender, timeout=4)
         except Exception as e:
             _log.warning(f"Firebase user inbox push failed: {e}")
     return True
 
 
-def _fetch_user_conversations(user_id):
-    """
-    Helper to fetch conversations for a user with online presence, avatar, and unread counts.
-    """
-    conversations = []
-    with connection.cursor() as cur:
-        sql = """
-            SELECT 
-                f.friend_id,
-                a.name, a.username, a.picture, a.last_seen,
-                lm.id AS last_msg_id, lm.message AS last_message, lm.message_type, lm.created_at AS last_time,
-                COALESCE(un.unread_count, 0) AS unread_count
-            FROM (
-                SELECT DISTINCT
-                    CASE WHEN sender_id = %s THEN receiver_id ELSE sender_id END AS friend_id
-                FROM messages
-                WHERE (sender_id = %s OR receiver_id = %s) AND (is_deleted = 0 OR is_deleted IS NULL)
-                UNION
-                SELECT CASE WHEN sender_id = %s THEN receiver_id ELSE sender_id END AS friend_id
-                FROM friends
-                WHERE (sender_id = %s OR receiver_id = %s) AND status = 'accepted'
-            ) f
-            JOIN auth a ON a.id = f.friend_id
-            LEFT JOIN (
-                SELECT m1.*
-                FROM messages m1
-                JOIN (
-                    SELECT 
-                        CASE WHEN sender_id = %s THEN receiver_id ELSE sender_id END AS partner_id,
-                        MAX(id) AS max_id
-                    FROM messages
-                    WHERE (sender_id = %s OR receiver_id = %s) AND (is_deleted = 0 OR is_deleted IS NULL)
-                    GROUP BY partner_id
-                ) m2 ON m1.id = m2.max_id
-            ) lm ON lm.id IS NOT NULL AND (lm.sender_id = f.friend_id OR lm.receiver_id = f.friend_id)
-            LEFT JOIN (
-                SELECT sender_id, COUNT(*) AS unread_count
-                FROM messages
-                WHERE receiver_id = %s AND is_read = 0 AND (is_deleted = 0 OR is_deleted IS NULL)
-                GROUP BY sender_id
-            ) un ON un.sender_id = f.friend_id
-            ORDER BY COALESCE(lm.id, 0) DESC
-        """
-        cur.execute(sql, [user_id, user_id, user_id, user_id, user_id, user_id, user_id, user_id, user_id, user_id])
-        rows = cur.fetchall()
+# _fetch_user_conversations is defined above get_sidebar_unread_counts
 
-        now = timezone.now()
-        for r in rows:
-            fid = r[0]
-            name = r[1] or r[2] or 'User'
-            username = r[2] or 'user'
-            pic = _full_avatar_url(r[3])
-            last_seen = r[4]
-            is_online = False
-            if last_seen:
-                if timezone.is_naive(last_seen):
-                    last_seen_aware = timezone.make_aware(last_seen)
-                else:
-                    last_seen_aware = last_seen
-                is_online = (now - last_seen_aware).total_seconds() < 120
-
-            last_msg = r[6] or 'Start conversation'
-            msg_type = r[7] or 'text'
-            if msg_type == 'image':
-                last_msg = '📷 Photo'
-            elif msg_type == 'video':
-                last_msg = '🎥 Video'
-            elif msg_type == 'file':
-                last_msg = '📁 File'
-            elif msg_type == 'voice':
-                last_msg = '🎤 Voice message'
-
-            if len(last_msg) > 40:
-                last_msg = last_msg[:40] + '...'
-
-            last_time = r[8]
-            time_ago_str = _format_time_ago(last_time, now) if last_time else ''
-
-            chat_id = f"{min(user_id, fid)}_{max(user_id, fid)}"
-
-            conversations.append({
-                'user_id': fid,
-                'friend_id': fid,
-                'chat_id': chat_id,
-                'name': name,
-                'username': username,
-                'avatar': pic,
-                'picture': pic,
-                'is_online': is_online,
-                'online': is_online,
-                'last_message': last_msg,
-                'last_time': last_time.isoformat() if last_time else '',
-                'time_ago': time_ago_str,
-                'unread_count': int(r[9]),
-            })
-    return conversations
 
 
 @login_required
@@ -9079,14 +9195,38 @@ def chat_view(request, friend_id=None):
     """
     GET /chat/ or /chat/<friend_id>/ — Full 1-on-1 DM interface.
     """
+    user_id = request.user.id
     selected_friend_id = int(friend_id) if friend_id else 0
-    conversations = _fetch_user_conversations(request.user.id)
-    return render(request, 'dashboard/chat.html', {
+    if selected_friend_id:
+        with connection.cursor() as cur:
+            cur.execute("""
+                UPDATE messages
+                SET is_read = 1, read_at = NOW()
+                WHERE sender_id = %s AND receiver_id = %s AND COALESCE(is_read, 0) = 0
+            """, [selected_friend_id, user_id])
+            cur.execute("""
+                UPDATE notifications 
+                SET is_read = 1, is_seen = 1 
+                WHERE user_id = %s AND (actor_id = %s OR data LIKE %s) AND type = 'chat_message' AND COALESCE(is_read, 0) = 0
+            """, [user_id, selected_friend_id, f'%"{selected_friend_id}"%'])
+
+        try:
+            chat_id_fb = f"{min(user_id, selected_friend_id)}_{max(user_id, selected_friend_id)}"
+            base_url = os.environ.get('FIREBASE_CHAT_DB_URL', 'https://xapyx-chat-default-rtdb.firebaseio.com').rstrip('/')
+            requests.put(f"{base_url}/chats/{chat_id_fb}/read_at/{user_id}.json", json=int(timezone.now().timestamp()), timeout=2)
+            requests.patch(f"{base_url}/user_chats/{user_id}/{selected_friend_id}.json", json={'is_read': True, 'unread': 0}, timeout=2)
+        except Exception:
+            pass
+
+    conversations = _fetch_user_conversations(user_id)
+    resp = render(request, 'dashboard/chat.html', {
         'active_page': 'chat',
         'selected_friend_id': selected_friend_id,
         'conversations': conversations,
         'svg_logo': _load_svg_logo(),
     })
+    resp['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    return resp
 
 
 @login_required
@@ -9096,7 +9236,9 @@ def api_chat_conversations(request):
     Returns conversation list for logged-in user from messages & friends tables.
     """
     conversations = _fetch_user_conversations(request.user.id)
-    return JsonResponse({'success': True, 'conversations': conversations})
+    resp = JsonResponse({'success': True, 'conversations': conversations})
+    resp['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    return resp
 
 
 @login_required
@@ -9161,7 +9303,7 @@ def api_chat_messages(request):
         cur.execute("""
             UPDATE messages
             SET is_read = 1, read_at = NOW()
-            WHERE sender_id = %s AND receiver_id = %s AND is_read = 0
+            WHERE sender_id = %s AND receiver_id = %s AND COALESCE(is_read, 0) = 0
         """, [friend_id, user_id])
         affected_count = cur.rowcount
 
@@ -9171,13 +9313,13 @@ def api_chat_messages(request):
             SET is_read = 1, is_seen = 1 
             WHERE user_id = %s AND (actor_id = %s OR data LIKE %s) AND type = 'chat_message' AND COALESCE(is_read, 0) = 0
         """, [user_id, friend_id, f'%"{friend_id}"%'])
-        if affected_count > 0:
-            try:
-                chat_id_fb = f"{min(user_id, friend_id)}_{max(user_id, friend_id)}"
-                base_url = os.environ.get('FIREBASE_CHAT_DB_URL', 'https://xapyx-chat-default-rtdb.firebaseio.com').rstrip('/')
-                requests.put(f"{base_url}/chats/{chat_id_fb}/read_at/{user_id}.json", json=int(timezone.now().timestamp()), timeout=2)
-            except Exception:
-                pass
+        try:
+            chat_id_fb = f"{min(user_id, friend_id)}_{max(user_id, friend_id)}"
+            base_url = os.environ.get('FIREBASE_CHAT_DB_URL', 'https://xapyx-chat-default-rtdb.firebaseio.com').rstrip('/')
+            requests.put(f"{base_url}/chats/{chat_id_fb}/read_at/{user_id}.json", json=int(timezone.now().timestamp()), timeout=2)
+            requests.patch(f"{base_url}/user_chats/{user_id}/{friend_id}.json", json={'is_read': True, 'unread': 0}, timeout=2)
+        except Exception:
+            pass
 
         msg_ids = [r[0] for r in rows]
         reactions_by_msg = {}
@@ -9725,7 +9867,7 @@ def api_chat_mark_read(request):
         cur.execute("""
             UPDATE messages
             SET is_read = 1, read_at = NOW()
-            WHERE sender_id = %s AND receiver_id = %s AND is_read = 0
+            WHERE sender_id = %s AND receiver_id = %s AND COALESCE(is_read, 0) = 0
         """, [friend_id, user_id])
         affected = cur.rowcount
 
@@ -9739,7 +9881,8 @@ def api_chat_mark_read(request):
     base_url = os.environ.get('FIREBASE_CHAT_DB_URL', 'https://xapyx-chat-default-rtdb.firebaseio.com').rstrip('/')
     url = f"{base_url}/chats/{chat_id}/read_at/{user_id}.json"
     try:
-        requests.put(url, json=int(timezone.now().timestamp()), timeout=3)
+        requests.put(url, json=int(timezone.now().timestamp()), timeout=2)
+        requests.patch(f"{base_url}/user_chats/{user_id}/{friend_id}.json", json={'is_read': True, 'unread': 0}, timeout=2)
     except Exception as e:
         logger.warning(f"Firebase read_at update error: {e}")
 
@@ -10832,20 +10975,37 @@ def api_roulette_active(request):
 
 @login_required
 def api_roulette_join(request):
-    """POST /api/roulette/join/ -- Join waiting queue and attempt atomic matching."""
+    """POST /api/roulette/join/ -- Join matchmaking queue or return active match."""
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=405)
 
     user_id = request.user.id
-    join_queue(user_id)
-    partner_id, session_id = try_match(user_id)
 
-    if partner_id:
+    # If already in an active matched state with valid partner
+    partner_id, session_id = get_partner(user_id)
+    if partner_id and session_id:
+        leave_queue(user_id)
         partner_info = _roulette_partner_info(partner_id)
         return JsonResponse({
             'status': 'matched',
             'session_id': session_id,
             'partner': partner_info,
+            'is_initiator': (int(user_id) < int(partner_id)),
+        })
+
+    join_queue(user_id)
+    partner_id, session_id = try_match(user_id)
+    if not partner_id:
+        partner_id, session_id = get_partner(user_id)
+
+    if partner_id and session_id:
+        leave_queue(user_id)
+        partner_info = _roulette_partner_info(partner_id)
+        return JsonResponse({
+            'status': 'matched',
+            'session_id': session_id,
+            'partner': partner_info,
+            'is_initiator': (int(user_id) < int(partner_id)),
         })
     else:
         return JsonResponse({
@@ -10861,6 +11021,50 @@ def api_roulette_poll(request):
     """
     user_id = request.user.id
     roulette_heartbeat(user_id)
+
+    # State Guard: If user is already recorded in an active room, verify and NEVER drop back to waiting queue
+    partner_id, session_id = get_partner(user_id)
+    if partner_id and session_id:
+        # Check 30 min duration cap
+        if is_session_expired(session_id):
+            end_expired_session(session_id)
+            try:
+                since_id = int(request.GET.get('since_id', 0))
+            except (ValueError, TypeError):
+                since_id = 0
+            messages, next_since_id = roulette_fetch_messages(session_id, since_id)
+            return JsonResponse({
+                'status': 'left',
+                'session_id': session_id,
+                'messages': messages,
+                'error': 'Session ended (30 min limit)'
+            })
+
+        partner_state = get_user_state(partner_id)
+        if not partner_state or partner_state.get('session_id') != session_id or partner_state.get('status') == 'left':
+            leave_session(user_id)
+            return JsonResponse({'status': 'left'})
+
+        # Active match confirmed: ensure removed from waiting queue so user is never re-queued accidentally
+        leave_queue(user_id)
+
+        try:
+            since_id = int(request.GET.get('since_id', 0))
+        except (ValueError, TypeError):
+            since_id = 0
+
+        messages, next_since_id = roulette_fetch_messages(session_id, since_id)
+        partner_info = _roulette_partner_info(partner_id)
+
+        return JsonResponse({
+            'status': 'matched',
+            'session_id': session_id,
+            'partner': partner_info,
+            'is_initiator': (int(user_id) < int(partner_id)),
+            'messages': messages,
+            'since_id': next_since_id,
+        })
+
     user_state = get_user_state(user_id)
 
     if not user_state:
@@ -10870,12 +11074,16 @@ def api_roulette_poll(request):
 
     if current_status == 'waiting':
         partner_id, session_id = try_match(user_id)
-        if partner_id:
+        if not partner_id:
+            partner_id, session_id = get_partner(user_id)
+        if partner_id and session_id:
+            leave_queue(user_id)
             partner_info = _roulette_partner_info(partner_id)
             return JsonResponse({
                 'status': 'matched',
                 'session_id': session_id,
                 'partner': partner_info,
+                'is_initiator': (int(user_id) < int(partner_id)),
                 'messages': [],
                 'since_id': 0,
             })
@@ -10905,6 +11113,8 @@ def api_roulette_poll(request):
             leave_session(user_id)
             return JsonResponse({'status': 'left'})
 
+        leave_queue(user_id)
+
         try:
             since_id = int(request.GET.get('since_id', 0))
         except (ValueError, TypeError):
@@ -10917,6 +11127,7 @@ def api_roulette_poll(request):
             'status': 'matched',
             'session_id': session_id,
             'partner': partner_info,
+            'is_initiator': (int(user_id) < int(partner_id)),
             'messages': messages,
             'since_id': next_since_id,
         })
@@ -10981,6 +11192,7 @@ def api_roulette_leave(request):
     leave_queue(user_id)
     return JsonResponse({'success': True})
 
+
 @login_required
 def api_roulette_next(request):
     """POST /api/roulette/next/ -- Leave current partner cleanly and instantly re-queue."""
@@ -10988,14 +11200,35 @@ def api_roulette_next(request):
         return JsonResponse({'error': 'POST required'}, status=405)
 
     user_id = request.user.id
-    partner_id, session_id = next_partner(user_id)
 
-    if partner_id:
+    # Cleanly terminate current session and purge previous queue entry
+    leave_session(user_id)
+    leave_queue(user_id)
+
+    # State Guard: Check if user was concurrently matched during disconnect
+    partner_id, session_id = get_partner(user_id)
+    if partner_id and session_id:
+        leave_queue(user_id)
         partner_info = _roulette_partner_info(partner_id)
         return JsonResponse({
             'status': 'matched',
             'session_id': session_id,
             'partner': partner_info,
+            'is_initiator': (int(user_id) < int(partner_id)),
+        })
+
+    partner_id, session_id = next_partner(user_id)
+    if not partner_id:
+        partner_id, session_id = get_partner(user_id)
+
+    if partner_id and session_id:
+        leave_queue(user_id)
+        partner_info = _roulette_partner_info(partner_id)
+        return JsonResponse({
+            'status': 'matched',
+            'session_id': session_id,
+            'partner': partner_info,
+            'is_initiator': (int(user_id) < int(partner_id)),
         })
     else:
         return JsonResponse({
@@ -11223,7 +11456,16 @@ def _get_games_catalog():
 
 @login_required
 def games_view(request):
-    """Renders the main Games Hub page."""
+    """Renders the main Games Hub page, with auto-join routing for multiplayer rooms."""
+    game_param = request.GET.get('game', '').strip().lower()
+    room_param = request.GET.get('room', '').strip().upper()
+    if game_param == 'ludo':
+        url = '/games/ludo/' + (f"?room={room_param}" if room_param else "")
+        return redirect(url)
+    elif game_param in ('tictactoe', 'ttt'):
+        url = '/games/tictactoe/' + (f"?room={room_param}" if room_param else "")
+        return redirect(url)
+
     games_config = _get_games_catalog()
     total_plays = sum(g['plays_count'] for g in games_config)
     recent_scores = GameScore.objects.filter(user=request.user).select_related('game').order_by('-created_at')[:5]
@@ -11540,10 +11782,18 @@ def api_games_save_score(request):
 
 @login_required
 def tictactoe_view(request):
+    """Renders Tic Tac Toe with real-time online multiplayer support."""
+    room_param = request.GET.get('room', '').strip().upper()
+    sender_name = getattr(request.user, 'name', '') or request.user.username or 'Player'
+    sender_pic = _full_avatar_url(getattr(request.user, 'picture', None))
     ctx = {
         'active_page': 'games',
         'game_title': 'Tic Tac Toe',
         'svg_logo': _load_svg_logo(),
+        'initial_room_code': room_param,
+        'current_user_id': request.user.id,
+        'current_user_name': sender_name,
+        'current_user_avatar': sender_pic,
     }
     ctx.update(_get_games_right_widgets_context(request))
     return render(request, 'dashboard/games/tictactoe.html', ctx)
@@ -11587,18 +11837,206 @@ def checkers_view(request):
 
 @login_required
 def ludo_view(request):
-    """Renders Ludo classic board game."""
+    """Renders Ludo classic board game with real-time online multiplayer support."""
+    room_param = request.GET.get('room', '').strip().upper()
+    sender_name = getattr(request.user, 'name', '') or request.user.username or 'Player'
+    sender_pic = _full_avatar_url(getattr(request.user, 'picture', None))
     ctx = {
         'active_page': 'games',
         'game_title': 'Ludo',
         'svg_logo': _load_svg_logo(),
+        'initial_room_code': room_param,
+        'current_user_id': request.user.id,
+        'current_user_name': sender_name,
+        'current_user_avatar': sender_pic,
     }
     ctx.update(_get_games_right_widgets_context(request))
     return render(request, 'dashboard/games/ludo.html', ctx)
 
 
-@csrf_exempt
 @login_required
+def api_games_friends(request):
+    """
+    GET /api/games/friends/ — Returns accepted friends with live online status
+    (sorted so online friends appear first).
+    """
+    user_id = request.user.id
+    with connection.cursor() as cur:
+        cur.execute("""
+            SELECT 
+                CASE WHEN f.sender_id = %s THEN f.receiver_id ELSE f.sender_id END AS friend_id,
+                a.name, a.username, a.picture, a.last_seen
+            FROM friends f
+            JOIN auth a ON a.id = CASE WHEN f.sender_id = %s THEN f.receiver_id ELSE f.sender_id END
+            WHERE (f.sender_id = %s OR f.receiver_id = %s)
+              AND f.status = 'accepted'
+            ORDER BY a.name ASC
+        """, [user_id, user_id, user_id, user_id])
+        rows = cur.fetchall()
+
+    now = timezone.now()
+    friends = []
+    for r in rows:
+        fid = r[0]
+        name = r[1] or r[2] or 'User'
+        uname = r[2] or ''
+        pic = _full_avatar_url(r[3])
+        last_seen = r[4]
+        is_online = False
+        if last_seen:
+            if timezone.is_naive(last_seen):
+                last_seen = timezone.make_aware(last_seen)
+            is_online = (now - last_seen).total_seconds() < 120
+        friends.append({
+            'id': fid,
+            'name': name,
+            'username': uname,
+            'avatar': pic,
+            'is_online': is_online,
+        })
+
+    friends.sort(key=lambda x: (not x['is_online'], x['name'].lower()))
+    return JsonResponse({'success': True, 'friends': friends})
+
+
+@login_required
+@require_POST
+def api_games_invite(request):
+    """
+    POST /api/games/invite/ — Sends an in-app game invite to a friend via raw SQL:
+    - Inserts notification into `notifications` (type='game_invite', data={...})
+    - Broadcasts to Firebase RTDB for instant toast alert
+    - Inserts message into `messages` with single-tap join link
+    - Pushes to Firebase chat node for real-time delivery
+    """
+    import json, logging
+    _log = logging.getLogger(__name__)
+
+    try:
+        body_data = json.loads(request.body) if request.body else {}
+    except Exception:
+        body_data = {}
+
+    friend_id = body_data.get('friend_id') or request.POST.get('friend_id')
+    game_type = (body_data.get('game_type') or request.POST.get('game_type') or 'ludo').strip().lower()
+    room_code = (body_data.get('room_code') or request.POST.get('room_code') or '').strip().upper()
+
+    try:
+        friend_id = int(friend_id)
+    except (ValueError, TypeError):
+        return JsonResponse({'success': False, 'error': 'Invalid friend ID'}, status=400)
+
+    if not room_code:
+        return JsonResponse({'success': False, 'error': 'Room code is required'}, status=400)
+
+    if friend_id == request.user.id:
+        return JsonResponse({'success': False, 'error': 'Cannot invite yourself'}, status=400)
+
+    # Verify friendship
+    with connection.cursor() as cur:
+        cur.execute("""
+            SELECT id FROM friends 
+            WHERE ((sender_id = %s AND receiver_id = %s) OR (sender_id = %s AND receiver_id = %s))
+              AND status = 'accepted'
+            LIMIT 1
+        """, [request.user.id, friend_id, friend_id, request.user.id])
+        if not cur.fetchone():
+            return JsonResponse({'success': False, 'error': 'User is not in your friends list'}, status=403)
+
+    try:
+        host = request.get_host()
+    except Exception:
+        host = 'xapyx.com'
+    scheme = getattr(request, 'scheme', 'https') or 'https'
+    game_slug = 'ludo' if game_type == 'ludo' else 'tictactoe'
+    game_title = 'Ludo' if game_type == 'ludo' else 'Tic-Tac-Toe'
+    join_url = f"{scheme}://{host}/games/{game_slug}/?room={room_code}"
+    sender_name = getattr(request.user, 'name', '') or request.user.username or 'A friend'
+    sender_pic = _full_avatar_url(getattr(request.user, 'picture', None))
+
+    # 1. Insert In-App Notification
+    notif_id = None
+    try:
+        with connection.cursor() as cur:
+            cur.execute("""
+                INSERT INTO notifications 
+                (user_id, actor_id, type, title, message, icon, link, is_read, is_seen, data, created_at, expires_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, 0, 0, %s, NOW(), NOW() + INTERVAL 1 DAY)
+            """, [
+                friend_id, request.user.id, 'game_invite',
+                f"🎮 {sender_name} invited you to play {game_title}!",
+                f"Room Code: {room_code}. Tap to join and play live!",
+                'bi-controller',
+                f"/games/{game_slug}/?room={room_code}",
+                json.dumps({
+                    'game_type': game_slug,
+                    'room_code': room_code,
+                    'join_url': join_url,
+                    'actor_name': sender_name,
+                    'actor_picture': sender_pic
+                })
+            ])
+            notif_id = cur.lastrowid
+    except Exception as e:
+        _log.warning(f"Failed to insert game invite notification: {e}")
+
+    # 2. Broadcast push to Firebase
+    if notif_id:
+        try:
+            from landing.tasks import send_push_notification
+            send_push_notification.delay(
+                user_id=friend_id,
+                title=f"🎮 {sender_name} invited you to play {game_title}!",
+                body=f"Room Code: {room_code}. Tap to join and play live!",
+                link=f"/games/{game_slug}/?room={room_code}",
+                notif_id=notif_id,
+                actor_id=request.user.id,
+                actor_name=sender_name,
+                actor_username=request.user.username or '',
+                actor_picture=sender_pic,
+                notif_type='game_invite',
+            )
+        except Exception as e:
+            _log.warning(f"Celery dispatch push error: {e}")
+
+    # 3. Direct Message with tap-to-join link
+    msg_id = None
+    invite_msg = f"🎮 Join my {game_title} game! Room Code: {room_code}\nClick to play: {join_url}"
+    try:
+        with connection.cursor() as cur:
+            cur.execute("""
+                INSERT INTO messages (
+                    sender_id, receiver_id, message, message_type,
+                    is_read, created_at
+                )
+                VALUES (%s, %s, %s, 'text', 0, NOW())
+            """, [request.user.id, friend_id, invite_msg])
+            msg_id = cur.lastrowid
+
+        if msg_id:
+            chat_id = f"{min(request.user.id, friend_id)}_{max(request.user.id, friend_id)}"
+            now_dt = timezone.now()
+            firebase_payload = {
+                'id': str(msg_id),
+                'sender_id': request.user.id,
+                'sender_name': sender_name,
+                'content': invite_msg,
+                'message_type': 'text',
+                'timestamp': int(now_dt.timestamp()),
+                'created_at': now_dt.isoformat(),
+            }
+            _push_chat_message_firebase(chat_id, firebase_payload, request.user.id, friend_id)
+    except Exception as e:
+        _log.warning(f"Failed to send game invite chat message: {e}")
+
+    return JsonResponse({
+        'success': True,
+        'message': f'Invite sent to friend!',
+        'room_code': room_code,
+        'join_url': join_url
+    })
+
+
 def api_tictactoe_room(request):
     """
     Redis-backed Ephemeral Matchmaking & Turn-based Room API for Tic Tac Toe.
@@ -12129,6 +12567,26 @@ def _store_image_url(key):
     return f"https://s3.eu-west-1.amazonaws.com/xapyx.com-media/{clean}"
 
 
+def _parse_product_images(raw_val):
+    """
+    Parses stored product image data. Supports both comma-separated strings
+    and serialized JSON lists.
+    """
+    if not raw_val:
+        return []
+    raw_str = str(raw_val).strip()
+    if not raw_str:
+        return []
+    if raw_str.startswith('[') and raw_str.endswith(']'):
+        try:
+            items = json.loads(raw_str)
+            if isinstance(items, list):
+                return [str(x).strip() for x in items if str(x).strip()]
+        except Exception:
+            pass
+    return [img.strip() for img in raw_str.split(',') if img.strip()]
+
+
 @login_required
 def store_view(request):
     """
@@ -12177,7 +12635,7 @@ def store_view(request):
         cursor.execute(sql, params)
 
         for r in cursor.fetchall():
-            raw_images = [img.strip() for img in (r[5] or '').split(',') if img.strip()]
+            raw_images = _parse_product_images(r[5])
             full_images = [_store_image_url(img) for img in raw_images]
             first_image = full_images[0] if full_images else '/static/images/products/product.jpg'
 
@@ -12201,6 +12659,7 @@ def store_view(request):
                 'price': float(r[4] or 0),
                 'images': full_images,
                 'first_image': first_image,
+                'images_count': len(full_images),
                 'location': r[6] or 'Location not specified',
                 'category': r[7] or 'General',
                 'contact': r[8] or '',
@@ -12341,7 +12800,7 @@ def product_detail_view(request, ad_id):
                 'location': r[4] or 'Not specified'
             })
 
-    raw_images = [img.strip() for img in (row[5] or '').split(',') if img.strip()]
+    raw_images = _parse_product_images(row[5])
     full_images = [_store_image_url(img) for img in raw_images] if raw_images else ['/static/images/products/product.jpg']
 
     raw_user_img = row[15]
@@ -12364,6 +12823,7 @@ def product_detail_view(request, ad_id):
         'price': float(row[4] or 0),
         'images': full_images,
         'first_image': full_images[0],
+        'images_count': len(full_images),
         'location': row[6] or 'Not specified',
         'category': row[7] or 'General',
         'contact': row[8] or '',
@@ -12421,10 +12881,19 @@ def api_store_create_product(request):
 
     ad_id = 'AD' + secrets.token_hex(4).upper()
 
-    # Process uploaded images
+    # Process uploaded images (multi-image support up to 8 images)
     uploaded_keys = []
-    files = request.FILES.getlist('images') or request.FILES.getlist('images[]')
-    for f in files[:5]:
+    files = (
+        request.FILES.getlist('images') or 
+        request.FILES.getlist('images[]') or 
+        request.FILES.getlist('image') or 
+        request.FILES.getlist('photos')
+    )
+    for f in files[:8]:
+        if not f:
+            continue
+        if hasattr(f, 'size') and f.size > 15 * 1024 * 1024:
+            continue
         key = _upload_to_s3(f, folder='uploads/store')
         if key:
             uploaded_keys.append(key)
@@ -12567,3 +13036,141 @@ def api_store_delete_product(request, product_id=None, identifier=None):
             pass
 
     return JsonResponse({'success': True, 'message': 'Listing deleted successfully!'})
+
+def error_404_view(request, exception=None):
+    return render(request, '404.html', status=404)
+
+
+# ------------------------------------------------------------
+
+
+# ------------------------------------------------------------
+# GOOGLE SIGN-IN CALLBACK (Google Identity Services)
+# ------------------------------------------------------------
+@csrf_exempt
+def google_auth_callback(request):
+    """
+    Handles Google Identity Services authentication callback.
+    Receives credential JWT, verifies with Google, and signs user in.
+    """
+    import logging
+    from urllib.parse import quote_plus
+    logger = logging.getLogger(__name__)
+
+    if request.method != 'POST':
+        return redirect('/login/')
+
+    token = request.POST.get('credential')
+    if not token and request.content_type == 'application/json':
+        try:
+            body_data = json.loads(request.body.decode('utf-8'))
+            token = body_data.get('credential')
+        except Exception:
+            token = None
+
+    if not token:
+        logger.warning("No credential token received from Google")
+        return redirect(f"/login/?error={quote_plus('No credential token received from Google.')}")
+
+    client_id = getattr(settings, 'GOOGLE_CLIENT_ID', '')
+
+    try:
+        from google.oauth2 import id_token
+        from google.auth.transport import requests as google_requests
+
+        # Verify Google token
+        if client_id and 'PASTE_YOUR_GOOGLE_CLIENT_ID' not in client_id:
+            id_info = id_token.verify_oauth2_token(
+                token,
+                google_requests.Request(),
+                client_id
+            )
+        else:
+            # Development / staging with placeholder client ID
+            try:
+                id_info = id_token.verify_oauth2_token(token, google_requests.Request())
+            except Exception:
+                import base64
+                parts = token.split('.')
+                if len(parts) >= 2:
+                    padding = '=' * (4 - len(parts[1]) % 4)
+                    payload_json = base64.urlsafe_b64decode(parts[1] + padding).decode('utf-8')
+                    id_info = json.loads(payload_json)
+                else:
+                    raise
+
+    except Exception as e:
+        logger.error(f"Google token verification failed: {e}")
+        return redirect(f"/login/?error={quote_plus('Google sign-in verification failed. Please try again.')}")
+
+    email = (id_info.get('email') or '').strip().lower()
+    if not email:
+        logger.warning("Google account does not provide an email address")
+        return redirect(f"/login/?error={quote_plus('Google account does not provide an email address.')}")
+
+    google_id = id_info.get('sub')
+    given_name = id_info.get('given_name') or ''
+    family_name = id_info.get('family_name') or ''
+    name = (id_info.get('name') or f"{given_name} {family_name}".strip() or email.split('@')[0])[:100]
+    picture = (id_info.get('picture') or '')[:255]
+    google_picture = (id_info.get('picture') or '')[:500]
+    email_verified = bool(id_info.get('email_verified', False))
+
+    next_url = request.POST.get('next') or request.GET.get('next') or '/feed/'
+    if not next_url.startswith('/') or next_url.startswith('//'):
+        next_url = '/feed/'
+
+    # Check if user already exists
+    user = None
+    if email:
+        user = Auth.objects.filter(email=email).first()
+    if not user and google_id:
+        user = Auth.objects.filter(google_id=google_id).first()
+
+    if user:
+        update_fields = {'last_login': timezone.now()}
+        if hasattr(user, 'google_id') and not user.google_id and google_id:
+            update_fields['google_id'] = google_id
+        if hasattr(user, 'google_picture') and not user.google_picture and google_picture:
+            update_fields['google_picture'] = google_picture
+        if hasattr(user, 'picture') and not user.picture and picture:
+            update_fields['picture'] = picture
+        if hasattr(user, 'google_email_verified') and email_verified:
+            update_fields['google_email_verified'] = email_verified
+        Auth.objects.filter(pk=user.pk).update(**update_fields)
+    else:
+        # Create new user record
+        raw_prefix = re.sub(r'[^a-z0-9_]', '', email.split('@')[0].lower())
+        if not raw_prefix:
+            raw_prefix = 'user'
+        base_username = raw_prefix[:15]
+        if len(base_username) < 4:
+            base_username = f"user_{base_username}"[:15]
+        username = base_username
+        counter = 1
+        while Auth.objects.filter(username=username).exists():
+            suffix = str(counter)
+            username = f"{base_username[:20 - len(suffix)]}{suffix}"
+            counter += 1
+
+        user = Auth(
+            name=name,
+            username=username,
+            email=email,
+            role='user',
+            theme_color='#f3a72c',
+            auth_method='google',
+            picture=picture,
+            google_id=google_id,
+            google_picture=google_picture,
+            google_email_verified=email_verified,
+        )
+        import secrets
+        user.set_password(secrets.token_urlsafe(32))
+        user.save()
+        Auth.objects.filter(pk=user.pk).update(last_login=timezone.now())
+
+    # Log in session
+    user.backend = 'landing.auth_backends.MultiFieldAuthBackend'
+    auth_login(request, user)
+    return redirect(next_url)

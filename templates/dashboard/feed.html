@@ -5,15 +5,52 @@
 
 {% block extra_css %}
 <style>
-  .post-media,
-  .post-image-container,
-  .post-media-slider,
-  .slider-container,
-  .slider-item,
-  .xapyx-slider-item {
-    position: relative;
-    overflow: hidden;
+  /* Remove lateral gaps on mobile feeds */
+  @media (max-width: 768px) {
+    .post-card, .feed-post-item, .post-card-vertical {
+      width: 100% !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      border-left: none !important;
+      border-right: none !important;
+      border-radius: 0 !important;
+    }
+    .feed-container, .posts-feed, .dashboard-main, .dashboard-inner {
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+    }
   }
+
+  /* Instagram / Facebook Style Blurred Background Wrapper */
+  .post-media-container, .feed-media, .post-media, .post-image-container, .post-media-slider, .slider-container, .slider-item, .xapyx-slider-item {
+    position: relative !important;
+    width: 100% !important;
+    max-height: 650px !important;
+    background-color: #000 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  /* Blurred background duplicate for letterbox filling */
+  .post-media-container::before,
+  .feed-media::before,
+  .slider-item::before,
+  .xapyx-slider-item::before,
+  .post-media-slider::before {
+    content: "" !important;
+    position: absolute !important;
+    inset: 0 !important;
+    background-image: var(--post-bg-image, var(--ambient-image));
+    background-size: cover !important;
+    background-position: center !important;
+    filter: blur(20px) brightness(0.5) !important;
+    -webkit-filter: blur(20px) brightness(0.5) !important;
+    transform: scale(1.1) !important;
+    z-index: 1 !important;
+  }
+
   .post-media-blur-bg,
   .slider-blur-bg,
   .post-blur-bg,
@@ -23,27 +60,130 @@
     width: 100% !important;
     height: 100% !important;
     object-fit: cover !important;
-    filter: blur(25px) brightness(0.5) !important;
-    -webkit-filter: blur(25px) brightness(0.5) !important;
+    filter: blur(20px) brightness(0.5) !important;
+    -webkit-filter: blur(20px) brightness(0.5) !important;
     opacity: 0.6 !important;
     pointer-events: none !important;
     z-index: 1 !important;
     transform: scale(1.15) !important;
+    box-shadow: none !important;
   }
+
+  /* Sharp foreground uncropped image */
+  .post-media-container img,
+  .feed-media img,
   .post-image,
   .slider-image,
+  .post-card img:not(.post-media-blur-bg):not(.slider-blur-bg):not(.post-blur-bg):not(.post-image-blur-bg):not(.post-author-avatar):not(.avatar-mini-img):not(.header-avatar-img):not(.avatar-img):not(.comment-avatar):not(.mention-avatar),
+  .post-card-vertical .post-image,
   .slider-item img:not(.post-media-blur-bg):not(.slider-blur-bg):not(.post-blur-bg):not(.post-image-blur-bg),
-  .xapyx-slider-item img:not(.post-media-blur-bg):not(.slider-blur-bg):not(.post-blur-bg):not(.post-image-blur-bg),
-  .post-media img:not(.post-media-blur-bg):not(.slider-blur-bg):not(.post-blur-bg):not(.post-image-blur-bg),
-  .post-image-container img:not(.post-media-blur-bg):not(.slider-blur-bg):not(.post-blur-bg):not(.post-image-blur-bg) {
+  .xapyx-slider-item img:not(.post-media-blur-bg):not(.slider-blur-bg):not(.post-blur-bg):not(.post-image-blur-bg) {
     position: relative !important;
     z-index: 2 !important;
-    width: 100% !important;
+    max-height: 650px !important;
+    width: auto !important;
+    max-width: 100% !important;
     height: auto !important;
-    max-height: 550px !important;
     object-fit: contain !important;
     display: block !important;
     margin: 0 auto !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+
+  .post-media-blur-bg,
+  .slider-blur-bg,
+  .post-blur-bg,
+  .post-image-blur-bg {
+    z-index: 1 !important;
+    box-shadow: none !important;
+  }
+
+  /* Post Header Flex Alignment */
+  .post-header, .feed-post-header {
+    display: flex !important;
+    align-items: center !important;
+    padding: 12px 16px !important;
+    gap: 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .post-header img, .post-author-avatar {
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+    flex-shrink: 0 !important;
+  }
+  .post-header-meta, .post-user-details, .post-author-info {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 !important;
+    min-width: 0 !important;
+  }
+  .post-author, .post-user-info {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    flex: 1 !important;
+    min-width: 0 !important;
+  }
+  .post-author-name, .post-author-info h6 {
+    margin: 0 !important;
+    font-size: 0.95rem !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  .post-meta {
+    font-size: 0.75rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  /* Comment Avatars */
+  .comment-item .comment-avatar img,
+  .comment-user-avatar img,
+  .post-comment .avatar img,
+  .comment-item img.comment-avatar,
+  img.comment-avatar {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+    overflow: hidden !important;
+    display: block !important;
+    flex-shrink: 0 !important;
+  }
+  .comment-item .comment-avatar,
+  .comment-user-avatar,
+  .post-comment .avatar,
+  .comment-avatar {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    border-radius: 50% !important;
+    overflow: hidden !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Multi-Image Sliders and Carousels */
+  .post-media-slider, .slider-container, .multi-image-carousel {
+    position: relative !important;
+    width: 100% !important;
+    display: flex !important;
+    overflow: hidden !important;
+  }
+  .slider-item img, .post-media-slider img {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 600px !important;
+    object-fit: cover !important;
+    flex-shrink: 0 !important;
   }
 </style>
 {% endblock %}

@@ -96,8 +96,38 @@
         <div class="card h-100 product-card store-card">
             <a href="/store/{{ p.ad_id }}/" class="product-card-link">
               <!-- Image Container with Overlays -->
-              <div class="product-img-wrap">
-                <img src="{{ p.first_image }}" alt="{{ p.title }}" loading="lazy" onerror="this.onerror=null;this.src='/static/images/products/product.jpg';">
+              <div class="product-img-wrap {% if p.images|length > 1 %}store-card-carousel{% endif %}" data-product-id="{{ p.id }}">
+                {% if p.images|length > 1 %}
+                  <div class="store-carousel-track">
+                    {% for img in p.images %}
+                      <div class="store-carousel-slide {% if forloop.first %}active{% endif %}" data-index="{{ forloop.counter0 }}">
+                        <img src="{{ img }}" alt="{{ p.title }}" loading="lazy" onerror="this.onerror=null;this.src='/static/images/products/product.jpg';">
+                      </div>
+                    {% endfor %}
+                  </div>
+                  
+                  <!-- Carousel Controls -->
+                  <button type="button" class="store-carousel-btn store-carousel-prev" onclick="event.preventDefault(); event.stopPropagation(); window.storeCarouselPrev({{ p.id }});" aria-label="Previous Photo">
+                    <i class="bi bi-chevron-left"></i>
+                  </button>
+                  <button type="button" class="store-carousel-btn store-carousel-next" onclick="event.preventDefault(); event.stopPropagation(); window.storeCarouselNext({{ p.id }});" aria-label="Next Photo">
+                    <i class="bi bi-chevron-right"></i>
+                  </button>
+
+                  <!-- Photo Counter Badge -->
+                  <span class="product-overlay-tag product-photo-count" style="bottom: 8px; right: 8px;">
+                    <i class="bi bi-images me-1"></i><span class="store-slide-idx">1</span>/{{ p.images|length }}
+                  </span>
+
+                  <!-- Carousel Dots Indicator -->
+                  <div class="store-carousel-dots">
+                    {% for img in p.images %}
+                      <span class="store-dot {% if forloop.first %}active{% endif %}" data-index="{{ forloop.counter0 }}" onclick="event.preventDefault(); event.stopPropagation(); window.storeCarouselGoTo({{ p.id }}, {{ forloop.counter0 }});"></span>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <img src="{{ p.first_image }}" alt="{{ p.title }}" loading="lazy" onerror="this.onerror=null;this.src='/static/images/products/product.jpg';">
+                {% endif %}
                 
                 <!-- Status Overlay (Sold / Pending / Rejected) -->
                 {% if p.is_sold %}
@@ -287,11 +317,20 @@
           </div>
 
           <!-- Image Uploads -->
-          <div class="mb-2">
-            <label class="form-label fw-semibold small">Photos (Up to 5 images)</label>
-            <input type="file" name="images" id="productImagesInput" class="form-control" multiple accept="image/jpeg,image/png,image/webp,image/jpg">
-            <div class="form-text small">Recommended: Clear, high-resolution photos taken in good lighting.</div>
-            <div id="imagePreviewContainer" class="d-flex flex-wrap gap-2 mt-2"></div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold small d-flex justify-content-between align-items-center mb-1">
+              <span>Product Photos <span class="text-danger">*</span></span>
+              <span class="text-muted fw-normal small" id="photoCountBadge">0 / 8 selected</span>
+            </label>
+            <div class="store-upload-dropzone p-3 rounded text-center mb-2" id="storeUploadDropzone">
+              <input type="file" name="images" id="productImagesInput" class="d-none" multiple accept="image/*">
+              <div class="dropzone-content cursor-pointer" onclick="document.getElementById('productImagesInput').click()">
+                <i class="bi bi-cloud-arrow-up text-primary fs-2 mb-1 d-block"></i>
+                <div class="fw-semibold small mb-1">Click or drag images here to upload</div>
+                <div class="text-muted small" style="font-size: 0.75rem;">Supports JPG, PNG, WEBP (up to 8 photos, max 15MB each). First image is cover.</div>
+              </div>
+            </div>
+            <div id="imagePreviewContainer" class="store-preview-grid d-flex flex-wrap gap-2 mt-2"></div>
           </div>
 
         </div>
@@ -507,197 +546,5 @@
 </aside>
 {% endblock %}
 {% block extra_js %}
-<script>
-// Mobile Drawer Handler for Store Right Widgets
-function toggleStoreWidgetsDrawer(force) {
-    const panel = document.getElementById('rightWidgetsPanel');
-    const overlay = document.getElementById('storeWidgetsOverlay');
-    if (!panel) return;
-    const shouldOpen = typeof force === 'boolean' ? force : !panel.classList.contains('drawer-open');
-    if (shouldOpen) {
-        panel.classList.add('drawer-open');
-        if (overlay) overlay.classList.add('active');
-        document.body.style.overflow = 'hidden';
-    } else {
-        panel.classList.remove('drawer-open');
-        if (overlay) overlay.classList.remove('active');
-        document.body.style.overflow = '';
-    }
-}
-
-// Global modal trigger handlers
-let currentSellerProductId = null;
-
-function openMarkSoldModal(productId, title) {
-    currentSellerProductId = productId;
-    const titleEl = document.getElementById('markSoldProductTitle');
-    if (titleEl) titleEl.textContent = title;
-    const modalEl = document.getElementById('markSoldModal');
-    if (modalEl) {
-        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-        modal.show();
-    }
-}
-
-function openDeleteProductModal(productId, title) {
-    currentSellerProductId = productId;
-    const titleEl = document.getElementById('deleteProductTitle');
-    if (titleEl) titleEl.textContent = title;
-    const modalEl = document.getElementById('deleteProductModal');
-    if (modalEl) {
-        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-        modal.show();
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    const imagesInput = document.getElementById('productImagesInput');
-    const previewContainer = document.getElementById('imagePreviewContainer');
-    const form = document.getElementById('createProductForm');
-    const submitBtn = document.getElementById('btnSubmitProduct');
-    const spinner = document.getElementById('submitSpinner');
-    const alertBox = document.getElementById('createProductAlert');
-
-    // Local thumbnail preview
-    if (imagesInput && previewContainer) {
-        imagesInput.addEventListener('change', function(e) {
-            previewContainer.innerHTML = '';
-            const files = Array.from(e.target.files).slice(0, 5);
-            files.forEach(file => {
-                if (file.type.startsWith('image/')) {
-                    const reader = new FileReader();
-                    reader.onload = function(evt) {
-                        const img = document.createElement('img');
-                        img.src = evt.target.result;
-                        img.className = 'image-preview-thumb';
-                        previewContainer.appendChild(img);
-                    };
-                    reader.readAsDataURL(file);
-                }
-            });
-        });
-    }
-
-    // AJAX Submission handler
-    if (form) {
-        form.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            alertBox.classList.add('d-none');
-            alertBox.textContent = '';
-
-            const formData = new FormData(form);
-            const submitBtnText = submitBtn.querySelector('span:last-child');
-
-            submitBtn.disabled = true;
-            spinner.classList.remove('d-none');
-            submitBtnText.textContent = 'Submitting...';
-
-            try {
-                const response = await fetch('/api/store/create/', {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    submitBtnText.textContent = 'Success!';
-                    if (window.showToast) {
-                        window.showToast(data.message || 'Product listed successfully!', 'Marketplace', '🛍️');
-                    }
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 800);
-                } else {
-                    alertBox.textContent = data.error || 'Failed to submit product. Please check the form.';
-                    alertBox.classList.remove('d-none');
-                    submitBtn.disabled = false;
-                    spinner.classList.add('d-none');
-                    submitBtnText.textContent = 'Post Listing';
-                }
-            } catch (err) {
-                console.error('Store submit error:', err);
-                alertBox.textContent = 'A network error occurred. Please try again.';
-                alertBox.classList.remove('d-none');
-                submitBtn.disabled = false;
-                spinner.classList.add('d-none');
-                submitBtnText.textContent = 'Post Listing';
-            }
-        });
-    }
-
-    // Mark Sold Handler
-    const soldBtn = document.getElementById('confirmMarkSoldBtn');
-    if (soldBtn) {
-        soldBtn.addEventListener('click', function() {
-            if (!currentSellerProductId) return;
-            const btn = this;
-            btn.disabled = true;
-            fetch(`/api/store/mark-sold/${currentSellerProductId}/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': (function() { const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]*)/); return m ? decodeURIComponent(m[1]) : (document.querySelector('[name=csrfmiddlewaretoken]') ? document.querySelector('[name=csrfmiddlewaretoken]').value : ''); })(),
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(r => r.json())
-            .then(data => {
-                btn.disabled = false;
-                const modalEl = document.getElementById('markSoldModal');
-                if (modalEl) {
-                    const inst = bootstrap.Modal.getInstance(modalEl);
-                    if (inst) inst.hide();
-                }
-                if (data.success) {
-                    location.reload();
-                } else {
-                    alert(data.error || 'Failed to mark as sold.');
-                }
-            })
-            .catch(err => {
-                btn.disabled = false;
-                alert('An error occurred. Please try again.');
-            });
-        });
-    }
-
-    // Delete Product Handler
-    const delBtn = document.getElementById('confirmDeleteProductBtn');
-    if (delBtn) {
-        delBtn.addEventListener('click', function() {
-            if (!currentSellerProductId) return;
-            const btn = this;
-            btn.disabled = true;
-            fetch(`/api/store/delete/${currentSellerProductId}/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': (function() { const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]*)/); return m ? decodeURIComponent(m[1]) : (document.querySelector('[name=csrfmiddlewaretoken]') ? document.querySelector('[name=csrfmiddlewaretoken]').value : ''); })(),
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(r => r.json())
-            .then(data => {
-                btn.disabled = false;
-                const modalEl = document.getElementById('deleteProductModal');
-                if (modalEl) {
-                    const inst = bootstrap.Modal.getInstance(modalEl);
-                    if (inst) inst.hide();
-                }
-                if (data.success) {
-                    location.reload();
-                } else {
-                    alert(data.error || 'Failed to delete listing.');
-                }
-            })
-            .catch(err => {
-                btn.disabled = false;
-                alert('An error occurred. Please try again.');
-            });
-        });
-    }
-});
-</script>
+<script src="{% static 'js/store.js' %}?v=2"></script>
 {% endblock %}

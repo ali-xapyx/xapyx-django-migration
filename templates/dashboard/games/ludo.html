@@ -192,6 +192,51 @@
             <button type="button" class="ludo-mode-btn active" id="btnMode1v1">vs 1 AI Bot (1v1)</button>
             <button type="button" class="ludo-mode-btn" id="btnMode4p">vs 3 AI Bots (4P)</button>
             <button type="button" class="ludo-mode-btn" id="btnModePassPlay">Pass &amp; Play (2-4P)</button>
+            <button type="button" class="ludo-mode-btn" id="btnModeOnline"><i class="bi bi-globe me-1"></i>Online Multiplayer</button>
+          </div>
+
+          <!-- Online Lobby Bar -->
+          <div class="ludo-online-lobby my-3" id="ludoOnlineLobby" style="display: none;">
+            <div class="d-flex flex-wrap align-items-center justify-content-center gap-2 mb-2">
+              <button type="button" class="btn btn-sm btn-outline-info fw-semibold" id="btnLudoCreateRoom">
+                <i class="bi bi-plus-circle me-1"></i>Create Room
+              </button>
+              <div class="input-group input-group-sm ludo-join-group" style="max-width: 220px;">
+                <input type="text" class="form-control text-uppercase text-center font-monospace" id="inputLudoRoomCode" maxlength="6" placeholder="ROOM CODE">
+                <button class="btn btn-outline-primary" type="button" id="btnLudoJoinRoom">
+                  <i class="bi bi-box-arrow-in-right me-1"></i>Join
+                </button>
+              </div>
+            </div>
+
+            <!-- Active Room Info & Share Bar -->
+            <div class="ludo-room-info-pill text-center my-2 p-2 rounded" id="ludoRoomInfo" style="display: none; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08);">
+              <div class="d-flex flex-wrap align-items-center justify-content-center gap-2 mb-2">
+                <span class="room-code-badge" id="pillLudoRoomCode" role="button" title="Click to copy room code">
+                  <i class="bi bi-key-fill text-warning me-1"></i>ROOM: <strong id="valLudoRoomCode" class="font-monospace text-warning">------</strong> <i class="bi bi-clipboard ms-1 small"></i>
+                </span>
+                <span class="room-players-badge" id="pillLudoPlayers">
+                  <span class="text-danger fw-bold" id="valLudoRed">Red: ---</span> vs <span class="text-warning fw-bold" id="valLudoYellow">Yellow: ---</span>
+                </span>
+                <span class="badge bg-secondary" id="pillLudoMyColor">You: ?</span>
+              </div>
+
+              <!-- Share & Direct Invite Action Buttons -->
+              <div class="d-flex flex-wrap align-items-center justify-content-center gap-2 mt-2">
+                <button type="button" class="btn btn-sm btn-success fw-semibold" id="btnLudoShareWhatsApp" title="Share room on WhatsApp">
+                  <i class="bi bi-whatsapp me-1"></i>WhatsApp
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-light" id="btnLudoCopyLink" title="Copy Direct Invite Link">
+                  <i class="bi bi-link-45deg me-1"></i>Copy Link
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-warning fw-semibold" id="btnLudoInviteFriends" title="Invite Friends from XAPYX">
+                  <i class="bi bi-person-plus-fill me-1"></i>Invite Friends
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnLudoNativeShare" title="More Share Options">
+                  <i class="bi bi-share-fill"></i>
+                </button>
+              </div>
+            </div>
           </div>
 
           <!-- Board Canvas -->
@@ -261,8 +306,23 @@
     </div><!-- /dashboard-flex -->
   </div><!-- /dashboard-inner -->
 </div><!-- /dashboardContainer -->
+
+{% include "dashboard/games/partials/friend_invite_modal.html" %}
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/games/ludo.js' %}?v=1"></script>
+<script>
+window.XPY_GAME_CONFIG = {
+    gameType: 'ludo',
+    gameTitle: 'Ludo',
+    initialRoomCode: '{{ initial_room_code|default:""|escapejs }}',
+    currentUser: {
+        id: {{ current_user_id|default:0 }},
+        name: "{{ current_user_name|default:'Player'|escapejs }}",
+        avatar: "{{ current_user_avatar|default:'/static/images/avatars/default.png'|escapejs }}"
+    }
+};
+</script>
+<script src="{% static 'js/games/game_invite.js' %}?v=1"></script>
+<script src="{% static 'js/games/ludo.js' %}?v=3"></script>
 {% endblock %}
