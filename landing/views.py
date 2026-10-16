@@ -13174,3 +13174,55 @@ def google_auth_callback(request):
     user.backend = 'landing.auth_backends.MultiFieldAuthBackend'
     auth_login(request, user)
     return redirect(next_url)
+
+
+# ------------------------------------------------------------
+# LEGAL & ROOT STATIC PAGES (Migrated from PHP)
+# ------------------------------------------------------------
+def terms_view(request):
+    """Renders Terms of Service page."""
+    return render(request, 'legal/terms.html')
+
+
+def privacy_view(request):
+    """Renders Privacy Policy page."""
+    return render(request, 'legal/privacy.html')
+
+
+def guidelines_view(request):
+    """Renders Community Guidelines page."""
+    return render(request, 'legal/guidelines.html')
+
+
+def robots_txt_view(request):
+    """Serves robots.txt."""
+    robots_path = os.path.join(settings.BASE_DIR, 'static', 'robots.txt')
+    if os.path.exists(robots_path):
+        with open(robots_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+    else:
+        content = "User-agent: *\nDisallow: /admin/\nDisallow: /portal-admin/\nDisallow: /api/\nAllow: /\n\nSitemap: https://xapyx.com/sitemap.xml\n"
+    return HttpResponse(content, content_type='text/plain')
+
+
+def google_verify_view(request):
+    """Serves Google Search Console site verification file."""
+    verify_path = os.path.join(settings.BASE_DIR, 'static', 'google25d077a1b59441dc.html')
+    if os.path.exists(verify_path):
+        with open(verify_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+    else:
+        content = "google-site-verification: google25d077a1b59441dc.html"
+    return HttpResponse(content, content_type='text/html')
+
+
+def legacy_assets_view(request, path):
+    """Fallback handler for legacy /assets/<file> URLs to prevent broken images."""
+    from django.views.static import serve
+    assets_dir = os.path.join(settings.BASE_DIR, 'static', 'assets')
+    if os.path.exists(os.path.join(assets_dir, path)):
+        return serve(request, path, document_root=assets_dir)
+    images_dir = os.path.join(settings.BASE_DIR, 'static', 'images')
+    if os.path.exists(os.path.join(images_dir, path)):
+        return serve(request, path, document_root=images_dir)
+    return redirect(f'/static/images/{path}')

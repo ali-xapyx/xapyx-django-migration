@@ -1,0 +1,21 @@
+User-agent: *
+Disallow: /node_modules/
+Disallow: /vendor/
+Disallow: /config/
+Disallow: /controller/
+Disallow: /admin/
+Disallow: /api/
+Disallow: /includes/
+Disallow: /logs/
+Disallow: /tmp/
+Disallow: /private/
+Disallow: /database/
+Disallow: /\.git/
+Disallow: /*.php$
+Disallow: /*.json$
+Disallow: /*.env$
+Disallow: /*.sql$
+Disallow: /*.bak$
+Allow: /$
+
+Sitemap: https://www.xapyx.com/sitemap.xml

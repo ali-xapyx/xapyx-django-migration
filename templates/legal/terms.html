@@ -1,0 +1,432 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+    <title>Terms of Service | XAPYX</title>
+    <meta name="theme-color" content="{{ request.user.theme_color|default:"#f3a72c" }}">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" type="image/png" href="{% static 'images/icons/xapyx_icon.png' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: {{ request.user.theme_color|default:"#f3a72c" }};
+            --primary-rgb: 243, 167, 44;
+            --primary-dark: {{ request.user.theme_color|default:"#f3a72c" }};
+            --gradient-primary: linear-gradient(135deg, var(--primary) 0%, {{ request.user.theme_color|default:"#f3a72c" }} 100%);
+            --text-color: #2d3436;
+            --text-muted: #636e72;
+            --light-bg: #f8f9fa;
+            --card-bg: #ffffff;
+            --border-color: rgba(0,0,0,0.1);
+            --shadow-sm: 0 2px 8px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+            --radius-sm: 10px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: var(--text-color);
+            background: var(--light-bg);
+            overflow-x: hidden;
+            font-size: 15px;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 15px; }
+
+        @keyframes fadeIn { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
+        @keyframes gradientFlow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+
+        /* PAGE HEADER */
+        .page-header {
+            background: var(--gradient-primary);
+            padding: 60px 0 40px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" opacity="0.1"><path d="M0 0 L100 100 M100 0 L0 100" stroke="white" stroke-width="2"/></svg>');
+            background-size: 30px 30px;
+            animation: gradientFlow 20s linear infinite;
+        }
+        .page-header-content {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+        }
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 15px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        .page-subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .effective-date {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(5px);
+            padding: 8px 20px;
+            border-radius: 30px;
+            margin-top: 20px;
+            font-size: 0.9rem;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        /* CONTENT SECTION */
+        .content-section {
+            padding: 60px 0;
+            background: white;
+        }
+        .terms-container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+        }
+        .terms-header {
+            background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.1) 0%, rgba(var(--primary-rgb), 0.05) 100%);
+            padding: 30px;
+            border-bottom: 2px solid var(--primary);
+            text-align: center;
+        }
+        .terms-header h2 {
+            color: var(--primary);
+            font-weight: 700;
+            margin: 0;
+            font-size: 1.8rem;
+        }
+        .terms-header p {
+            color: var(--text-muted);
+            margin: 10px 0 0;
+        }
+        .terms-content {
+            padding: 40px;
+        }
+        .terms-section {
+            margin-bottom: 40px;
+            opacity: 0;
+            transform: translateY(10px);
+            animation: fadeIn 0.6s ease-out forwards;
+        }
+        .terms-section:nth-child(1) { animation-delay: 0.1s; }
+        .terms-section:nth-child(2) { animation-delay: 0.2s; }
+        .terms-section:nth-child(3) { animation-delay: 0.3s; }
+        .terms-section:nth-child(4) { animation-delay: 0.4s; }
+        .terms-section:nth-child(5) { animation-delay: 0.5s; }
+        .terms-section:nth-child(6) { animation-delay: 0.6s; }
+        .terms-section:nth-child(7) { animation-delay: 0.7s; }
+        
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-color);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid var(--primary);
+            display: inline-block;
+        }
+        .terms-list {
+            list-style: none;
+            padding: 0;
+        }
+        .terms-list li {
+            margin-bottom: 15px;
+            padding-left: 30px;
+            position: relative;
+        }
+        .terms-list li::before {
+            content: '✓';
+            color: var(--primary);
+            font-weight: bold;
+            font-size: 1.2rem;
+            position: absolute;
+            left: 0;
+            top: -2px;
+        }
+        .terms-list li strong {
+            color: var(--primary);
+        }
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            border-radius: var(--radius-sm);
+            margin: 20px 0;
+        }
+        .agreement-box {
+            background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.1) 0%, rgba(var(--primary-rgb), 0.05) 100%);
+            border: 2px solid var(--primary);
+            border-radius: var(--radius-md);
+            padding: 30px;
+            text-align: center;
+            margin-top: 40px;
+        }
+        .agreement-box i {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 15px;
+        }
+        .agreement-box h4 {
+            color: var(--text-color);
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+
+        /* BACK TO TOP */
+        .back-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--shadow-md);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            border: none;
+        }
+        .back-to-top.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        .back-to-top:hover {
+            transform: translateY(-5px);
+            background: var(--primary-dark);
+        }
+
+        /* FOOTER */
+        .footer {
+            background: var(--text-color);
+            color: white;
+            padding: 50px 0 25px;
+            font-size: 0.95rem;
+        }
+        .footer-content { text-align: center; }
+        .footer-logo { font-size: 2rem; font-weight: 700; color: var(--primary); margin-bottom: 20px; }
+        .footer-content p { opacity: 0.8; max-width: 350px; margin: 0 auto 25px; }
+        .footer-links { display: flex; justify-content: center; gap: 30px; flex-wrap: wrap; margin-bottom: 25px; }
+        .footer-links a { color: rgba(255,255,255,0.7); text-decoration: none; transition: color 0.3s; }
+        .footer-links a:hover { color: white; }
+        .social-icons { display: flex; justify-content: center; gap: 20px; margin-bottom: 30px; }
+        .social-icons a { width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; color: white; text-decoration: none; transition: all 0.3s; }
+        .social-icons a:hover { background: var(--primary); transform: translateY(-2px); }
+        .footer-bottom { padding-top: 25px; border-top: 1px solid rgba(255,255,255,0.1); text-align: center; color: rgba(255,255,255,0.6); font-size: 0.85rem; }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .page-title { font-size: 2rem; }
+            .terms-content { padding: 25px; }
+            .section-title { font-size: 1.3rem; }
+            .back-to-top { bottom: 20px; right: 20px; width: 40px; height: 40px; }
+        }
+        @media (max-width: 480px) {
+            .page-title { font-size: 1.8rem; }
+            .terms-content { padding: 20px; }
+            .section-title { font-size: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+    <div class="container">
+        <div class="page-header-content">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb justify-content-center bg-transparent">
+                    <li class="breadcrumb-item"><a href="/index.php" class="text-white opacity-75">Home</a></li>
+                    <li class="breadcrumb-item active text-white" aria-current="page">Terms of Service</li>
+                </ol>
+            </nav>
+            <h1 class="page-title">Terms of Service</h1>
+            <p class="page-subtitle">Please read these terms carefully before using XAPYX.</p>
+            <div class="effective-date">
+                <i class="far fa-calendar-alt me-2"></i>Last Updated: January 1, 2024
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<section class="content-section">
+    <div class="container">
+        <div class="terms-container">
+            <div class="terms-header">
+                <h2><i class="fas fa-file-contract me-3"></i>Terms of Service – XAPYX</h2>
+                <p>By using XAPYX, you agree to these terms</p>
+            </div>
+            <div class="terms-content">
+                <!-- Section 1: Age Requirement -->
+                <div class="terms-section">
+                    <h3 class="section-title">1. Age Requirement</h3>
+                    <div class="warning-box">
+                        <i class="fas fa-exclamation-triangle me-2" style="color: #ffc107;"></i>
+                        <strong>You must be at least 13 years old to use XAPYX.</strong> If you are between 13 and 18, you confirm that you have parental consent to use this platform.
+                    </div>
+                </div>
+
+                <!-- Section 2: Acceptable Use -->
+                <div class="terms-section">
+                    <h3 class="section-title">2. Acceptable Use</h3>
+                    <ul class="terms-list">
+                        <li><strong>You will not post illegal, abusive, or harmful content</strong> – This includes harassment, threats, or any content that violates laws</li>
+                        <li><strong>You are responsible for your account activity</strong> – All actions taken under your account are your responsibility</li>
+                        <li><strong>You will not impersonate others</strong> – Be authentic in your interactions</li>
+                        <li><strong>You will not attempt to hack, disrupt, or abuse the service</strong> – This includes automated scraping, DDoS attacks, or exploiting bugs</li>
+                        <li><strong>You will not share copyrighted material without permission</strong> – Respect intellectual property rights</li>
+                    </ul>
+                </div>
+
+                <!-- Section 3: Account Suspension -->
+                <div class="terms-section">
+                    <h3 class="section-title">3. Account Suspension</h3>
+                    <p>We may suspend or terminate accounts that violate these guidelines:</p>
+                    <ul class="terms-list">
+                        <li><strong>First violation</strong> – Warning and content removal</li>
+                        <li><strong>Second violation</strong> – Temporary suspension (7-30 days)</li>
+                        <li><strong>Severe or repeated violations</strong> – Permanent ban</li>
+                        <li><strong>Illegal activities</strong> – Immediate termination and reporting to authorities</li>
+                    </ul>
+                </div>
+
+                <!-- Section 4: User-Generated Content -->
+                <div class="terms-section">
+                    <h3 class="section-title">4. User-Generated Content</h3>
+                    <ul class="terms-list">
+                        <li><strong>We are not responsible for user-generated content</strong> – Views expressed by users are their own</li>
+                        <li><strong>You retain ownership of your content</strong> – But grant XAPYX a license to display it on the platform</li>
+                        <li><strong>We may remove content that violates these terms</strong> – At our sole discretion</li>
+                        <li><strong>Report inappropriate content</strong> – Use the report feature or contact support@xapyx.com</li>
+                    </ul>
+                </div>
+
+                <!-- Section 5: Service Updates -->
+                <div class="terms-section">
+                    <h3 class="section-title">5. Service Updates</h3>
+                    <p>We may update the service at any time, including:</p>
+                    <ul class="terms-list">
+                        <li>Adding or removing features</li>
+                        <li>Changing pricing (with notice for paid features)</li>
+                        <li>Updating these terms (with notice)</li>
+                        <li>Temporarily suspending service for maintenance</li>
+                    </ul>
+                    <p class="mt-3">Continued use after changes constitutes acceptance of the new terms.</p>
+                </div>
+
+                <!-- Section 6: Limitation of Liability -->
+                <div class="terms-section">
+                    <h3 class="section-title">6. Limitation of Liability</h3>
+                    <p>To the maximum extent permitted by law, XAPYX shall not be liable for:</p>
+                    <ul class="terms-list">
+                        <li>Indirect, incidental, or consequential damages</li>
+                        <li>Loss of profits, data, or goodwill</li>
+                        <li>Service interruptions or data loss</li>
+                        <li>Actions of other users</li>
+                    </ul>
+                </div>
+
+                <!-- Section 7: Governing Law -->
+                <div class="terms-section">
+                    <h3 class="section-title">7. Governing Law</h3>
+                    <p>These terms shall be governed by the laws of [Your Country/State], without regard to its conflict of law provisions. Any disputes shall be resolved in the courts of [Your Jurisdiction].</p>
+                </div>
+
+                <!-- Agreement Box -->
+                <div class="agreement-box">
+                    <i class="fas fa-handshake"></i>
+                    <h4>By using XAPYX, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service.</h4>
+                    <p class="text-muted mb-0">If you do not agree, please discontinue use immediately.</p>
+                </div>
+
+                <!-- Contact Info -->
+                <div class="text-center mt-4 pt-3 border-top">
+                    <p class="text-muted">Questions about these terms? Contact us at <a href="mailto:support@xapyx.com" class="text-primary">support@xapyx.com</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- BACK TO TOP BUTTON -->
+<button class="back-to-top" id="backToTop">
+    <i class="fas fa-arrow-up"></i>
+</button>
+
+<!-- FOOTER -->
+<footer class="footer">
+    <div class="container">
+        <div class="footer-content">
+            <div class="footer-logo">XAPYX</div>
+            <p>Your social universe where connections thrive.</p>
+            <div class="footer-links">
+                <a href="/privacy/">Privacy Policy</a>
+                <a href="/guidelines/">Community Guidelines</a>
+                <a href="/terms/">Terms & Conditions</a>
+                
+            </div>
+            <div class="social-icons">
+        
+                <a href="https://www.facebook.com/profile.php?id=61584313081463"><i class="fab fa-facebook"></i></a>
+                <a href="https://www.youtube.com/@xapyx-official"><i class="fab fa-youtube"></i></a>
+
+
+            </div>
+        </div>
+        <div class="footer-bottom"><p>&copy; {% now "Y" %} XAPYX. All rights reserved.</p></div>
+    </div>
+</footer>
+<script>
+(function() {
+    'use strict';
+    
+    // Back to top button
+    const backToTop = document.getElementById('backToTop');
+    if (backToTop) {
+        window.addEventListener('scroll', () => {
+            if (window.pageYOffset > 300) {
+                backToTop.classList.add('visible');
+            } else {
+                backToTop.classList.remove('visible');
+            }
+        });
+        
+        backToTop.addEventListener('click', () => {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+    }
+})();
+</script>
+</body>
+</html>

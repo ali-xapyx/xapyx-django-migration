@@ -1,0 +1,30 @@
+nohup: ignoring input
+[2026-10-16 20:51:50 +0000] [420810] [INFO] Starting gunicorn 26.2.0
+[2026-10-16 20:51:50 +0000] [420810] [INFO] Listening at: http://127.0.0.1:8000 (420810)
+[2026-10-16 20:51:50 +0000] [420810] [INFO] Using worker: sync
+[2026-10-16 20:51:50 +0000] [420816] [INFO] Booting worker with pid: 420816
+[2026-10-16 20:51:50 +0000] [420817] [INFO] Booting worker with pid: 420817
+[2026-10-16 20:51:50 +0000] [420818] [INFO] Booting worker with pid: 420818
+[2026-10-16 20:51:50 +0000] [420810] [INFO] Control socket listening at /run/user/1000/gunicorn.ctl
+WebPush send failed for sub 155: WebPushException: Push failed: 410 Gone
+Response body:push subscription has unsubscribed or expired.
+, Response push subscription has unsubscribed or expired.
+
+Not Found: /static/images/icons/icon-192x192.png
+Not Found: /static/css/auth.css
+Not Found: /static/js/auth.js
+Not Found: /static/js/login.js
+Not Found: /static/css/login.css
+WebPush send failed for sub 155: WebPushException: Push failed: 410 Gone
+Response body:push subscription has unsubscribed or expired.
+, Response push subscription has unsubscribed or expired.
+
+WebPush send failed for sub 245: WebPushException: Push failed: 410 Gone
+Response body:push subscription has unsubscribed or expired.
+, Response push subscription has unsubscribed or expired.
+
+WebPush send failed for sub 245: WebPushException: Push failed: 410 Gone
+Response body:push subscription has unsubscribed or expired.
+, Response push subscription has unsubscribed or expired.
+
+Not Found: /chatrooms/26/uploads/chat/ca7aafbd27bf41449fc0cfccaeba883c.png

@@ -274,5 +274,17 @@ urlpatterns = [
     path('api/save-push-subscription/', views.api_save_push_subscription, name='api_save_push_subscription'),
     path('404/', views.error_404_view, name='error_404_preview'),
 
+    # Legal & Static Root Pages (Migrated from PHP)
+    path('terms/', views.terms_view, name='terms'),
+    path('privacy/', views.privacy_view, name='privacy'),
+    path('guidelines/', views.guidelines_view, name='guidelines'),
+    path('model/terms.php', views.terms_view),
+    path('model/privacy.php', views.privacy_view),
+    path('model/guidelines.php', views.guidelines_view),
+    path('robots.txt', views.robots_txt_view, name='robots_txt'),
+    path('google25d077a1b59441dc.html', views.google_verify_view, name='google_verify'),
+    path('assets/<path:path>', views.legacy_assets_view, name='legacy_assets'),
+
+
    
 ]

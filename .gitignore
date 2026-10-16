@@ -1,21 +1,46 @@
+# ==============================================================================
+# Git Ignore Rules for Xapyx
+# ==============================================================================
+
+# Environment & Secret files
 .env
-.env
+.env.*
+!.env.example
 *.pem
+*.key
+*firebase*.json
+*firebase-adminsdk*.json
+serviceAccountKey.json
 .firebase-admin.json
+
+# Database & SQL dumps
+*.sql
+
+# Python & Virtual Environments
 venv/
+.venv/
 __pycache__/
-*.pyc
-.tmp/
-*.log
+*.py[cod]
+*$py.class
+
+# Django Static / Media / Uploads
+media/
+uploads/
+staticfiles/
+
+# Temporary, Backup & Log files
 *.bak
-.ios-fix-backups/
-test_friends_delete.py
-landing/tmp/
-*$'\r'
-*.tmp
 *.old
 *.orig
+*.tmp
 *~
 *_backup*
+*.log
+.tmp/
+landing/tmp/
+.ios-fix-backups/
+
+# Obsolete / Deprecated files
 manifest.json
 static/manifest.json
+test_friends_delete.py

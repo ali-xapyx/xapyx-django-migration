@@ -8,6 +8,8 @@ ALLOWED_HOSTS = [
     '184.192.39.68',
     'testserver',
     'beta.xapyx.com',
+    'betaa.xapyx.com',
+    'www.betaa.xapyx.com',
     'xapyx.com',
 ]
 
@@ -17,6 +19,8 @@ CSRF_TRUSTED_ORIGINS = [
     'http://184.192.39.68:8000',
     'http://beta.xapyx.com',
     'https://beta.xapyx.com',
+    'http://betaa.xapyx.com',
+    'https://betaa.xapyx.com',
     'https://xapyx.com',
     'https://www.xapyx.com',
     'https://accounts.google.com',
