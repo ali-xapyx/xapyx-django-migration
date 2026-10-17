@@ -28,3 +28,24 @@ Response body:push subscription has unsubscribed or expired.
 , Response push subscription has unsubscribed or expired.
 
 Not Found: /chatrooms/26/uploads/chat/ca7aafbd27bf41449fc0cfccaeba883c.png
+[2026-10-16 21:25:32 +0000] [420810] [INFO] Handling signal: hup
+[2026-10-16 21:25:32 +0000] [420810] [INFO] Hang up: Master
+[2026-10-16 21:25:32 +0000] [422963] [INFO] Booting worker with pid: 422963
+[2026-10-16 21:25:32 +0000] [420810] [INFO] Control socket listening at /run/user/1000/gunicorn.ctl
+[2026-10-16 21:25:32 +0000] [422965] [INFO] Booting worker with pid: 422965
+[2026-10-16 21:25:32 +0000] [420810] [INFO] Control socket listening at /run/user/1000/gunicorn.ctl
+[2026-10-16 21:25:32 +0000] [422967] [INFO] Booting worker with pid: 422967
+[2026-10-16 21:25:32 +0000] [420810] [INFO] Control socket listening at /run/user/1000/gunicorn.ctl
+[2026-10-16 21:25:32 +0000] [420810] [WARNING] Worker (pid:420816) was sent SIGHUP!
+[2026-10-16 21:25:32 +0000] [420810] [WARNING] Worker (pid:420817) was sent SIGHUP!
+[2026-10-16 21:25:32 +0000] [420810] [WARNING] Worker (pid:420818) was sent SIGHUP!
+Not Found: /contact/
+Not Found: /index.php
+Not Found: /favicon.ico
+Not Found: /manager/html
+Not Found: /phpmyadmin/scripts/setup.php
+Not Found: /index.action
+Not Found: /sitemap.xml
+Not Found: /.well-known/security.txt
+Not Found: /.git/refs/
+Not Found: /index.action
